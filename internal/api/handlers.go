@@ -1,3 +1,4 @@
+cat > internal/api/handlers.go <<EOF
 package api
 
 import (
@@ -34,11 +35,12 @@ func (s *Server) HealthCheck(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) HandleAccounts(w http.ResponseWriter, r *http.Request) {
-    // پیاده‌سازی حساب‌ها (اگر منطق خاصی دارید اینجا اضافه کنید)
-    w.Write([]byte("Accounts endpoint"))
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("Accounts endpoint"))
 }
 
 func (s *Server) HandleTransactions(w http.ResponseWriter, r *http.Request) {
-    // پیاده‌سازی تراکنش‌ها (اگر منطق خاصی دارید اینجا اضافه کنید)
-    w.Write([]byte("Transactions endpoint"))
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("Transactions endpoint"))
 }
+EOF
