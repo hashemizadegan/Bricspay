@@ -2,7 +2,6 @@ package api
 
 import (
 	"embed"
-	"encoding/json"
 	"net/http"
 	"bricspayir/internal/ledger"
 )
@@ -24,5 +23,3 @@ func (s *Server) HandleRoot(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 	w.Write(file)
 }
-
-// Add your API handlers (e.g., HandleAccounts, HandleTransactions) here
