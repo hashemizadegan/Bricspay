@@ -8,9 +8,13 @@ import (
 	"bricspayir/internal/ledger"
 )
 
-type Server struct{ DB *sql.DB }
+type Server struct {
+	DB *sql.DB
+}
 
-func NewServer(db *sql.DB) *Server { return &Server{DB: db} }
+func NewServer(db *sql.DB) *Server {
+	return &Server{DB: db}
+}
 
 func (s *Server) HandleRoot(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/" {
@@ -32,7 +36,10 @@ func (s *Server) HandleRoot(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) HealthCheck(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"status": "ok", "service": "bricspay-core-ledger"})
+	_ = json.NewEncoder(w).Encode(map[string]string{
+		"status":  "ok",
+		"service": "bricspay-core-ledger",
+	})
 }
 
 func (s *Server) HandleAccounts(w http.ResponseWriter, r *http.Request) {
@@ -44,7 +51,7 @@ func (s *Server) HandleAccounts(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		json.NewEncoder(w).Encode(accounts)
+		_ = json.NewEncoder(w).Encode(accounts)
 	case http.MethodPost:
 		var req struct {
 			Code     string `json:"code"`
@@ -61,7 +68,7 @@ func (s *Server) HandleAccounts(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		w.WriteHeader(http.StatusCreated)
-		json.NewEncoder(w).Encode(acc)
+		_ = json.NewEncoder(w).Encode(acc)
 	default:
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 	}
@@ -84,7 +91,7 @@ func (s *Server) HandleTransactions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(resp)
+	_ = json.NewEncoder(w).Encode(resp)
 }
 
 const landingPageHTML = `<!DOCTYPE html>
@@ -92,29 +99,7 @@ const landingPageHTML = `<!DOCTYPE html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BRICS Pay | Decentralized Cross-Border Settlement Platform</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --bg: #06090e;
-            --surface: #0b1118;
-            --surface-card: rgba(16, 24, 34, 0.7);
-            --border: rgba(255, 255, 255, 0.08);
-            --border-glow: rgba(0, 230, 153, 0.25);
-            --text-main: #f0f4f8;
-            --text-muted: #8a99a8;
-            --emerald: #00e699;
-            --emerald-dark: #008f5d;
-            --emerald-glow: rgba(0, 230, 153, 0.12);
-            --blue-glow: rgba(0, 153, 255, 0.12);
-            --font: 'Plus Jakarta Sans', - landingPageHTML = `<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BRICS Pay | Decentralized Cross-Border Settlement Platform</title>
+    <title>BRICS Pay | Decentralized Settlement Infrastructure</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -139,19 +124,50 @@ const landingPageHTML = `<!DOCTYPE html>
         body {
             background-color: var(--bg);
             color: var(--text-main);
-            font-family            padding: 0 24px;
+            font-family: var(--font);
+            line-height: 1.6;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        .ambient-glow-1 {
+            position: absolute;
+            top: -150px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 800px;
+            height: 500px;
+            background: radial-gradient(circle, var(--emerald-glow) 0%, rgba(0,0,0,0) 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .ambient-glow-2 {
+            position: absolute;
+            top: 700px;
+            right: -100px;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, var(--blue-glow) 0%, rgba(0,0,0,0) 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 24px;
             position: relative;
             z-index: 1;
         }
 
-        /* Nav */
         header {
             border-bottom: 1px solid var(--border);
             backdrop-filter: blur(16px);
             position: sticky;
             top: 0;
             z-index: 100;
-            background: rgba(6, 9, 14, 0.8);
+            background: rgba(6, 9, 14, 0.85);
         }
         .nav-wrap {
             display: flex;
@@ -164,7 +180,7 @@ const landingPageHTML = `<!DOCTYPE html>
             align-items: center;
             gap: 12px;
             font-weight: 800;
-            font-size: 1.25rem;
+            font-size: 1.2rem;
             letter-spacing: -0.02em;
             color: #fff;
             text-decoration: none;
@@ -218,9 +234,8 @@ const landingPageHTML = `<!DOCTYPE html>
             100% { transform: scale(0.95); opacity: 0.7; }
         }
 
-        /* Hero */
         .hero-section {
-            padding: 100px 0 80px;
+            padding: 90px 0 60px;
             text-align: center;
         }
         .pill-badge {
@@ -233,15 +248,15 @@ const landingPageHTML = `<!DOCTYPE html>
             border-radius: 30px;
             font-size: 0.85rem;
             color: var(--emerald);
-            margin-bottom: 32px;
+            margin-bottom: 28px;
             font-weight: 500;
         }
         h1.hero-title {
-            font-size: clamp(2.6rem, 5.5vw, 4.4rem);
+            font-size: clamp(2.4rem, 5vw, 4rem);
             font-weight: 800;
-            line-height: 1.1;
+            line-height: 1.15;
             letter-spacing: -0.03em;
-            margin-bottom: 24px;
+            margin-bottom: 20px;
             color: #fff;
         }
         .gradient-text {
@@ -250,10 +265,10 @@ const landingPageHTML = `<!DOCTYPE html>
             -webkit-text-fill-color: transparent;
         }
         p.hero-desc {
-            font-size: 1.2rem;
+            font-size: 1.15rem;
             color: var(--text-muted);
             max-width: 680px;
-            margin: 0 auto 40px;
+            margin: 0 auto 36px;
             font-weight: 400;
         }
         .hero-actions {
@@ -267,7 +282,7 @@ const landingPageHTML = `<!DOCTYPE html>
             background: linear-gradient(135deg, var(--emerald) 0%, var(--emerald-dark) 100%);
             color: #04100b;
             font-weight: 700;
-            padding: 14px 28px;
+            padding: 13px 26px;
             border-radius: 10px;
             text-decoration: none;
             box-shadow: 0 4px 20px rgba(0, 230, 153, 0.3);
@@ -282,23 +297,21 @@ const landingPageHTML = `<!DOCTYPE html>
             border: 1px solid var(--border);
             color: #fff;
             font-weight: 600;
-            padding: 14px 28px;
+            padding: 13px 26px;
             border-radius: 10px;
             text-decoration: none;
-            transition: background 0.2s ease, border-color 0.2s ease;
+            transition: background 0.2s ease;
         }
         .btn-secondary:hover {
             background: rgba(255, 255, 255, 0.08);
-            border-color: rgba(255, 255, 255, 0.2);
         }
 
-        /* Stats Bar */
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
             gap: 20px;
-            margin: 70px 0;
-            padding: 30px;
+            margin: 60px 0;
+            padding: 24px;
             background: var(--surface-card);
             border: 1px solid var(--border);
             border-radius: 16px;
@@ -306,138 +319,122 @@ const landingPageHTML = `<!DOCTYPE html>
         }
         .stat-item { text-align: center; }
         .stat-value {
-            font-size: 2rem;
+            font-size: 1.8rem;
             font-weight: 800;
             color: #fff;
             margin-bottom: 4px;
             font-family: var(--font-mono);
         }
-        .stat-label { font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+        .stat-label { font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
 
-        /* Section Headings */
         .section-header {
             text-align: center;
-            margin-bottom: 50px;
+            margin-bottom: 48px;
         }
         .section-title {
-            font-size: 2.2rem;
+            font-size: 2.1rem;
             font-weight: 700;
             letter-spacing: -0.02em;
             margin-bottom: 12px;
+            color: #fff;
         }
         .section-subtitle {
             color: var(--text-muted);
-            font-size: 1.05rem;
+            font-size: 1rem;
             max-width: 600px;
             margin: 0 auto;
         }
 
-        /* Products Grid */
         .features-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
             gap: 24px;
-            margin-bottom: 100px;
+            margin-bottom: 90px;
         }
         .feature-card {
             background: var(--surface-card);
             border: 1px solid var(--border);
             border-radius: 16px;
-            padding: 32px;
+            padding: 30px;
             backdrop-filter: blur(12px);
             transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-        }
-        .feature-card::before {
-            content: '';
-            position: absolute;
-            top: 0; left: 0; right: 0;
-            height: 2px;
-            background: linear-gradient(90deg, transparent, var(--emerald), transparent);
-            opacity: 0;
-            transition: opacity 0.3s ease;
         }
         .feature-card:hover {
             border-color: var(--border-glow);
             transform: translateY(-4px);
         }
-        .feature-card:hover::before { opacity: 1; }
         .feature-icon {
-            width: 48px;
-            height: 48px;
+            width: 44px;
+            height: 44px;
             background: rgba(0, 230, 153, 0.08);
             border: 1px solid rgba(0, 230, 153, 0.2);
-            border-radius: 12px;
+            border-radius: 10px;
             display: flex;
             align-items: center;
             justify-content: center;
-            margin-bottom: 20px;
+            margin-bottom: 18px;
             color: var(--emerald);
         }
         .feature-card h3 {
-            font-size: 1.25rem;
+            font-size: 1.2rem;
             font-weight: 700;
-            margin-bottom: 12px;
+            margin-bottom: 10px;
             color: #fff;
         }
         .feature-card p {
             color: var(--text-muted);
-            font-size: 0.95rem;
+            font-size: 0.92rem;
             line-height: 1.6;
         }
 
-        /* 9-Step Settlement Flow */
         .workflow-section {
             background: var(--surface);
             border-top: 1px solid var(--border);
             border-bottom: 1px solid var(--border);
-            padding: 90px 0;
-            margin: 80px 0;
+            padding: 80px 0;
+            margin: 70px 0;
         }
         .steps-container {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 20px;
-            margin-top: 40px;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 18px;
+            margin-top: 36px;
         }
         .step-card {
             background: rgba(255, 255, 255, 0.02);
             border: 1px solid var(--border);
             border-radius: 12px;
-            padding: 24px;
-            position: relative;
+            padding: 22px;
         }
         .step-num {
             display: inline-block;
             font-family: var(--font-mono);
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             font-weight: 700;
             color: var(--emerald);
             background: rgba(0, 230, 153, 0.1);
-            padding: 2px 10px;
+            padding: 2px 8px;
             border-radius: 6px;
-            margin-bottom: 12px;
+            margin-bottom: 10px;
         }
         .step-card h4 {
-            font-size: 1.05rem;
+            font-size: 1rem;
             font-weight: 600;
             color: #fff;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
         }
         .step-card p {
-            font-size: 0.88rem;
+            font-size: 0.85rem;
             color: var(--text-muted);
             line-height: 1.5;
         }
 
-        /* Live Ledger API Box */
         .api-preview-card {
             background: #020508;
             border: 1px solid var(--border);
             border-radius: 16px;
-            padding: 30px;
-            margin: 60px 0;
+            padding: 28px;
+            margin: 50px 0 80px;
         }
         .api-header {
             display: flex;
@@ -459,20 +456,18 @@ const landingPageHTML = `<!DOCTYPE html>
             overflow-x: auto;
             line-height: 1.7;
         }
-        .code-keyword { color: #f6789e; }
+        .code-keyword { color: #f6789e; font-weight: 600; }
         .code-string { color: #85e89d; }
-        .code-prop { color: #79b8ff; }
 
-        /* Footer */
         footer {
             border-top: 1px solid var(--border);
-            padding: 50px 0 30px;
+            padding: 40px 0 30px;
             text-align: center;
         }
         .footer-text {
             color: var(--text-muted);
             font-size: 0.85rem;
-            margin-bottom: 16px;
+            margin-bottom: 12px;
         }
         .footer-disclaimer {
             color: #556270;
@@ -491,46 +486,11 @@ const landingPageHTML = `<!DOCTYPE html>
 <body>
     <div class="ambient-glow-1"></div>
     <div class="ambient-glow-2"></div>
-    <div class="bg-grid"></div>
 
     <header>
         <div class="container nav-wrap">
             <a href="/" class="brand">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--emerald)"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
-                BRICS PAY <span class="brand-badge">CORE NETWORK</span>
-            </a>
-            <div class="nav-links">
-50px 0 30px;
-            text-align: center;
-        }
-        .footer-text {
-            color: var(--text-muted);
-            font-size: 0.85rem;
-            margin-bottom: 16px;
-        }
-        .footer-disclaimer {
-            color: #556270;
-            font-size: 0.75rem;
-            max-width: 800px;
-            margin: 0 auto;
-            line-height: 1.5;
-        }
-
-        @media (max-width: 768px) {
-            .stats-grid { grid-template-columns: 1fr 1fr; }
-            .nav-links { display: none; }
-        }
-    </style>
-</head>
-<body>
-    <div class="ambient-glow-1"></div>
-    <div class="ambient-glow-2"></div>
-    <div class="bg-grid"></div>
-
-    <header>
-        <div class="container nav-wrap">
-            <a href="/" class="brand">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--emerald)"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--emerald)"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
                 BRICS PAY <span class="brand-badge">CORE NETWORK</span>
             </a>
             <div class="nav-links">
@@ -545,11 +505,42 @@ const landingPageHTML = `<!DOCTYPE html>
         </div>
     </header>
 
-    <main>CCY</div>
+    <main>
+        <section class="hero-section container">
+            <div class="pill-badge">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                Next-Generation Cross-Border Settlement Infrastructure
+            </div>
+            <h1 class="hero-title">
+                Move business forward,<br><span class="gradient-text">together across borders.</span>
+            </h1>
+            <p class="hero-desc">
+                Decentralized financial messaging and multilateral atomic settlement framework designed to empower frictionless global commerce.
+            </p>
+            <div class="hero-actions">
+                <a href="#api" class="btn-primary">Explore API Endpoints</a>
+                <a href="#workflow" class="btn-secondary">Settlement Lifecycle</a>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-value">24 / 7</div>
+                    <div class="stat-label">Atomic Settlement</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">ISO 20022</div>
+                    <div class="stat-label">Messaging Standard</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">&lt; 3 sec</div>
+                    <div class="stat-label">Execution Latency</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">Multi-CCY</div>
                     <div class="stat-label">National Currencies</div>
                 </div>
             </div>
-        </div>
+        </section>
 
         <section id="services" class="container">
             <div class="section-header">
@@ -560,23 +551,23 @@ const landingPageHTML = `<!DOCTYPE html>
             <div class="features-grid">
                 <div class="feature-card">
                     <div class="feature-icon">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
                     </div>
                     <h3>B2B Trade Settlement</h3>
-                    <p>End-to-end clearing for international trade contracts with integrated escrow and Letter of Credit (LC) digital tracking.</p>
+                    <p>End-to-end clearing for international trade contracts with integrated digital tracking for multilateral trade instruments.</p>
                 </div>
 
                 <div class="feature-card">
                     <div class="feature-icon">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                     </div>
                     <h3>DCMS Interbank Protocol</h3>
-                    <p>Decentralized Cross-Border Messaging System providing sovereign, secure transaction instructions between member banks.</p>
+                    <p>Decentralized Cross-Border Messaging System providing sovereign, secure transaction instructions between member institutions.</p>
                 </div>
 
                 <div class="feature-card">
                     <div class="feature-icon">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
                     </div>
                     <h3>BRICS Settlement Unit</h3>
                     <p>Standardized accounting mechanism enabling direct national-currency pairs without reliance on third-party reserve intermediaries.</p>
@@ -584,26 +575,26 @@ const landingPageHTML = `<!DOCTYPE html>
 
                 <div class="feature-card">
                     <div class="feature-icon">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                     </div>
                     <h3>Retail & Transfer Rails</h3>
-                    <p>Unified QR and POS gateway standard facilitating cross-border business and tourism payments seamlessly.</p>
+                    <p>Unified QR and POS gateway standard facilitating cross-border business and commercial transactions seamlessly.</p>
                 </div>
 
                 <div class="feature-card">
                     <div class="feature-icon">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
                     </div>
-                    <h3>Risk & Sanctions Screening</h3>
-                    <p>Automated, distributed multi-tier compliance layers adhering to international multilateral standards and KYC/AML protocols.</p>
+                    <h3>Risk & Compliance Screening</h3>
+                    <p>Automated, distributed multi-tier compliance layers adhering strictly to international multilateral AML/CFT frameworks.</p>
                 </div>
 
                 <div class="feature-card">
                     <div class="feature-icon">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
                     </div>
                     <h3>Immutable Core Ledger</h3>
-                    <p>High-throughput double-entry atomic posting ledger ensuring non-repudiation and zero financial discrepancy.</p>
+                    <p>High-throughput double-entry atomic posting ledger ensuring non-repudiation and zero financial discrepancy across balances.</p>
                 </div>
             </div>
         </section>
@@ -611,7 +602,7 @@ const landingPageHTML = `<!DOCTYPE html>
         <section id="workflow" class="workflow-section">
             <div class="container">
                 <div class="section-header">
-                    <h2 class="section-title">Structured Trade Finance Flow</h2>
+                    <h2 class="section-title">Structured Settlement Flow</h2>
                     <p class="section-subtitle">A multi-party verifiable lifecycle ensuring strict compliance checks prior to cross-border settlement.</p>
                 </div>
 
@@ -619,12 +610,12 @@ const landingPageHTML = `<!DOCTYPE html>
                     <div class="step-card">
                         <div class="step-num">STAGE 01</div>
                         <h4>Deal Initiation</h4>
-                        <p>Buyer & seller finalize commercial terms and establish bilateral agreement.</p>
+                        <p>Buyer and seller agree on commercial trade terms and contract specifications.</p>
                     </div>
                     <div class="step-card">
                         <div class="step-num">STAGE 02</div>
                         <h4>Application Filing</h4>
-                        <p>Buyer submits trade details and collateral for institutional credit review.</p>
+                        <p>Buyer submits trade parameters and collateral for institutional credit review.</p>
                     </div>
                     <div class="step-card">
                         <div class="step-num">STAGE 03</div>
@@ -638,18 +629,18 @@ const landingPageHTML = `<!DOCTYPE html>
                     </div>
                     <div class="step-card">
                         <div class="step-num">STAGE 05</div>
-                        <h4>Shipment & Tracking</h4>
+                        <h4>Shipment & Notice</h4>
                         <p>Seller dispatches cargo and issues electronic shipping advice notice.</p>
                     </div>
                     <div class="step-card">
                         <div class="step-num">STAGE 06</div>
                         <h4>Document Presentation</h4>
-                        <p>Shipping and customs documents submitted as per LC/BG requirements.</p>
+                        <p>Shipping and trade documentation presented according to instrument terms.</p>
                     </div>
                     <div class="step-card">
                         <div class="step-num">STAGE 07</div>
                         <h4>Document Examination</h4>
-                        <p>Digital discrepancy checks and trade compliance confirmation.</p>
+                        <p>Automated discrepancy checks and multilateral trade compliance verification.</p>
                     </div>
                     <div class="step-card">
                         <div class="step-num">STAGE 08</div>
@@ -678,7 +669,7 @@ const landingPageHTML = `<!DOCTYPE html>
                         <div class="dot dot-yellow"></div>
                         <div class="dot dot-green"></div>
                     </div>
-                    <span style="font-family: var(--font-mono); font-size: 0.8rem; color: #666;">REST API Interface</span>
+                    <span style="font-family: var(--font-mono); font-size: 0.8rem; color: #777;">REST API Interface</span>
                 </div>
                 <pre class="code-block">
 <span class="code-keyword">GET</span>  /health                         <span class="code-string">// Service health & DB ping</span>
