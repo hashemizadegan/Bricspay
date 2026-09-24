@@ -55,8 +55,8 @@ func ListAccounts(ctx context.Context, db *sql.DB) ([]Account, error) {
 	defer rows.Close()
 
 	//  nil
-	list := []Account{} 
-	
+	list := []Account{}
+
 	for rows.Next() {
 		var a Account
 		if err := rows.Scan(&a.ID, &a.Code, &a.Type, &a.Currency, &a.Balance); err != nil {
@@ -95,7 +95,7 @@ func RecordTransaction(ctx context.Context, db *sql.DB, req TransactionRequest) 
 		return nil, fmt.Errorf("idempotency conflict or insert failed: %w", err)
 	}
 
-		for _, p := range req.Postings {
+	for _, p := range req.Postings {
 		if _, err := tx.ExecContext(ctx,
 			"INSERT INTO postings (transaction_id, account_id, amount) VALUES ($1,$2,$3)",
 			txID, p.AccountID, p.Amount,
@@ -133,7 +133,7 @@ func RecordTransaction(ctx context.Context, db *sql.DB, req TransactionRequest) 
 			return nil, fmt.Errorf("insufficient balance for account: %s", p.AccountID)
 		}
 	}
-	
+
 	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
