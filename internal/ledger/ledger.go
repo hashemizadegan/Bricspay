@@ -95,14 +95,15 @@ func RecordTransaction(ctx context.Context, db *sql.DB, req TransactionRequest) 
 		return nil, fmt.Errorf("idempotency conflict or insert failed: %w", err)
 	}
 
-	for _, p := range req.Postings {
+		for _, p := range req.Postings {
 		if _, err := tx.ExecContext(ctx,
 			"INSERT INTO postings (transaction_id, account_id, amount) VALUES ($1,$2,$3)",
 			txID, p.AccountID, p.Amount,
 		); err != nil {
 			return nil, err
 		}
-				res, err := tx.ExecContext(ctx,
+
+		res, err := tx.ExecContext(ctx,
 			`UPDATE accounts
 			 SET balance = balance + $1
 			 WHERE id = $2
@@ -131,8 +132,8 @@ func RecordTransaction(ctx context.Context, db *sql.DB, req TransactionRequest) 
 			}
 			return nil, fmt.Errorf("insufficient balance for account: %s", p.AccountID)
 		}
-
-
+	}
+	
 	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
