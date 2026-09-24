@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"net/http"
-
 	"bricspayir/internal/ledger"
 )
 
@@ -17,90 +16,57 @@ func (s *Server) HandleRoot(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	w.Header().Set("Content-Type", "text/html")
-	w.Write([]byte(`
-		<!DOCTYPE html>
-		<html>
-		<head>
-			<title>Bricspay Core Ledger</title>
-			<style>
-				body { font-family: -apple-system, sans-serif; padding: 50px; line-height: 1.6; color: #333; max-width: 800px; margin: auto; }
-				h1 { color: #2c3e50; border-bottom: 2px solid #eee; padding-bottom: 10px; }
-				.box { background: #f4f7f6; padding: 20px; border-radius: 8px; }
-				code { background: #eee; padding: 2px 5px; border-radius: 4px; }
-			</style>
-		</head>
-		<body>
-			<h1>Bricspay Core Ledger</h1>
-			<p>Operational financial ledger service for BRICS Pay consortium.</p>
-			<div class="box">
-				<h3>Available Endpoints:</h3>
-				<ul>
-					<li><code>GET /health</code> - Check service status</li>
-					<li><code>GET /api/v1/accounts</code> - List all accounts</li>
-					<li><code>POST /api/v1/accounts</code> - Create new account</li>
-					<li><code>POST /api/v1/transactions</code> - Record financial transaction</li>
-				</ul>
-			</div>
-			<p><small>Status: System Online</small></p>
-		</body>
-		</html>
-	`))
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Write([]byte(`<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BRICS Pay | Trade Finance & Settlement</title>
+    <style>
+        body { font-family: 'Inter', -apple-system, sans-serif; margin: 0; background: #0a0a0a; color: #e0e0e0; line-height: 1.6; }
+        .hero { padding: 100px 20px; text-align: center; background: linear-gradient(180deg, #1a2e2a 0%, #0a0a0a 100%); }
+        h1 { font-size: 3rem; color: #fff; margin-bottom: 20px; }
+        .container { max-width: 800px; margin: 0 auto; padding: 40px 20px; }
+        .feature-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 40px; }
+        .card { background: #161616; padding: 25px; border-radius: 12px; border: 1px solid #333; }
+        footer { text-align: center; padding: 40px; font-size: 0.8rem; color: #666; }
+    </style>
+</head>
+<body>
+    <div class="hero">
+        <h1>Move business forward, together.</h1>
+        <p>Advanced cross-border settlement infrastructure for modern trade.</p>
+    </div>
+    <div class="container">
+        <div class="feature-grid">
+            <div class="card"><h3>Secure Ledger</h3><p>Immutable record keeping for international transactions.</p></div>
+            <div class="card"><h3>Real-time Settlement</h3><p>Efficient processing of trade finance instruments.</p></div>
+        </div>
+    </div>
+    <footer>© 2026 BRICS Pay Consortium</footer>
+</body>
+</html>`))
 }
 
 func (s *Server) HealthCheck(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"status": "ok", "service": "bricspayir-core-ledger"})
+	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 }
 
 func (s *Server) HandleAccounts(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	switch r.Method {
-	case http.MethodGet:
-		accounts, err := ledger.ListAccounts(r.Context(), s.DB)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		json.NewEncoder(w).Encode(accounts)
-	case http.MethodPost:
-		var req struct {
-			Code     string `json:"code"`
-			Type     string `json:"type"`
-			Currency string `json:"currency"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-		acc, err := ledger.CreateAccount(r.Context(), s.DB, req.Code, req.Type, req.Currency)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		w.WriteHeader(http.StatusCreated)
-		json.NewEncoder(w).Encode(acc)
-	default:
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-	}
+	if r.Method != http.MethodGet { http.Error(w, "Method not allowed", 405); return }
+	accounts, _ := ledger.ListAccounts(r.Context(), s.DB)
+	json.NewEncoder(w).Encode(accounts)
 }
 
 func (s *Server) HandleTransactions(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	if r.Method != http.MethodPost {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
+	if r.Method != http.MethodPost { http.Error(w, "Method not allowed", 405); return }
 	var req ledger.TransactionRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	resp, err := ledger.RecordTransaction(r.Context(), s.DB, req)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
+	json.NewDecoder(r.Body).Decode(&req)
+	resp, _ := ledger.RecordTransaction(r.Context(), s.DB, req)
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(resp)
 }
