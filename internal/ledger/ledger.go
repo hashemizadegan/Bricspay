@@ -100,20 +100,45 @@ func RecordTransaction(ctx context.Context, db *sql.DB, req TransactionRequest) 
 		); err != nil {
 			return nil, err
 		}
+
 		res, err := tx.ExecContext(ctx,
-			"UPDATE accounts SET balance = balance + $1 WHERE id = $2",
+			`UPDATE accounts
+			 SET balance = balance + $1
+			 WHERE id = $2
+			   AND balance + $1 >= 0`,
 			p.Amount, p.AccountID,
 		)
 		if err != nil {
 			return nil, err
 		}
-		if n, _ := res.RowsAffected(); n == 0 {
-			return nil, fmt.Errorf("account not found: %s", p.AccountID)
+
+		n, err := res.RowsAffected()
+		if err != nil {
+			return nil, err
+		}
+		if n == 0 {
+			var exists bool
+			err := tx.QueryRowContext(ctx,
+				"SELECT EXISTS (SELECT 1 FROM accounts WHERE id = $1)",
+				p.AccountID,
+			).Scan(&exists)
+			if err != nil {
+				return nil, err
+			}
+			if !exists {
+				return nil, fmt.Errorf("account not found: %s", p.AccountID)
+			}
+			return nil, fmt.Errorf("insufficient balance for account: %s", p.AccountID)
 		}
 	}
 
 	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
-	return &TransactionResponse{TransactionID: txID, IdempotencyKey: req.IdempotencyKey, Status: "COMMITTED"}, nil
+
+	return &TransactionResponse{
+		TransactionID:  txID,
+		IdempotencyKey: req.IdempotencyKey,
+		Status:         "COMMITTED",
+	}, nil
 }
