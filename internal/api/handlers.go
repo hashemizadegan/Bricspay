@@ -56,7 +56,7 @@ func (s *Server) HealthCheck(w http.ResponseWriter, r *http.Request) {
 func (s *Server) HandleAccounts(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
-		accounts, err := ledger.ListAccounts(s.DB)
+		accounts, err := ledger.ListAccounts(r.Context(), s.DB)
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "could not list accounts")
 			return
@@ -92,7 +92,7 @@ func (s *Server) HandleAccounts(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		account, err := ledger.CreateAccount(s.DB, req.Code, req.Type, req.Currency)
+		account, err := ledger.CreateAccount(r.Context(), s.DB, req.Code, req.Type, req.Currency)
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "could not create account; code may already exist")
 			return
@@ -138,7 +138,7 @@ func (s *Server) HandleTransactions(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	result, err := ledger.RecordTransaction(s.DB, req)
+	result, err := ledger.RecordTransaction(r.Context(), s.DB, &req)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
