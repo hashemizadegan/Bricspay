@@ -14,12 +14,12 @@ type Server struct {
 }
 
 func (s *Server) HandleRoot(w http.ResponseWriter, r *http.Request) {
-	// Serve the static index.html from embedded FS
 	file, err := content.ReadFile("static/index.html")
 	if err != nil {
 		http.Error(w, "File not found", http.StatusNotFound)
 		return
 	}
 	w.Header().Set("Content-Type", "text/html")
+	w.WriteHeader(http.StatusOK)
 	w.Write(file)
 }
