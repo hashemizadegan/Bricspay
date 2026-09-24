@@ -29,6 +29,7 @@ func main() {
 	srv := api.NewServer(database)
 
 	mux := http.NewServeMux()
+	mux.HandleFunc("/", srv.HandleRoot) // <-- اضافه شد
 	mux.HandleFunc("/health", srv.HealthCheck)
 	mux.HandleFunc("/api/v1/accounts", srv.HandleAccounts)
 	mux.HandleFunc("/api/v1/transactions", srv.HandleTransactions)
