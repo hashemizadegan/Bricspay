@@ -145,7 +145,26 @@ func (s *Server) HandleTransactions(w http.ResponseWriter, r *http.Request) {
 
 	result, err := ledger.RecordTransaction(r.Context(), s.DB, &req)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
+		switch {
+		case errors.Is(err, ledger.ErrDuplicateIdempotencyKey):
+			writeError(w, http.StatusConflict, err.Error())
+		case errors.Is(err, ledger.ErrAccountNotFound):
+			writeError(w, http.StatusNotFound, err.Error())
+		case errors.Is(err, ledger.ErrInsufficientBalance):
+			writeError(w, http.StatusUnprocessableEntity, err.Error())
+		case errors.Is(err, ledger.ErrCurrencyMismatch):
+			writeError(w, http.StatusBadRequest, err.Error())
+		default:
+			msg := err.Error()
+			if strings.HasPrefix(msg, "a transaction requires") ||
+				strings.HasPrefix(msg, "posting amount cannot") ||
+				strings.HasPrefix(msg, "posting account_id cannot") ||
+				strings.HasPrefix(msg, "transaction postings are unbalanced") {
+				writeError(w, http.StatusBadRequest, msg)
+				return
+			}
+			writeError(w, http.StatusInternalServerError, "could not process transaction")
+		}
 		return
 	}
 	writeJSON(w, http.StatusCreated, result)
