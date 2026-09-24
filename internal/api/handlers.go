@@ -92,11 +92,16 @@ func (s *Server) HandleAccounts(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		account, err := ledger.CreateAccount(r.Context(), s.DB, req.Code, req.Type, req.Currency)
+				account, err := ledger.CreateAccount(r.Context(), s.DB, req.Code, req.Type, req.Currency)
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "could not create account; code may already exist")
+			if errors.Is(err, ledger.ErrDuplicateAccount) {
+				writeError(w, http.StatusConflict, "account code already exists")
+				return
+			}
+			writeError(w, http.StatusInternalServerError, "could not create account")
 			return
 		}
+
 		writeJSON(w, http.StatusCreated, account)
 
 	default:
