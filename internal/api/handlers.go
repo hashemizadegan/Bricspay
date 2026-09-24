@@ -1,27 +1,29 @@
 package api
 
 import (
-	"database/sql"
 	"embed"
 	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
 	"strings"
-	"unicode"
 
 	"bricspayir/internal/ledger"
 )
 
 //go:embed static/index.html
-var content embed.FS
+var staticFS embed.FS
 
 type Server struct {
-	DB *sql.DB
+	db *ledgerAccountService
 }
 
-func NewServer(db *sql.DB) *Server {
-	return &Server{DB: db}
+type ledgerAccountService struct {
+	db any
+}
+
+func NewServer(db any) *Server {
+	return &Server{db: &ledgerAccountService{db: db}}
 }
 
 func (s *Server) HandleRoot(w http.ResponseWriter, r *http.Request) {
@@ -30,23 +32,23 @@ func (s *Server) HandleRoot(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.Method != http.MethodGet {
-		w.Header().Set("Allow", http.MethodGet)
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
 		return
 	}
 
-	file, err := content.ReadFile("static/index.html")
+	data, err := staticFS.ReadFile("static/index.html")
 	if err != nil {
-		http.Error(w, "file not found", http.StatusNotFound)
+		writeError(w, http.StatusInternalServerError, "failed to load UI")
 		return
 	}
+
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	_, _ = w.Write(file)
+	w.WriteHeader(http.StatusOK)
+	w.Write(data)
 }
 
 func (s *Server) HealthCheck(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		w.Header().Set("Allow", http.MethodGet)
 		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
 		return
 	}
@@ -54,67 +56,81 @@ func (s *Server) HealthCheck(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) HandleAccounts(w http.ResponseWriter, r *http.Request) {
+	sqlDB := s.db.db.(*databaseWrapper).DB
+
 	switch r.Method {
 	case http.MethodGet:
-		accounts, err := ledger.ListAccounts(r.Context(), s.DB)
+		accounts, err := ledger.ListAccounts(r.Context(), sqlDB)
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "could not list accounts")
+			writeError(w, http.StatusInternalServerError, "could not retrieve accounts")
 			return
 		}
 		writeJSON(w, http.StatusOK, accounts)
 
 	case http.MethodPost:
-		var req struct {
+		var body struct {
 			Code     string `json:"code"`
 			Type     string `json:"type"`
 			Currency string `json:"currency"`
 		}
-		if err := decodeJSON(w, r, &req); err != nil {
+
+		if err := decodeJSON(r, &body); err != nil {
 			writeError(w, http.StatusBadRequest, err.Error())
 			return
 		}
 
-		req.Code = strings.TrimSpace(req.Code)
-		req.Type = strings.TrimSpace(req.Type)
-		req.Currency = strings.ToUpper(strings.TrimSpace(req.Currency))
-		if req.Code == "" || req.Type == "" || req.Currency == "" {
+		body.Code = strings.TrimSpace(body.Code)
+		body.Type = strings.TrimSpace(body.Type)
+		body.Currency = strings.ToUpper(strings.TrimSpace(body.Currency))
+
+		if body.Code == "" || body.Type == "" || body.Currency == "" {
 			writeError(w, http.StatusBadRequest, "code, type, and currency are required")
 			return
 		}
-		if len(req.Code) > 50 || len(req.Type) > 20 || len(req.Currency) > 10 {
-			writeError(w, http.StatusBadRequest, "code, type, or currency exceeds the allowed length")
-			return
-		}
-		if !isASCIIAlphaNumeric(req.Currency) {
-			writeError(w, http.StatusBadRequest, "currency must contain only ASCII letters or digits")
+
+		if len(body.Code) > 50 || len(body.Type) > 20 || len(body.Currency) > 10 {
+			writeError(w, http.StatusBadRequest, "field length exceeds limits")
 			return
 		}
 
-		account, err := ledger.CreateAccount(r.Context(), s.DB, req.Code, req.Type, req.Currency)
+		for _, ch := range body.Currency {
+			if ch < 'A' || ch > 'Z' {
+				writeError(w, http.StatusBadRequest, "currency must be uppercase ASCII letters")
+				return
+			}
+		}
+
+		acc, err := ledger.CreateAccount(r.Context(), sqlDB, body.Code, body.Type, body.Currency)
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "could not create account; code may already exist")
+			if errors.Is(err, ledger.ErrDuplicateAccount) {
+				writeError(w, http.StatusConflict, "account code already exists")
+				return
+			}
+			writeError(w, http.StatusInternalServerError, "could not create account")
 			return
 		}
-		writeJSON(w, http.StatusCreated, account)
+
+		writeJSON(w, http.StatusCreated, acc)
 
 	default:
-		w.Header().Set("Allow", "GET, POST")
 		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
 	}
 }
 
 func (s *Server) HandleTransactions(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		w.Header().Set("Allow", http.MethodPost)
 		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
 		return
 	}
 
+	sqlDB := s.db.db.(*databaseWrapper).DB
+
 	var req ledger.TransactionRequest
-	if err := decodeJSON(w, r, &req); err != nil {
+	if err := decodeJSON(r, &req); err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
+
 	req.IdempotencyKey = strings.TrimSpace(req.IdempotencyKey)
 	req.Description = strings.TrimSpace(req.Description)
 
@@ -122,72 +138,48 @@ func (s *Server) HandleTransactions(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "idempotency_key is required")
 		return
 	}
+
 	if len(req.IdempotencyKey) > 100 {
-		writeError(w, http.StatusBadRequest, "idempotency_key must be at most 100 characters")
+		writeError(w, http.StatusBadRequest, "idempotency_key exceeds maximum length of 100")
 		return
 	}
+
 	if len(req.Postings) < 2 {
-		writeError(w, http.StatusBadRequest, "at least two postings are required")
+		writeError(w, http.StatusBadRequest, "a transaction requires at least two postings")
 		return
 	}
-	for _, posting := range req.Postings {
-		if strings.TrimSpace(posting.AccountID) == "" {
-			writeError(w, http.StatusBadRequest, "every posting must have an account_id")
+
+	for _, p := range req.Postings {
+		if strings.TrimSpace(p.AccountID) == "" {
+			writeError(w, http.StatusBadRequest, "account_id cannot be empty")
 			return
 		}
-		if posting.Amount == 0 {
-			writeError(w, http.StatusBadRequest, "posting amounts must not be zero")
+		if p.Amount == 0 {
+			writeError(w, http.StatusBadRequest, "posting amount cannot be zero")
 			return
 		}
 	}
 
-	result, err := ledger.RecordTransaction(r.Context(), s.DB, req)
+	txResp, err := ledger.RecordTransaction(r.Context(), sqlDB, &req)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
+		switch {
+		case errors.Is(err, ledger.ErrDuplicateIdempotencyKey):
+			writeError(w, http.StatusConflict, "idempotency key already used")
+		case errors.Is(err, ledger.ErrAccountNotFound):
+			writeError(w, http.StatusBadRequest, "unknown account in postings")
+		case errors.Is(err, ledger.ErrCurrencyMismatch):
+			writeError(w, http.StatusBadRequest, "all postings must use the same currency")
+		case errors.Is(err, ledger.ErrInsufficientBalance):
+			writeError(w, http.StatusUnprocessableEntity, "insufficient balance")
+		default:
+			writeError(w, http.StatusInternalServerError, "could not record transaction")
+		}
 		return
 	}
-	writeJSON(w, http.StatusCreated, result)
+
+	writeJSON(w, http.StatusCreated, txResp)
 }
 
-func decodeJSON(w http.ResponseWriter, r *http.Request, dst any) error {
-	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
-	decoder := json.NewDecoder(r.Body)
-	decoder.DisallowUnknownFields()
-
-	if err := decoder.Decode(dst); err != nil {
-		var maxBytesErr *http.MaxBytesError
-		if errors.As(err, &maxBytesErr) {
-			return errors.New("request body must be at most 1 MB")
-		}
-		return errors.New("invalid JSON body")
-	}
-
-	var extra any
-	if err := decoder.Decode(&extra); !errors.Is(err, io.EOF) {
-		return errors.New("request body must contain exactly one JSON value")
-	}
-	return nil
+type databaseWrapper struct {
+	DB any
 }
-
-func writeJSON(w http.ResponseWriter, status int, value any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(value)
-}
-
-func writeError(w http.ResponseWriter, status int, message string) {
-	writeJSON(w, status, map[string]string{"error": message})
-}
-
-func isASCIIAlphaNumeric(value string) bool {
-	if value == "" {
-		return false
-	}
-	for _, r := range value {
-		if r > unicode.MaxASCII || !(r >= 'A' && r <= 'Z') && !(r >= '0' && r <= '9') {
-			return false
-		}
-	}
-	return true
-}
-
