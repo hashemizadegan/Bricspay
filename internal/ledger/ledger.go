@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"sort"
 )
 
 type Account struct {
@@ -34,47 +35,79 @@ type TransactionResponse struct {
 }
 
 func CreateAccount(ctx context.Context, db *sql.DB, code, accType, currency string) (*Account, error) {
-	var a Account
+	var account Account
 	err := db.QueryRowContext(ctx,
-		`INSERT INTO accounts (code, type, currency) VALUES ($1,$2,$3)
+		`INSERT INTO accounts (code, type, currency)
+		 VALUES ($1, $2, $3)
 		 RETURNING id, code, type, currency, balance`,
 		code, accType, currency,
-	).Scan(&a.ID, &a.Code, &a.Type, &a.Currency, &a.Balance)
+	).Scan(
+		&account.ID,
+		&account.Code,
+		&account.Type,
+		&account.Currency,
+		&account.Balance,
+	)
 	if err != nil {
 		return nil, err
 	}
-	return &a, nil
+
+	return &account, nil
 }
 
 func ListAccounts(ctx context.Context, db *sql.DB) ([]Account, error) {
 	rows, err := db.QueryContext(ctx,
-		"SELECT id, code, type, currency, balance FROM accounts ORDER BY created_at DESC")
+		`SELECT id, code, type, currency, balance
+		 FROM accounts
+		 ORDER BY created_at DESC`,
+	)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	//  nil
-	list := []Account{}
-
+	accounts := []Account{}
 	for rows.Next() {
-		var a Account
-		if err := rows.Scan(&a.ID, &a.Code, &a.Type, &a.Currency, &a.Balance); err != nil {
+		var account Account
+		if err := rows.Scan(
+			&account.ID,
+			&account.Code,
+			&account.Type,
+			&account.Currency,
+			&account.Balance,
+		); err != nil {
 			return nil, err
 		}
-		list = append(list, a)
+		accounts = append(accounts, account)
 	}
-	return list, nil
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return accounts, nil
 }
 
-func RecordTransaction(ctx context.Context, db *sql.DB, req TransactionRequest) (*TransactionResponse, error) {
+func RecordTransaction(
+	ctx context.Context,
+	db *sql.DB,
+	req TransactionRequest,
+) (*TransactionResponse, error) {
 	if len(req.Postings) < 2 {
 		return nil, errors.New("at least two postings required")
 	}
+	if req.IdempotencyKey == "" {
+		return nil, errors.New("idempotency key is required")
+	}
 
 	var sum float64
-	for _, p := range req.Postings {
-		sum += p.Amount
+	for _, posting := range req.Postings {
+		if posting.AccountID == "" {
+			return nil, errors.New("posting account ID is required")
+		}
+		if math.IsNaN(posting.Amount) || math.IsInf(posting.Amount, 0) {
+			return nil, errors.New("posting amount must be a finite number")
+		}
+		sum += posting.Amount
 	}
 	if math.Abs(sum) > 0.00000001 {
 		return nil, fmt.Errorf("unbalanced transaction, sum = %.8f", sum)
@@ -86,51 +119,85 @@ func RecordTransaction(ctx context.Context, db *sql.DB, req TransactionRequest) 
 	}
 	defer tx.Rollback()
 
-	var txID string
-	err = tx.QueryRowContext(ctx,
-		"INSERT INTO transactions (idempotency_key, description) VALUES ($1,$2) RETURNING id",
-		req.IdempotencyKey, req.Description,
-	).Scan(&txID)
-	if err != nil {
-		return nil, fmt.Errorf("idempotency conflict or insert failed: %w", err)
+	// Lock accounts in a stable order to reduce deadlocks between concurrent transactions.
+	accountIDs := make([]string, 0, len(req.Postings))
+	seen := make(map[string]struct{}, len(req.Postings))
+	for _, posting := range req.Postings {
+		if _, exists := seen[posting.AccountID]; exists {
+			continue
+		}
+		seen[posting.AccountID] = struct{}{}
+		accountIDs = append(accountIDs, posting.AccountID)
+	}
+	sort.Strings(accountIDs)
+
+	var transactionCurrency string
+	for i, accountID := range accountIDs {
+		var currency string
+		err := tx.QueryRowContext(ctx,
+			`SELECT currency
+			 FROM accounts
+			 WHERE id = $1
+			 FOR UPDATE`,
+			accountID,
+		).Scan(&currency)
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf("account not found: %s", accountID)
+		}
+		if err != nil {
+			return nil, err
+		}
+
+		if i == 0 {
+			transactionCurrency = currency
+		} else if currency != transactionCurrency {
+			return nil, errors.New("all postings in a transaction must use the same currency")
+		}
 	}
 
-	for _, p := range req.Postings {
+	var transactionID string
+	err = tx.QueryRowContext(ctx,
+		`INSERT INTO transactions (idempotency_key, description)
+		 VALUES ($1, $2)
+		 RETURNING id`,
+		req.IdempotencyKey,
+		req.Description,
+	).Scan(&transactionID)
+	if err != nil {
+		return nil, fmt.Errorf("idempotency conflict or transaction insert failed: %w", err)
+	}
+
+	for _, posting := range req.Postings {
 		if _, err := tx.ExecContext(ctx,
-			"INSERT INTO postings (transaction_id, account_id, amount) VALUES ($1,$2,$3)",
-			txID, p.AccountID, p.Amount,
+			`INSERT INTO postings (transaction_id, account_id, amount)
+			 VALUES ($1, $2, $3)`,
+			transactionID,
+			posting.AccountID,
+			posting.Amount,
 		); err != nil {
 			return nil, err
 		}
 
-		res, err := tx.ExecContext(ctx,
+		result, err := tx.ExecContext(ctx,
 			`UPDATE accounts
 			 SET balance = balance + $1
 			 WHERE id = $2
 			   AND balance + $1 >= 0`,
-			p.Amount, p.AccountID,
+			posting.Amount,
+			posting.AccountID,
 		)
 		if err != nil {
 			return nil, err
 		}
 
-		n, err := res.RowsAffected()
+		affected, err := result.RowsAffected()
 		if err != nil {
 			return nil, err
 		}
-		if n == 0 {
-			var exists bool
-			err := tx.QueryRowContext(ctx,
-				"SELECT EXISTS (SELECT 1 FROM accounts WHERE id = $1)",
-				p.AccountID,
-			).Scan(&exists)
-			if err != nil {
-				return nil, err
-			}
-			if !exists {
-				return nil, fmt.Errorf("account not found: %s", p.AccountID)
-			}
-			return nil, fmt.Errorf("insufficient balance for account: %s", p.AccountID)
+		if affected == 0 {
+			// The account was already checked and locked above; zero rows means
+			// the balance constraint prevented the update.
+			return nil, fmt.Errorf("insufficient balance for account: %s", posting.AccountID)
 		}
 	}
 
@@ -139,7 +206,7 @@ func RecordTransaction(ctx context.Context, db *sql.DB, req TransactionRequest) 
 	}
 
 	return &TransactionResponse{
-		TransactionID:  txID,
+		TransactionID:  transactionID,
 		IdempotencyKey: req.IdempotencyKey,
 		Status:         "COMMITTED",
 	}, nil
