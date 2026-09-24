@@ -54,7 +54,9 @@ func ListAccounts(ctx context.Context, db *sql.DB) ([]Account, error) {
 	}
 	defer rows.Close()
 
-	var list []Account
+	// تغییر این خط: استفاده از آرایه خالی به جای nil
+	list := []Account{} 
+	
 	for rows.Next() {
 		var a Account
 		if err := rows.Scan(&a.ID, &a.Code, &a.Type, &a.Currency, &a.Balance); err != nil {
