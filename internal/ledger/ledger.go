@@ -7,14 +7,30 @@ import (
 	"fmt"
 	"math"
 	"sort"
+
+	"github.com/lib/pq"
 )
 
+var (
+	ErrDuplicateAccount        = errors.New("account code already exists")
+	ErrDuplicateIdempotencyKey = errors.New("idempotency key already used")
+	ErrAccountNotFound         = errors.New("account not found")
+	ErrCurrencyMismatch        = errors.New("postings must use the same currency")
+	ErrInsufficientBalance     = errors.New("insufficient balance")
+)
+
+func isUniqueViolation(err error) bool {
+	var pqErr *pq.Error
+	return errors.As(err, &pqErr) && pqErr.Code == "23505"
+}
+
 type Account struct {
-	ID       string  `json:"id"`
-	Code     string  `json:"code"`
-	Type     string  `json:"type"`
-	Currency string  `json:"currency"`
-	Balance  float64 `json:"balance"`
+	ID        string  `json:"id"`
+	Code      string  `json:"code"`
+	Type      string  `json:"type"`
+	Currency  string  `json:"currency"`
+	Balance   float64 `json:"balance"`
+	CreatedAt string  `json:"created_at"`
 }
 
 type Posting struct {
@@ -23,191 +39,201 @@ type Posting struct {
 }
 
 type TransactionRequest struct {
-	IdempotencyKey string    `json:"idempotency_key"`
-	Description    string    `json:"description"`
-	Postings       []Posting `json:"postings"`
+	IdempotencyKey string         `json:"idempotency_key"`
+	Description    string         `json:"description"`
+	Postings       []Posting      `json:"postings"`
+	Metadata       map[string]any `json:"metadata,omitempty"`
 }
 
 type TransactionResponse struct {
-	TransactionID  string `json:"transaction_id"`
-	IdempotencyKey string `json:"idempotency_key"`
-	Status         string `json:"status"`
+	ID             string    `json:"id"`
+	IdempotencyKey string    `json:"idempotency_key"`
+	Description    string    `json:"description"`
+	Postings       []Posting `json:"postings"`
+	CreatedAt      string    `json:"created_at"`
 }
 
 func CreateAccount(ctx context.Context, db *sql.DB, code, accType, currency string) (*Account, error) {
-	var account Account
-	err := db.QueryRowContext(ctx,
-		`INSERT INTO accounts (code, type, currency)
-		 VALUES ($1, $2, $3)
-		 RETURNING id, code, type, currency, balance`,
-		code, accType, currency,
-	).Scan(
-		&account.ID,
-		&account.Code,
-		&account.Type,
-		&account.Currency,
-		&account.Balance,
+	query := `
+		INSERT INTO accounts (code, type, currency, balance)
+		VALUES ($1, $2, $3, 0)
+		RETURNING id, code, type, currency, balance, created_at;
+	`
+	var acc Account
+	err := db.QueryRowContext(ctx, query, code, accType, currency).Scan(
+		&acc.ID,
+		&acc.Code,
+		&acc.Type,
+		&acc.Currency,
+		&acc.Balance,
+		&acc.CreatedAt,
 	)
 	if err != nil {
-		return nil, err
+		if isUniqueViolation(err) {
+			return nil, ErrDuplicateAccount
+		}
+		return nil, fmt.Errorf("create account: %w", err)
 	}
-
-	return &account, nil
+	return &acc, nil
 }
 
 func ListAccounts(ctx context.Context, db *sql.DB) ([]Account, error) {
-	rows, err := db.QueryContext(ctx,
-		`SELECT id, code, type, currency, balance
-		 FROM accounts
-		 ORDER BY created_at DESC`,
-	)
+	query := `
+		SELECT id, code, type, currency, balance, created_at
+		FROM accounts
+		ORDER BY created_at DESC;
+	`
+	rows, err := db.QueryContext(ctx, query)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("list accounts: %w", err)
 	}
 	defer rows.Close()
 
-	accounts := []Account{}
+	var accounts []Account
 	for rows.Next() {
-		var account Account
+		var acc Account
 		if err := rows.Scan(
-			&account.ID,
-			&account.Code,
-			&account.Type,
-			&account.Currency,
-			&account.Balance,
+			&acc.ID,
+			&acc.Code,
+			&acc.Type,
+			&acc.Currency,
+			&acc.Balance,
+			&acc.CreatedAt,
 		); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("scan account: %w", err)
 		}
-		accounts = append(accounts, account)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
+		accounts = append(accounts, acc)
 	}
 
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate accounts: %w", err)
+	}
+
+	if accounts == nil {
+		accounts = []Account{}
+	}
 	return accounts, nil
 }
 
-func RecordTransaction(
-	ctx context.Context,
-	db *sql.DB,
-	req TransactionRequest,
-) (*TransactionResponse, error) {
+func RecordTransaction(ctx context.Context, db *sql.DB, req *TransactionRequest) (*TransactionResponse, error) {
 	if len(req.Postings) < 2 {
-		return nil, errors.New("at least two postings required")
-	}
-	if req.IdempotencyKey == "" {
-		return nil, errors.New("idempotency key is required")
+		return nil, fmt.Errorf("a transaction requires at least two postings")
 	}
 
 	var sum float64
-	for _, posting := range req.Postings {
-		if posting.AccountID == "" {
-			return nil, errors.New("posting account ID is required")
+	for _, p := range req.Postings {
+		if p.Amount == 0 {
+			return nil, fmt.Errorf("posting amount cannot be zero")
 		}
-		if math.IsNaN(posting.Amount) || math.IsInf(posting.Amount, 0) {
-			return nil, errors.New("posting amount must be a finite number")
+		if p.AccountID == "" {
+			return nil, fmt.Errorf("posting account_id cannot be empty")
 		}
-		sum += posting.Amount
-	}
-	if math.Abs(sum) > 0.00000001 {
-		return nil, fmt.Errorf("unbalanced transaction, sum = %.8f", sum)
+		sum += p.Amount
 	}
 
-	tx, err := db.BeginTx(ctx, nil)
-	if err != nil {
-		return nil, err
+	if math.Abs(sum) > 1e-8 {
+		return nil, fmt.Errorf("transaction postings are unbalanced: sum is %f", sum)
 	}
-	defer tx.Rollback()
 
-	// Lock accounts in a stable order to reduce deadlocks between concurrent transactions.
 	accountIDs := make([]string, 0, len(req.Postings))
-	seen := make(map[string]struct{}, len(req.Postings))
-	for _, posting := range req.Postings {
-		if _, exists := seen[posting.AccountID]; exists {
-			continue
+	seen := make(map[string]bool)
+	for _, p := range req.Postings {
+		if !seen[p.AccountID] {
+			seen[p.AccountID] = true
+			accountIDs = append(accountIDs, p.AccountID)
 		}
-		seen[posting.AccountID] = struct{}{}
-		accountIDs = append(accountIDs, posting.AccountID)
 	}
 	sort.Strings(accountIDs)
 
-	var transactionCurrency string
-	for i, accountID := range accountIDs {
-		var currency string
-		err := tx.QueryRowContext(ctx,
-			`SELECT currency
-			 FROM accounts
-			 WHERE id = $1
-			 FOR UPDATE`,
-			accountID,
-		).Scan(&currency)
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, fmt.Errorf("account not found: %s", accountID)
-		}
-		if err != nil {
-			return nil, err
-		}
-
-		if i == 0 {
-			transactionCurrency = currency
-		} else if currency != transactionCurrency {
-			return nil, errors.New("all postings in a transaction must use the same currency")
-		}
-	}
-
-	var transactionID string
-	err = tx.QueryRowContext(ctx,
-		`INSERT INTO transactions (idempotency_key, description)
-		 VALUES ($1, $2)
-		 RETURNING id`,
-		req.IdempotencyKey,
-		req.Description,
-	).Scan(&transactionID)
+	tx, err := db.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
 	if err != nil {
-		return nil, fmt.Errorf("idempotency conflict or transaction insert failed: %w", err)
+		return nil, fmt.Errorf("begin tx: %w", err)
+	}
+	defer tx.Rollback()
+
+	accountsByID := make(map[string]Account)
+	for _, id := range accountIDs {
+		var acc Account
+		err := tx.QueryRowContext(ctx, `
+			SELECT id, code, type, currency, balance
+			FROM accounts
+			WHERE id = $1
+			FOR UPDATE;
+		`, id).Scan(&acc.ID, &acc.Code, &acc.Type, &acc.Currency, &acc.Balance)
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return nil, fmt.Errorf("%w: %s", ErrAccountNotFound, id)
+			}
+			return nil, fmt.Errorf("lock account %s: %w", id, err)
+		}
+		accountsByID[id] = acc
 	}
 
-	for _, posting := range req.Postings {
-		if _, err := tx.ExecContext(ctx,
-			`INSERT INTO postings (transaction_id, account_id, amount)
-			 VALUES ($1, $2, $3)`,
-			transactionID,
-			posting.AccountID,
-			posting.Amount,
-		); err != nil {
-			return nil, err
+	var baseCurrency string
+	for _, id := range accountIDs {
+		curr := accountsByID[id].Currency
+		if baseCurrency == "" {
+			baseCurrency = curr
+		} else if baseCurrency != curr {
+			return nil, ErrCurrencyMismatch
+		}
+	}
+
+	var txID string
+	var createdAt string
+	err = tx.QueryRowContext(ctx, `
+		INSERT INTO transactions (idempotency_key, description, metadata)
+		VALUES ($1, $2, $3)
+		RETURNING id, created_at;
+	`, req.IdempotencyKey, req.Description, "{}").Scan(&txID, &createdAt)
+	if err != nil {
+		if isUniqueViolation(err) {
+			return nil, ErrDuplicateIdempotencyKey
+		}
+		return nil, fmt.Errorf("insert transaction: %w", err)
+	}
+
+	postingStmt, err := tx.PrepareContext(ctx, `
+		INSERT INTO postings (transaction_id, account_id, amount)
+		VALUES ($1, $2, $3);
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("prepare posting stmt: %w", err)
+	}
+	defer postingStmt.Close()
+
+	for _, p := range req.Postings {
+		if _, err := postingStmt.ExecContext(ctx, txID, p.AccountID, p.Amount); err != nil {
+			return nil, fmt.Errorf("insert posting: %w", err)
 		}
 
-		result, err := tx.ExecContext(ctx,
-			`UPDATE accounts
-			 SET balance = balance + $1
-			 WHERE id = $2
-			   AND balance + $1 >= 0`,
-			posting.Amount,
-			posting.AccountID,
-		)
+		res, err := tx.ExecContext(ctx, `
+			UPDATE accounts
+			SET balance = balance + $1
+			WHERE id = $2 AND (balance + $1 >= 0);
+		`, p.Amount, p.AccountID)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("update account balance: %w", err)
 		}
 
-		affected, err := result.RowsAffected()
+		rowsAff, err := res.RowsAffected()
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("check rows affected: %w", err)
 		}
-		if affected == 0 {
-			// The account was already checked and locked above; zero rows means
-			// the balance constraint prevented the update.
-			return nil, fmt.Errorf("insufficient balance for account: %s", posting.AccountID)
+		if rowsAff == 0 {
+			return nil, fmt.Errorf("%w: %s", ErrInsufficientBalance, p.AccountID)
 		}
 	}
 
 	if err := tx.Commit(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("commit tx: %w", err)
 	}
 
 	return &TransactionResponse{
-		TransactionID:  transactionID,
+		ID:             txID,
 		IdempotencyKey: req.IdempotencyKey,
-		Status:         "COMMITTED",
+		Description:    req.Description,
+		Postings:       req.Postings,
+		CreatedAt:      createdAt,
 	}, nil
 }
