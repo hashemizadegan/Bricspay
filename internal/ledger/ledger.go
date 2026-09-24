@@ -54,7 +54,7 @@ func ListAccounts(ctx context.Context, db *sql.DB) ([]Account, error) {
 	}
 	defer rows.Close()
 
-	// تغییر این خط: استفاده از آرایه خالی به جای nil
+	//  nil
 	list := []Account{} 
 	
 	for rows.Next() {
