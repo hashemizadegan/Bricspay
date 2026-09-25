@@ -1,444 +1,490 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>BRICS Pay — Core Ledger Dashboard</title>
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BRICS Pay | Enterprise Ledger Console</title>
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
-      tailwind.config = {
-        theme: {
-          extend: {
-            fontFamily: {
-              ui: [
-                "ui-sans-serif",
-                "system-ui",
-                "-apple-system",
-                "Segoe UI",
-                "Roboto",
-                "Inter",
-                "sans-serif",
-              ],
-              mono: [
-                "ui-monospace",
-                "SFMono-Regular",
-                "Menlo",
-                "Monaco",
-                "Consolas",
-                "monospace",
-              ],
-            },
-          },
-        },
-      };
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f9ff',
+                            500: '#0ea5e9',
+                            600: '#0284c7',
+                            900: '#0c4a6e',
+                        },
+                        brics: {
+                            dark: '#070b13',
+                            card: '#0f172a',
+                            border: '#1e293b',
+                            accent: '#38bdf8'
+                        }
+                    }
+                }
+            }
+        }
     </script>
-  </head>
+</head>
+<body class="bg-brics-dark text-slate-100 min-h-screen font-sans antialiased">
 
-  <body class="bg-slate-950 text-slate-100 font-ui">
-    <div class="min-h-screen">
-      <!-- Top bar -->
-      <header class="border-b border-slate-800/70 bg-slate-950/70 backdrop-blur">
-        <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div class="flex items-center gap-3">
-            <div class="h-10 w-10 rounded-xl bg-gradient-to-br from-cyan-400 to-violet-500"></div>
-            <div>
-              <div class="text-lg font-semibold leading-tight">BRICS Pay</div>
-              <div class="text-xs text-slate-400">Core Ledger Dashboard</div>
+    <!-- Header Navigation -->
+    <header class="border-b border-brics-border bg-brics-card/70 backdrop-blur sticky top-0 z-30">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-9 h-9 rounded-lg bg-gradient-to-tr from-sky-600 to-indigo-600 flex items-center justify-center font-bold text-lg text-white shadow-lg shadow-sky-500/20">
+                    BP
+                </div>
+                <div>
+                    <span class="font-bold text-lg tracking-wide text-white">BRICS Pay</span>
+                    <span class="text-xs text-slate-400 block -mt-1 font-mono">Core Ledger & Settlement</span>
+                </div>
             </div>
-          </div>
-
-          <div class="flex items-center gap-3">
-            <span id="envBaseUrl" class="hidden md:inline text-xs text-slate-400 font-mono"></span>
-            <button
-              id="btnRefresh"
-              class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-sm"
-            >
-              Refresh
-            </button>
-          </div>
+            <div class="flex items-center space-x-3 text-sm">
+                <div id="healthBadge" class="flex items-center space-x-2 px-3 py-1 rounded-full text-xs font-medium bg-emerald-950/70 border border-emerald-700/50 text-emerald-300">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span id="healthText">Checking Node...</span>
+                </div>
+                <button onclick="fetchAccounts()" class="px-3 py-1.5 rounded-md bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 border border-slate-700 transition">
+                    ↻ Refresh
+                </button>
+            </div>
         </div>
-      </header>
+    </header>
 
-      <main class="max-w-6xl mx-auto px-4 py-8 space-y-8">
-        <!-- Status Cards -->
-        <section class="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div class="rounded-2xl border border-slate-800 bg-slate-900/40 p-5">
-            <div class="flex items-center justify-between">
-              <div>
-                <div class="text-sm text-slate-400">Service</div>
-                <div class="text-xl font-semibold">Ledger API</div>
-              </div>
-              <div id="pillService" class="text-xs px-2.5 py-1 rounded-full border border-slate-700 bg-slate-800">
-                Unknown
-              </div>
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+        
+        <!-- Top Metrics Overview -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div class="bg-brics-card border border-brics-border rounded-xl p-4 shadow-sm">
+                <p class="text-xs font-medium text-slate-400">Total Accounts</p>
+                <h3 id="statTotalAccounts" class="text-2xl font-bold mt-1 text-white">0</h3>
             </div>
-            <div class="mt-4 text-xs text-slate-400 font-mono">
-              <div>GET <span class="text-slate-200">/health</span></div>
-              <div class="mt-1">GET <span class="text-slate-200">/api/v1/accounts</span></div>
+            <div class="bg-brics-card border border-brics-border rounded-xl p-4 shadow-sm">
+                <p class="text-xs font-medium text-slate-400">Identified Entities (KYC/B2B)</p>
+                <h3 id="statEnrichedAccounts" class="text-2xl font-bold mt-1 text-sky-400">0</h3>
             </div>
-          </div>
+            <div class="bg-brics-card border border-brics-border rounded-xl p-4 shadow-sm">
+                <p class="text-xs font-medium text-slate-400">Active Currencies</p>
+                <h3 id="statCurrencies" class="text-2xl font-bold mt-1 text-emerald-400">0</h3>
+            </div>
+            <div class="bg-brics-card border border-brics-border rounded-xl p-4 shadow-sm">
+                <p class="text-xs font-medium text-slate-400">Audit Status</p>
+                <h3 class="text-2xl font-bold mt-1 text-indigo-400 flex items-center space-x-1">
+                    <span>Verified</span>
+                </h3>
+            </div>
+        </div>
 
-          <div class="rounded-2xl border border-slate-800 bg-slate-900/40 p-5">
-            <div class="text-sm text-slate-400">Time (client)</div>
-            <div id="clientTime" class="text-xl font-semibold">—</div>
-            <div class="mt-4 text-xs text-slate-400">
-              Connected directly to host origin.
-            </div>
-          </div>
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            <!-- Left / Col 1 & 2: Accounts Table -->
+            <div class="lg:col-span-2 space-y-4">
+                <div class="bg-brics-card border border-brics-border rounded-xl shadow-lg overflow-hidden">
+                    <div class="p-4 border-b border-brics-border flex flex-wrap items-center justify-between gap-3 bg-slate-900/40">
+                        <div>
+                            <h2 class="text-base font-semibold text-white">Accounts & Settlement Positions</h2>
+                            <p class="text-xs text-slate-400">Click any row to inspect complete KYC & ledger metadata</p>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <input id="searchInput" oninput="renderTable()" placeholder="Search Code, Name, ID..." type="text" class="px-3 py-1.5 bg-slate-950 border border-slate-700 rounded-md text-xs text-white focus:outline-none focus:border-sky-500 w-48">
+                            <select id="currencyFilter" onchange="renderTable()" class="px-2.5 py-1.5 bg-slate-950 border border-slate-700 rounded-md text-xs text-white focus:outline-none">
+                                <option value="ALL">All Currencies</option>
+                                <option value="RUB">RUB</option>
+                                <option value="CNY">CNY</option>
+                                <option value="AED">AED</option>
+                                <option value="USD">USD</option>
+                            </select>
+                        </div>
+                    </div>
 
-          <div class="rounded-2xl border border-slate-800 bg-slate-900/40 p-5">
-            <div class="text-sm text-slate-400">Last refresh</div>
-            <div id="lastRefresh" class="text-xl font-semibold">—</div>
-            <div id="lastError" class="mt-4 text-xs text-rose-300 hidden"></div>
-          </div>
-        </section>
-
-        <!-- Accounts Table & Form -->
-        <section class="rounded-2xl border border-slate-800 bg-slate-900/40">
-          <div class="px-5 py-4 border-b border-slate-800 flex items-center justify-between">
-            <div>
-              <div class="text-lg font-semibold">Accounts</div>
-              <div class="text-sm text-slate-400">Live data from <span class="font-mono">/api/v1/accounts</span></div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm text-slate-300">
+                            <thead class="bg-slate-950/80 text-xs uppercase tracking-wider text-slate-400 border-b border-brics-border">
+                                <tr>
+                                    <th class="py-3 px-4">Account Code / ID</th>
+                                    <th class="py-3 px-4">Holder & Jurisdiction</th>
+                                    <th class="py-3 px-4">Type</th>
+                                    <th class="py-3 px-4">Currency</th>
+                                    <th class="py-3 px-4 text-right">Balance</th>
+                                </tr>
+                            </thead>
+                            <tbody id="accountsTableBody" class="divide-y divide-slate-800">
+                                <tr>
+                                    <td colspan="5" class="py-8 text-center text-slate-500 text-xs">
+                                        Loading ledger accounts...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
-            <div>
-              <input
-                id="searchAccounts"
-                placeholder="Search code / currency / type..."
-                class="w-64 max-w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-sm outline-none focus:ring-2 focus:ring-cyan-500/40"
-              />
-            </div>
-          </div>
 
-          <div class="p-5 grid grid-cols-1 lg:grid-cols-3 gap-5">
-            <!-- Table -->
-            <div class="lg:col-span-2">
-              <div class="overflow-hidden rounded-xl border border-slate-800">
-                <table class="w-full text-sm">
-                  <thead class="bg-slate-950/60 text-slate-300">
+            <!-- Right / Col 3: Enriched Business Account Creation Form (Option B) -->
+            <div class="space-y-4">
+                <div class="bg-brics-card border border-brics-border rounded-xl shadow-lg p-5">
+                    <div class="border-b border-brics-border pb-3 mb-4">
+                        <div class="flex items-center space-x-2">
+                            <span class="px-2 py-0.5 text-[10px] font-bold uppercase rounded bg-sky-950 text-sky-400 border border-sky-800">B2B Onboarding</span>
+                            <span class="text-xs text-slate-400">Option B Enriched</span>
+                        </div>
+                        <h2 class="text-lg font-semibold text-white mt-1">Open Trade Account</h2>
+                        <p class="text-xs text-slate-400">Links ledger state directly with verified enterprise identity.</p>
+                    </div>
+
+                    <form id="createAccountForm" onsubmit="handleCreateAccount(event)" class="space-y-3.5">
+                        
+                        <!-- Core Ledger Fields -->
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-medium text-slate-300 mb-1">Account Code *</label>
+                                <input type="text" id="accCode" required placeholder="e.g. AMAD-RUB-01" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-md text-xs text-white focus:outline-none focus:border-sky-500 uppercase font-mono">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-300 mb-1">Account Type *</label>
+                                <select id="accType" required class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-md text-xs text-white focus:outline-none focus:border-sky-500">
+                                    <option value="customer">customer</option>
+                                    <option value="checking">checking</option>
+                                    <option value="clearing">clearing</option>
+                                    <option value="nostro">nostro</option>
+                                    <option value="vostro">vostro</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-medium text-slate-300 mb-1">Currency *</label>
+                                <input type="text" id="accCurrency" required maxlength="4" placeholder="RUB / CNY" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-md text-xs text-white focus:outline-none focus:border-sky-500 uppercase font-mono">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-300 mb-1">Initial Balance</label>
+                                <input type="number" step="any" id="accBalance" value="0" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-md text-xs text-white focus:outline-none focus:border-sky-500 font-mono">
+                            </div>
+                        </div>
+
+                        <!-- Business Metadata (Option B - Enriched fields) -->
+                        <div class="pt-2 border-t border-slate-800">
+                            <span class="text-[11px] font-semibold text-sky-400 block mb-2 uppercase tracking-wide">Enterprise Profile (Metadata linked by ID)</span>
+
+                            <!-- 1. Account Holder Name -->
+                            <div class="mb-3">
+                                <label class="block text-xs font-medium text-slate-300 mb-1">Account Holder Name *</label>
+                                <input type="text" id="metaHolder" required placeholder="e.g. Amad Sarmaye Hooshmand Eurasia" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-md text-xs text-white focus:outline-none focus:border-sky-500">
+                            </div>
+
+                            <!-- 2. Entity Type & 3. Country -->
+                            <div class="grid grid-cols-2 gap-3 mb-3">
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-300 mb-1">Entity Type</label>
+                                    <select id="metaEntityType" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-md text-xs text-white focus:outline-none focus:border-sky-500">
+                                        <option value="company">Corporate / Enterprise</option>
+                                        <option value="bank">Financial / Bank</option>
+                                        <option value="individual">Individual / Trader</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-300 mb-1">Jurisdiction</label>
+                                    <select id="metaCountry" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-md text-xs text-white focus:outline-none focus:border-sky-500">
+                                        <option value="IR">🇮🇷 Iran (IR)</option>
+                                        <option value="RU">🇷🇺 Russia (RU)</option>
+                                        <option value="CN">🇨🇳 China (CN)</option>
+                                        <option value="AE">🇦🇪 UAE (AE)</option>
+                                        <option value="IN">🇮🇳 India (IN)</option>
+                                        <option value="OTHER">🌐 Other / Int'l</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- 4. National ID / Registration No -->
+                            <div class="mb-3">
+                                <label class="block text-xs font-medium text-slate-300 mb-1">National ID / Commercial Reg No.</label>
+                                <input type="text" id="metaRegNo" placeholder="Tax ID / INN / National Code" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-md text-xs text-white focus:outline-none focus:border-sky-500 font-mono">
+                            </div>
+
+                            <!-- 5. Purpose & Tags -->
+                            <div>
+                                <label class="block text-xs font-medium text-slate-300 mb-1">Purpose / Trade Category</label>
+                                <input type="text" id="metaPurpose" placeholder="e.g. Agricultural Inputs / BYD Import Settlement" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-md text-xs text-white focus:outline-none focus:border-sky-500">
+                            </div>
+                        </div>
+
+                        <div id="formAlert" class="hidden text-xs p🇺 Russia (RU)</option>
+                                        <option value="CN">🇨🇳 China (CN)</option>
+                                        <option value="AE">🇦🇪 UAE (AE)</option>
+                                        <option value="IN">🇮🇳 India (IN)</option>
+                                        <option value="OTHER">🌐 Other / Int'l</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- 4. National ID / Registration No -->
+                            <div class="mb-3">
+                                <label class="block text-xs font-medium text-slate-300 mb-1">National ID / Commercial Reg No.</label>
+                                <input type="text" id="metaRegNo" placeholder="Tax ID / INN / National Code" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-md text-xs text-white focus:outline-none focus:border-sky-500 font-mono">
+                            </div>
+
+                            <!-- 5. Purpose & Tags -->
+                            <div>
+                                <label class="block text-xs font-medium text-slate-300 mb-1">Purpose / Trade Category</label>
+                                <input type="text" id="metaPurpose" placeholder="e.g. Agricultural Inputs / BYD Import Settlement" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-md text-xs text-white focus:outline-none focus:border-sky-500">
+                            </div>
+                        </div>
+
+                        <div id="formAlert" class="hidden text-xs p-2.5 rounded border"></div>
+
+                        <button id="submitBtn" type="submit" class="w-full py-2.5 px-4 bg-sky-600 hover:bg-sky-500 text-white font-semibold text-xs rounded-md shadow-md shadow-sky-600/30 transition flex items-center justify-center space-x-2">
+                            <span>Register & Open Account</span>
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Account Details Modal -->
+    <div id="detailModal(id));
+                return raw ? JSON.parse(raw) : null;
+            } catch(e) {
+                return null;
+            }
+        }
+
+        function saveMeta(id, metaObj) {
+            localStorage.setItem(getMetaKey(id), JSON.stringify(metaObj));
+        }
+
+        async function checkHealth() {
+            const badge = document.getElementById('healthBadge');
+            const text = document.getElementById('healthText');
+            try {
+                const res = await fetch(`${API_BASE}/health`);
+                if (res.ok) {
+                    const data = await res.json();
+                    text.innerText = `Healthy (${data.status || 'OK'})`;
+                    badge.className = "flex items-center space-x-2 px-3 py-1 rounded-full text-xs font-medium bg-emerald-950/70 border border-emerald-700/50 text-emerald-300";
+                } else {
+                    throw new Error();
+                }
+            } catch (err) {
+                text.innerText = 'Node Unreachable';
+                badge.className = "flex items-center space-x-2 px-3 py-1 rounded-full text-xs font-medium bg-rose-950/70 border border-rose-700/50 text-rose-300";
+            }
+        }
+
+        async function fetchAccounts() {
+            try {
+                const res = await fetch(`${API_BASE}/api/v1/accounts`);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                accountsCache = await res.json();
+                renderTable();
+                updateStats();
+            } catch (err) {
+                console.error(err);
+                document.getElementById('accountsTableBody').innerHTML = `
                     <tr>
-                      <th class="text-left px-4 py-3 font-medium">Code</th>
-                      <th class="text-left px-4 py-3 font-medium">Type</th>
-                      <th class="text-left px-4 py-3 font-medium">Currency</th>
-                      <th class="text-right px-4 py-3 font-medium">Balance</th>
+                        <td colspan="5" class="py-6 text-center text-rose-400 text-xs">
+                            Failed to load accounts. (${err.message})
+                        </td>
                     </tr>
-                  </thead>
-                  <tbody id="accountsTbody" class="divide-y divide-slate-800 bg-slate-900/30">
+                `;
+            }
+        }
+
+        function updateStats() {
+            document.getElementById('statTotalAccounts').innerText = accountsCache.length;
+            const currencies = new Set(accountsCache.map(a => a.currency).filter(Boolean));
+            document.getElementById('statCurrencies').innerText = currencies.size;
+
+            let enrichedCount = 0;
+            accountsCache.forEach(acc => {
+                if (acc.id && loadMeta(acc.id)) enrichedCount++;
+            });
+            document.getElementById('statEnrichedAccounts').innerText = enrichedCount;
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('accountsTableBody');
+            const search = document.getElementById('searchInput').value.toLowerCase().trim();
+            const currFilter = document.getElementById('currencyFilter').value;
+
+            const filtered = accountsCache.filter(acc => {
+                const meta = acc.id ? loadMeta(acc.id) : null;
+                const holder = meta?.holder?.toLowerCase() || '';
+                const purpose = meta?.purpose?.toLowerCase() || '';
+                const code = (acc.code || '').toLowerCase();
+                const id = String(acc.id || '');
+
+                const matchesSearch = !search || code.includes(search) || id.includes(search) || holder.includes(search) || purpose.includes(search);
+                const matchesCurr = currFilter === 'ALL' || acc.currency === currFilter;
+                return matchesSearch && matchesCurr;
+            });
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `
                     <tr>
-                      <td class="px-4 py-3 text-slate-400" colspan="4">Loading...</td>
+                        <td colspan="5" class="py-8 text-center text-slate-500 text-xs">
+                            No accounts match the criteria.
+                        </td>
                     </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
+                `;
+                return;
+            }
 
-            <!-- Form -->
-            <div class="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
-              <div class="text-sm font-semibold">Create Account</div>
-              <div class="text-xs text-slate-400 mt-1">
-                POST <span class="font-mono">/api/v1/accounts</span>
-              </div>
+            tbody.innerHTML = filtered.map(acc => {
+                const meta = acc.id ? loadMeta(acc.id) : null;
+                const isMalformed = !acc.code || !acc.type;
+                const isNegative = Number(acc.balance) < 0;
 
-              <form id="formCreateAccount" class="mt-4 space-y-3">
-                <div>
-                  <label class="block text-xs text-slate-400 mb-1">Code</label>
-                  <input
-                    id="accCode"
-                    required
-                    class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-sm outline-none focus:ring-2 focus:ring-cyan-500/40"
-                    placeholder="RUB-001"
-                  />
+                const countryFlags = {
+                    'IR': '🇮🇷 IR',
+                    'RU': '🇷🇺 RU',
+                    'CN': '🇨🇳 CN',
+                    'AE': '🇦🇪 AE',
+                    'IN': '🇮🇳 IN',
+                    'OTHER': '🌐 Global'
+                };
+
+                return `
+                    <tr onclick="openAccountDetail(${acc.id})" class="hover:bg-slate-800/50 cursor-pointer transition border-b border-slate-800/60">
+                        <td class="py-3 px-4">
+                            <div class="flex items-center space-x-2">
+                                <span class="font-mono text-xs font-semibold ${isMalformed ? 'text-amber-400' : 'text-sky-300'}">
+                                    ${acc.code || '[NO CODE / SYSTEM RECORD]'}
+                                </span>
+                                ${isMalformed ? '<span class="text-[10px] bg-amber-950 text-amber-300 border border-amber-800 px-1.5 py-0.2 rounded">Draft/Raw</span>' : ''}
+                            </div>
+                            <span class="text-[10px] text-slate-500 font-mono block">ID: ${acc.id}</span>
+                        </td>
+                        <td class="py-3 px-4">
+                            ${meta ? `
+                                <div class="font-medium text-slate-200 text-xs">${meta.holder}</div>
+                                <div class="text-[10px] text-slate-400 flex items-center space-x-1 mt-0.5">
+                                    <span>${countryFlags[meta.country] || meta.country}</span>
+                                    <span>•</span>
+                                    <span class="capitalize">${meta.entityType}</span>
+                                </div>
+                            ` : `
+                                <span class="text-xs text-slate-500 italic">No business metadata</span>
+                            `}
+                        </td>
+                        <td class="py-3 px-4">
+                            <span class="px-2 py-0.5 rounded text-[11px] font-mono bg-slate-800 text-slate-300 border border-slate-700">
+                                ${acc.type || 'unknown'}
+                            </span>
+                        </td>
+                        <td class="py-3 px-4 font-mono font-medium text-xs text-white">
+                            ${acc.currency || '---'}
+                        </td>
+                        <td class="py-3 px-4 text-right font-mono font-semibold text-xs ${isNegative ? 'text-rose-400' : 'text-emerald-400'}">
+                            ${Number(acc.balance || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        async function handleCreateAccount(e) {
+            e.preventDefault();
+            const btn = document.getElementById('submitBtn');
+            const alertBox = document.getElementById('formAlert');
+
+            alertBox.className = "hidden text-xs p-2.5 rounded border";
+            alertBox.innerText = "";
+            btn.disabled = true;
+            btn.innerText = "Provisioning Account...";
+
+            // 1. Core API Payload
+            const payload = {
+                code: document.getElementById('accCode').value.trim().toUpperCase(),
+                type: document.getElementById('accType').value.trim().toLowerCase(),
+                currency: document.getElementById('accCurrency').value.trim().toUpperCase(),
+                balance: parseFloat(document.getElementById('accBalance').value) || 0
+            };
+
+            // 2. Business Metadata (Option B)
+            const metaPayload = {
+                holder: document.getElementById('metaHolder').value.trim(),
+                entityType: document.getElementById('metaEntityType').value,
+                country: document.getElementById('metaCountry').value,
+                regNo: document.getElementById('metaRegNo').value.trim(),
+                purpose: document.getElementById('metaPurpose').value.trim(),
+                createdAt: new Date().toISOString()
+            };
+
+            try {
+                const res = await fetch(`${API_BASE}/api/v1/accounts`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!res.ok) {
+                    const errData = await res.json().catch(() => ({}));
+                    throw new Error(errData.error || `HTTP ${res.status}`);
+                }
+
+                const createdAcc = await res.json();
+                
+                // Key the metadata strictly by ID
+                if (createdAcc.id) {
+                    saveMeta(createdAcc.id, metaPayload);
+                }
+
+                alertBox.className = "text-xs p-2.5 rounded border bg-emerald-950/70 border-emerald-800 text-emerald-300 block";
+                alertBox.innerText = `Account created successfully (ID: ${createdAcc.id}, Code: ${createdAcc.code})`;
+
+                document.getElementById('createAccountForm').reset();
+                await fetchAccounts();
+            } catch (err) {
+                alertBox.className = "text-xs p-2.5 rounded border bg-rose-950/70 border-rose-800 text-rose-300 block";
+                alertBox.innerText = `Failed to create account: ${err.message}`;
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "Register & Open Account";
+            }
+        }
+
+        function openAccountDetail(id) {
+            const acc = accountsCache.find(a => a.id === id);
+            if (!acc) return;
+            const meta = loadMeta(id);
+
+            const content = document.getElementById('modalContent');
+            content.innerHTML = `
+                <div class="bg-slate-950 p-3 rounded-lg border border-slate-800 space-y-2">
+                    <div class="flex justify-between items-center text-xs">
+                        <span class="text-slate-400">Database Record ID:</span>
+                        <span class="font-mono text-sky-400 font-bold">${acc.id}</span>
+                    </div>
+                    <div class="flex justify-between items-center text-xs">
+                        <span class="text-slate-400">Account Code:</span>
+                        <span class="font-mono text-white font-bold">${acc.code || '[Empty Code]'}</span>
+                    </div>
+                    <div class="flex justify-between items-center text-xs">
+                        <span class="text-slate-400">Account Type:</span>
+                        <span class="font-mono text-slate-300">${acc.type || 'N/A'}</span>
+                    </div>
+                    <div class="flex justify-between items-center text-xs">
+                        <span class="text-slate-400">Currency / Balance:</span>
+                        <span class="font-mono font-bold ${Number(acc.balance) < 0 ? 'text-rose-400' : 'text-emerald-400'}">
+                            ${Number(acc.balance).toLocaleString()} ${acc.currency}
+                        </span>
+                    </div>
                 </div>
 
-                <div class="grid grid-cols-2 gap-3">
-                  <div>
-                    <label class="block text-xs text-slate-400 mb-1">Type</label>
-                    <input
-                      id="accType"
-                      required
-                      class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-sm outline-none focus:ring-2 focus:ring-cyan-500/40"
-                      placeholder="customer"
-                    />
-                  </div>
-                  <div>
-                    <label class="block text-xs text-slate-400 mb-1">Currency</label>
-                    <input
-                      id="accCurrency"
-                      required
-                      class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-sm outline-none focus:ring-2 focus:ring-cyan-500/40"
-                      placeholder="RUB"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label class="block text-xs text-slate-400 mb-1">Initial Balance</label>
-                  <input
-                    id="accBalance"
-                    type="number"
-                    step="0.01"
-                    value="0"
-                    class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-sm outline-none focus:ring-2 focus:ring-cyan-500/40"
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  class="w-full px-3 py-2 rounded-lg bg-cyan-500/90 hover:bg-cyan-500 text-slate-950 font-semibold text-sm"
-                >
-                  Create
-                </button>
-
-                <div id="createAccountMsg" class="text-xs hidden mt-2"></div>
-              </form>
-            </div>
-          </div>
-        </section>
-
-        <!-- API Explorer -->
-        <section class="rounded-2xl border border-slate-800 bg-slate-900/40">
-          <div class="px-5 py-4 border-b border-slate-800">
-            <div class="text-lg font-semibold">API Explorer</div>
-            <div class="text-sm text-slate-400">Direct response payloads</div>
-          </div>
-
-          <div class="p-5 grid grid-cols-1 lg:grid-cols-2 gap-5">
-            <div class="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
-              <div class="flex items-center justify-between">
-                <div class="text-sm font-semibold">GET /health</div>
-                <button
-                  data-call="health"
-                  class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-sm"
-                >
-                  Run
-                </button>
-              </div>
-              <pre id="outHealth" class="mt-3 p-3 rounded-lg bg-slate-950 border border-slate-800 text-xs overflow-auto font-mono text-slate-200">—</pre>
-            </div>
-
-            <div class="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
-              <div class="flex items-center justify-between">
-                <div class="text-sm font-semibold">GET /api/v1/accounts</div>
-                <button
-                  data-call="accounts"
-                  class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-sm"
-                >
-                  Run
-                </button>
-              </div>
-              <pre id="outAccounts" class="mt-3 p-3 rounded-lg bg-slate-950 border border-slate-800 text-xs overflow-auto font-mono text-slate-200">—</pre>
-            </div>
-          </div>
-        </section>
-      </main>
-    </div>
-
-    <script>
-      const $ = (id) => document.getElementById(id);
-
-      const state = {
-        accounts: [],
-        baseUrl: window.location.origin,
-      };
-
-      function escapeHtml(str) {
-        if (!str) return "";
-        return String(str)
-          .replace(/&/g, "&amp;")
-          .replace(/</g, "&lt;")
-          .replace(/>/g, "&gt;")
-          .replace(/"/g, "&quot;")
-          .replace(/'/g, "&#039;");
-      }
-
-      function fmtMoney(n) {
-        if (n === null || n === undefined || Number.isNaN(Number(n))) return "—";
-        return Number(n).toLocaleString(undefined, { maximumFractionDigits: 8 });
-      }
-
-      function setPill(ok, text) {
-        const el = $("pillService");
-        el.textContent = text;
-        el.className =
-          "text-xs px-2.5 py-1 rounded-full border " +
-          (ok
-            ? "border-emerald-400/30 bg-emerald-500/10 text-emerald-200"
-            : "border-rose-400/30 bg-rose-500/10 text-rose-200");
-      }
-
-      function setError(msg) {
-        const el = $("lastError");
-        if (!msg) {
-          el.classList.add("hidden");
-          el.textContent = "";
-          return;
-        }
-        el.classList.remove("hidden");
-        el.textContent = msg;
-      }
-
-      async function apiFetch(path, options = {}) {
-        const url = state.baseUrl + path;
-        const res = await fetch(url, {
-          headers: { "Content-Type": "application/json", ...(options.headers || {}) },
-          ...options,
-        });
-
-        const contentType = res.headers.get("content-type") || "";
-        const isJSON = contentType.includes("application/json");
-        const body = isJSON ? await res.json().catch(() => null) : await res.text().catch(() => null);
-
-        if (!res.ok) {
-          const detail =
-            body && typeof body === "object"
-              ? JSON.stringify(body)
-              : body
-              ? String(body)
-              : `${res.status} ${res.statusText}`;
-          throw new Error(`${path} failed: ${detail}`);
-        }
-
-        return body;
-      }
-
-      function renderAccounts(list) {
-        const tbody = $("accountsTbody");
-        if (!list || list.length === 0) {
-          tbody.innerHTML = `
-            <tr>
-              <td class="px-4 py-3 text-slate-400" colspan="4">No accounts found.</td>
-            </tr>
-          `;
-          return;
-        }
-
-        tbody.innerHTML = list
-          .map((a) => {
-            const code = escapeHtml(a.code || "");
-            const type = escapeHtml(a.type || "");
-            const currency = escapeHtml(a.currency || "");
-            const balance = fmtMoney(a.balance);
-
-            return `
-              <tr class="hover:bg-slate-950/40">
-                <td class="px-4 py-3 font-mono text-slate-200">${code || '<span class="text-slate-500">—</span>'}</td>
-                <td class="px-4 py-3 text-slate-200">${type || '<span class="text-slate-500">—</span>'}</td>
-                <td class="px-4 py-3 font-mono text-slate-200">${currency || '<span class="text-slate-500">—</span>'}</td>
-                <td class="px-4 py-3 text-right font-mono text-slate-200">${balance}</td>
-              </tr>
-            `;
-          })
-          .join("");
-      }
-
-      function applySearch() {
-        const q = ($("searchAccounts").value || "").trim().toLowerCase();
-        if (!q) return renderAccounts(state.accounts);
-
-        const filtered = state.accounts.filter((a) => {
-          const code = (a.code || "").toLowerCase();
-          const type = (a.type || "").toLowerCase();
-          const currency = (a.currency || "").toLowerCase();
-          return code.includes(q) || type.includes(q) || currency.includes(q);
-        });
-
-        renderAccounts(filtered);
-      }
-
-      async function refreshAll() {
-        setError("");
-        $("btnRefresh").disabled = true;
-
-        $("clientTime").textContent = new Date().toLocaleTimeString();
-        $("lastRefresh").textContent = "Loading...";
-
-        try {
-          const health = await apiFetch("/health", { method: "GET" });
-          const ok = health && (health.status === "ok" || health.status === "OK");
-          setPill(!!ok, ok ? "Healthy" : "Unhealthy");
-          $("outHealth").textContent = JSON.stringify(health, null, 2);
-
-          const accounts = await apiFetch("/api/v1/accounts", { method: "GET" });
-          state.accounts = Array.isArray(accounts) ? accounts : [];
-          renderAccounts(state.accounts);
-          $("outAccounts").textContent = JSON.stringify(state.accounts, null, 2);
-
-          $("lastRefresh").textContent = new Date().toLocaleTimeString();
-        } catch (e) {
-          setPill(false, "Error");
-          setError(e.message || String(e));
-          $("lastRefresh").textContent = "Failed";
-          $("accountsTbody").innerHTML = `
-            <tr>
-              <td class="px-4 py-3 text-rose-300" colspan="4">Failed to load accounts.</td>
-            </tr>
-          `;
-        } finally {
-          $("btnRefresh").disabled = false;
-        }
-      }
-
-      async function createAccount(e) {
-        e.preventDefault();
-        const msg = $("createAccountMsg");
-        msg.classList.add("hidden");
-        msg.textContent = "";
-
-        const payload = {
-          code: $("accCode").value.trim(),
-          type: $("accType").value.trim(),
-          currency: $("accCurrency").value.trim(),
-          balance: Number($("accBalance").value || 0),
-        };
-
-        try {
-          await apiFetch("/api/v1/accounts", {
-            method: "POST",
-            body: JSON.stringify(payload),
-          });
-
-          msg.className = "text-xs mt-2 text-emerald-300";
-          msg.textContent = "Account created successfully.";
-          msg.classList.remove("hidden");
-
-          await refreshAll();
-        } catch (e) {
-          msg.className = "text-xs mt-2 text-rose-300";
-          msg.textContent = e.message || String(e);
-          msg.classList.remove("hidden");
-        }
-      }
-
-      document.addEventListener("click", async (e) => {
-        const btn = e.target.closest("button[data-call]");
-        if (!btn) return;
-
-        const call = btn.getAttribute("data-call");
-        btn.disabled = true;
-        try {
-          if (call === "health") {
-            const out = await apiFetch("/health");
-            $("outHealth").textContent = JSON.stringify(out, null, 2);
-          } else if (call === "accounts") {
-            const out = await apiFetch("/api/v1/accounts");
-            $("outAccounts").textContent = JSON.stringify(out, null, 2);
-          }
-        } catch (err) {
-          if (call === "health") $("outHealth").textContent = err.message || String(err);
-          if (call === "accounts") $("outAccounts").textContent = err.message || String(err);
-        } finally {
-          btn.disabled = false;
-        }
-      });
-
-      $("btnRefresh").addEventListener("click", refreshAll);
-      $("searchAccounts").addEventListener("input", applySearch);
-      $("formCreateAccount").addEventListener("submit", createAccount);
-      $("envBaseUrl").textContent = state.baseUrl;
-
-      refreshAll();
-      setInterval(() => {
-        $("clientTime").textContent = new Date().toLocaleTimeString();
-      }, 1000);
-    </script>
-  </body>
-</html>
+                <div class="border-t border-slate-800 pt-3">
+                    <h4 class="text-xs uppercase font-bold text-sky-400 mb-2">Option B: Enterprise Business Metadata</h4>
+                    ${meta ? `
+                        <div class="space-y-1.5 text-xs text-slate-300">
+                            <p><strong class="text-slate-400">Holder:</strong> ${meta.holder}</p>
+                            <p><strong class="text-slate-400">Jurisdiction:</strong> ${meta.country}</p>
+                            <p><strong class="text-slate-400">Entity:</strong> ${meta.entityType}</p>
+                            <p><strong class="text-slate-400">Tax / Reg No:</strong> ${meta.regNo || '---'}</p>
+                            <p><stron
