@@ -1,21 +1,464 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BRICS Pay | Pilot Sandbox</title>
-    <style>
-        body { background: #06090e; color: #fff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 2rem; }
-        .container { max-width: 900px; margin: 0 auto; }
-        h1 { color: #00d2ff; }
-        .status { padding: 8px 16px; background: rgba(0, 210, 255, 0.1); border: 1px solid rgba(0, 210, 255, 0.3); border-radius: 6px; display: inline-block; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>BRICS Pay Core Ledger</h1>
-        <div class="status">System Status: Operational</div>
-        <p>Cross-border multi-currency settlement system API and pilot interface.</p>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BRICS Pay — Core Ledger Dashboard</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              ui: [
+                "ui-sans-serif",
+                "system-ui",
+                "-apple-system",
+                "Segoe UI",
+                "Roboto",
+                "Inter",
+                "Arial",
+                "Noto Sans",
+                "Apple Color Emoji",
+                "Segoe UI Emoji",
+              ],
+              mono: [
+                "ui-monospace",
+                "SFMono-Regular",
+                "Menlo",
+                "Monaco",
+                "Consolas",
+                "Liberation Mono",
+                "Courier New",
+                "monospace",
+              ],
+            },
+          },
+        },
+      };
+    </script>
+  </head>
+
+  <body class="bg-slate-950 text-slate-100 font-ui">
+    <div class="min-h-screen">
+      <!-- Top bar -->
+      <header class="border-b border-slate-800/70 bg-slate-950/70 backdrop-blur">
+        <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="h-10 w-10 rounded-xl bg-gradient-to-br from-cyan-400 to-violet-500"></div>
+            <div>
+              <div class="text-lg font-semibold leading-tight">BRICS Pay</div>
+              <div class="text-xs text-slate-400">Core Ledger Dashboard</div>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-3">
+            <span id="envBaseUrl" class="hidden md:inline text-xs text-slate-400 font-mono"></span>
+            <button
+              id="btnRefresh"
+              class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-sm"
+            >
+              Refresh
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main class="max-w-6xl mx-auto px-4 py-8 space-y-8">
+        <!-- Status -->
+        <section class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="rounded-2xl border border-slate-800 bg-slate-900/40 p-5">
+            <div class="flex items-center justify-between">
+              <div>
+                <div class="text-sm text-slate-400">Service</div>
+                <div class="text-xl font-semibold">Ledger API</div>
+              </div>
+              <div id="pillService" class="text-xs px-2.5 py-1 rounded-full border border-slate-700 bg-slate-800">
+                Unknown
+              </div>
+            </div>
+            <div class="mt-4 text-xs text-slate-400 font-mono">
+              <div>GET <span class="text-slate-200">/health</span></div>
+              <div class="mt-1">GET <span class="text-slate-200">/api/v1/accounts</span></div>
+            </div>
+          </div>
+
+          <div class="rounded-2xl border border-slate-800 bg-slate-900/40 p-5">
+            <div class="text-sm text-slate-400">Time (client)</div>
+            <div id="clientTime" class="text-xl font-semibold">—</div>
+            <div class="mt-4 text-xs text-slate-400">
+              This page uses the same origin as the API (no config required).
+            </div>
+          </div>
+
+          <div class="rounded-2xl border border-slate-800 bg-slate-900/40 p-5">
+            <div class="text-sm text-slate-400">Last refresh</div>
+            <div id="lastRefresh" class="text-xl font-semibold">—</div>
+            <div id="lastError" class="mt-4 text-xs text-rose-300 hidden"></div>
+          </div>
+        </section>
+
+        <!-- Accounts -->
+        <section class="rounded-2xl border border-slate-800 bg-slate-900/40">
+          <div class="px-5 py-4 border-b border-slate-800 flex items-center justify-between">
+            <div>
+              <div class="text-lg font-semibold">Accounts</div>
+              <div class="text-sm text-slate-400">Live data from <span class="font-mono">/api/v1/accounts</span></div>
+            </div>
+            <div class="flex items-center gap-2">
+              <input
+                id="searchAccounts"
+                placeholder="Search by code / currency / type…"
+                class="w-64 max-w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-sm outline-none focus:ring-2 focus:ring-cyan-500/40"
+              />
+            </div>
+          </div>
+
+          <div class="p-5 grid grid-cols-1 lg:grid-cols-3 gap-5">
+            <!-- Table -->
+            <div class="lg:col-span-2">
+              <div class="overflow-hidden rounded-xl border border-slate-800">
+                <table class="w-full text-sm">
+                  <thead class="bg-slate-950/60 text-slate-300">
+                    <tr>
+                      <th class="text-left px-4 py-3 font-medium">Code</th>
+                      <th class="text-left px-4 py-3 font-medium">Type</th>
+                      <th class="text-left px-4 py-3 font-medium">Currency</th>
+                      <th class="text-right px-4 py-3 font-medium">Balance</th>
+                    </tr>
+                  </thead>
+                  <tbody id="accountsTbody" class="divide-y divide-slate-800 bg-slate-900/30">
+                    <tr>
+                      <td class="px-4 py-3 text-slate-400" colspan="4">Loading…</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div class="mt-3 text-xs text-slate-500">
+                Tip: If you see empty <span class="font-mono">code</span> or <span class="font-mono">type</span>, that’s coming from DB rows.
+              </div>
+            </div>
+
+            <!-- Create account -->
+            <div class="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
+              <div class="text-sm font-semibold">Create Account</div>
+              <div class="text-xs text-slate-400 mt-1">
+                Uses <span class="font-mono">POST /api/v1/accounts</span> (if enabled).
+              </div>
+
+              <form id="formCreateAccount" class="mt-4 space-y-3">
+                <div>
+                  <label class="block text-xs text-slate-400 mb-1">Code</label>
+                  <input
+                    id="accCode"
+                    required
+                    class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-sm outline-none focus:ring-2 focus:ring-cyan-500/40"
+                    placeholder="USD-001"
+                  />
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                  <div>
+                    <label class="block text-xs text-slate-400 mb-1">Type</label>
+                    <input
+                      id="accType"
+                      required
+                      class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-sm outline-none focus:ring-2 focus:ring-cyan-500/40"
+                      placeholder="customer"
+                    />
+                  </div>
+                  <div>
+                    <label class="block text-xs text-slate-400 mb-1">Currency</label>
+                    <input
+                      id="accCurrency"
+                      required
+                      class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-sm outline-none focus:ring-2 focus:ring-cyan-500/40"
+                      placeholder="USD"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label class="block text-xs text-slate-400 mb-1">Initial balance</label>
+                  <input
+                    id="accBalance"
+                    type="number"
+                    step="0.01"
+                    value="0"
+                    class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-sm outline-none focus:ring-2 focus:ring-cyan-500/40"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  class="w-full px-3 py-2 rounded-lg bg-cyan-500/90 hover:bg-cyan-500 text-slate-950 font-semibold text-sm"
+                >
+                  Create
+                </button>
+
+                <div id="createAccountMsg" class="text-xs hidden"></div>
+              </form>
+            </div>
+          </div>
+        </section>
+
+        <!-- API Explorer -->
+        <section class="rounded-2xl border border-slate-800 bg-slate-900/40">
+          <div class="px-5 py-4 border-b border-slate-800">
+            <div class="text-lg font-semibold">API Explorer</div>
+            <div class="text-sm text-slate-400">Quick calls against current origin</div>
+          </div>
+
+          <div class="p-5 grid grid-cols-1 lg:grid-cols-2 gap-5">
+            <div class="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
+              <div class="flex items-center justify-between">
+                <div class="text-sm font-semibold">GET /health</div>
+                <button
+                  data-call="health"
+                  class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-sm"
+                >
+                  Run
+                </button>
+              </div>
+              <pre id="outHealth" class="mt-3 p-3 rounded-lg bg-slate-950 border border-slate-800 text-xs overflow-auto font-mono text-slate-200">—</pre>
+            </div>
+
+            <div class="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
+              <div class="flex items-center justify-between">
+                <div class="text-sm font-semibold">GET /api/v1/accounts</div>
+                <button
+                  data-call="accounts"
+                  class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-sm"
+                >
+                  Run
+                </button>
+              </div>
+              <pre id="outAccounts" class="mt-3 p-3 rounded-lg bg-slate-950 border border-slate-800 text-xs overflow-auto font-mono text-slate-200">—</pre>
+            </div>
+          </div>
+        </section>
+
+        <footer class="text-xs text-slate-500 pb-8">
+          <div class="border-t border-slate-800/70 pt-6">
+            Served from embedded static assets (<span class="font-mono">internal/api/static</span>).
+          </div>
+        </footer>
+      </main>
     </div>
-</body>
+
+    <script>
+      const $ = (id) => document.getElementById(id);
+
+      const state = {
+        accounts: [],
+        baseUrl: window.location.origin,
+      };
+
+      function fmtMoney(n) {
+        if (n === null || n === undefined || Number.isNaN(Number(n))) return "—";
+        const x = Number(n);
+        return x.toLocaleString(undefined, { maximumFractionDigits: 8 });
+      }
+
+      function setPill(ok, text) {
+        const el = $("pillService");
+        el.textContent = text;
+        el.className =
+          "text-xs px-2.5 py-1 rounded-full border " +
+          (ok
+            ? "border-emerald-400/30 bg-emerald-500/10 text-emerald-200"
+            : "border-rose-400/30 bg-rose-500/10 text-rose-200");
+      }
+
+      function setError(msg) {
+        const el = $("lastError");
+        if (!msg) {
+          el.classList.add("hidden");
+          el.textContent = "";
+          return;
+        }
+        el.classList.remove("hidden");
+        el.textContent = msg;
+      }
+
+      async function apiFetch(path, options = {}) {
+        const url = state.baseUrl + path;
+        const res = await fetch(url, {
+          headers: { "Content-Type": "application/json", ...(options.headers || {}) },
+          ...options,
+        });
+
+        const contentType = res.headers.get("content-type") || "";
+        const isJSON = contentType.includes("application/json");
+        const body = isJSON ? await res.json().catch(() => null) : await res.text().catch(() => null);
+
+        if (!res.ok) {
+          const detail =
+            body && typeof body === "object"
+              ? JSON.stringify(body)
+              : body
+              ? String(body)
+              : `${res.status} ${res.statusText}`;
+          throw new Error(`${path} failed: ${detail}`);
+        }
+
+        return body;
+      }
+
+      function renderAccounts(list) {
+        const tbody = $("accountsTbody");
+        if (!list || list.length === 0) {
+          tbody.innerHTML = `
+            <tr>
+              <td class="px-4 py-3 text-slate-400" colspan="4">No accounts.</td>
+            </tr>
+          `;
+          return;
+        }
+
+        tbody.innerHTML = list
+          .map((a) => {
+            const code = (a.code ?? "").toString();
+            const type = (a.type ?? "").toString();
+            const currency = (a.currency ?? "").toString();
+            const balance = fmtMoney(a.balance);
+
+            return `
+              <tr class="hover:bg-slate-950/40">
+                <td class="px-4 py-3 font-mono text-slate-200">${escapeHtml(code) || '<span class="text-slate-500">—</span>'}</td>
+                <td class="px-4 py-3 text-slate-200">${escapeHtml(type) || '<span class="text-slate-500">—</span>'}</td>
+                <td class="px-4 py-3 font-mono text-slate-200">${escapeHtml(currency) || '<span class="text-slate-500">—</span>'}</td>
+                <td class="px-4 py-3 text-right font-mono text-slate-200">${balance}</td>
+              </tr>
+            `;
+          })
+          .join("");
+      }
+
+      function escapeHtml(str) {
+        return String(str)
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&&#039;");
+      }
+
+      function applySearch() {
+        const q .replaceAll("'", "&#039;");
+      }
+
+      function applySearch() {
+        const q = ($("searchAccounts").value || "").trim().toLowerCase();
+        if (!q) return renderAccounts(state.accounts);
+
+        const filtered = state.accounts.filter((a) => {
+          const code = (a.code || "").toLowerCase();
+          const type = (a.type || "").toLowerCase();
+          const currency = (a.currency || "").toLowerCase();
+          return code.includes(q) || type.includes(q) || currency.includes(q);
+        });
+
+        renderAccounts(filtered);
+      }
+
+      async function refreshAll() {
+        setError("");
+        $("btnRefresh").disabled = true;
+
+        $("clientTime").textContent = new Date().toLocaleString();
+        $("lastRefresh").textContent = "Loading…";
+
+        try {
+          const health = await apiFetch("/health", { method: "GET" });
+          const ok = health && (health.status === "ok" || health.status === "OK");
+          setPill(!!ok, ok ? "Healthy" : "Unhealthy");
+          $("outHealth").textContent = JSON.stringify(health, null, 2);
+
+          const accounts = await apiFetch("/api/v1/accounts", { method: "GET" });
+          state.accounts = Array.isArray(accounts) ? accounts : [];
+          renderAccounts(state.accounts);
+          $("outAccounts").textContent = JSON.stringify(state.accounts, null, 2);
+
+          $("lastRefresh").textContent = new Date().toLocaleTimeString();
+        } catch (e) {
+          setPill(false, "Error");
+          setError(e.message || String(e));
+          $("lastRefresh").textContent = "Failed";
+          $("accountsTbody").innerHTML = `
+            <tr>
+              <td class="px-4 py-3 text-rose-300" colspan="4">Failed to load accounts.</td>
+            </tr>
+          `;
+        } finally {
+          $("btnRefresh").disabled = false;
+        }
+      }
+
+      async function createAccount(e) {
+        e.preventDefault();
+        const msg = $("createAccountMsg");
+        msg.classList.add("hidden");
+        msg.textContent = "";
+        msg.className = "text-xs hidden";
+
+        const payload = {
+          code: $("accCode").value.trim(),
+          type: $("accType").value.trim(),
+          currency: $("accCurrency").value.trim(),
+          balance: Number($("accBalance").value || 0),
+        };
+
+        try {
+          const out = await apiFetch("/api/v1/accounts", {
+            method: "POST",
+            body: JSON.stringify(payload),
+          });
+
+          msg.className = "text-xs mt-2 text-emerald-200";
+          msg.textContent = "Account created.";
+          msg.classList.remove("hidden");
+
+          await refreshAll();
+        } catch (e) {
+          msg.className = "text-xs mt-2 text-rose-200";
+          msg.textContent = e.message || String(e);
+          msg.classList.remove("hidden");
+        }
+      }
+
+      document.addEventListener("click", async (e) => {
+        const btn = e.target.closest("button[data-call]");
+        if (!btn) return;
+
+        const call = btn.getAttribute("data-call");
+        btn.disabled = true;
+        try {
+          if (call === "health") {
+            const out = await apiFetch("/health");
+            $("outHealth").textContent = JSON.stringify(out, null, 2);
+          } else if (call === "accounts") {
+            const out = await apiFetch("/api/v1/accounts");
+            $("outAccounts").textContent = JSON.stringify(out, null, 2);
+          }
+        } catch (err) {
+          if (call === "health") $("outHealth").textContent = err.message || String(err);
+          if (call === "accounts") $("outAccounts").textContent = err.message || String(err);
+        } finally {
+          btn.disabled = false;
+        }
+      });
+
+      $("btnRefresh").addEventListener("click", refreshAll);
+      $("searchAccounts").addEventListener("input", applySearch);
+      $("formCreateAccount").addEventListener("submit", createAccount);
+
+      $("envBaseUrl").textContent = state.baseUrl;
+
+      refreshAll();
+      setInterval(() => {
+        $("clientTime").textContent = new Date().toLocaleString();
+      }, 1000);
+    </script>
+  </body>
 </html>
