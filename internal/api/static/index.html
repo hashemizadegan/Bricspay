@@ -83,34 +83,14 @@
                             <p class="text-xs text-slate-400">Click any row to inspect complete KYC & ledger metadata</p>
                         </div>
                         <div class="flex items-center space-x-2">
-                            <input id="searchInput" oninput="renderTable()" placeholder="Search Code, Name, ID..." type="text" class="px-3 py-1.5 bg-slate-950 border border-slate-700 rounded-md text-xs text-white focus:outline-none focus:border-sky-500 w-48">
+                            <input id="searchInput" oninput="renderTable()" placeholder="Search Code, Name, ID..." type="text" class="px-3 py-1.5 bg-slate-950 border border-slate-700 rounded-md text-xs text-white focus:outline-none focus:border-sky-500 w-44">
                             <select id="currencyFilter" onchange="renderTable()" class="px-2.5 py-1.5 bg-slate-950 border border-slate-700 rounded-md text-xs text-white focus:outline-none">
                                 <option value="ALL">All Currencies</option>
-                                <option value="RUB">RUB</option>
-                                <option value="CNY">CNY</option>
-                                <option value="AED">AED</option>
-                                <option value="USD">USD</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left text-sm text-slate-300">
-                            <thead class="bg-slate-950/80 text-xs uppercase tracking-wider text-slate-400 border-b border-brics-border">
-                                <tr>
-                                    <th class="py-3 px-4">Account Code / ID</th>
-                                    <th class="py-3 px-4">Holder & Jurisdiction</th>
-                                    <th class="py-3 px-4">Type</th>
-                                    <th class="py-3 px-4">Currency</th>
-                                    <th class="py-3 px-4 text-right">Balance</th>
-                                </tr>
-                            </thead>
-                            <tbody id="accountsTableBody" class="divide-y divide-slate-800">
-All Currencies</option>
-                                <option value="RUB">RUB</option>
-                                <option value="CNY">CNY</option>
-                                <option value="AED">AED</option>
-                                <option value="USD">USD</option>
+                                <option value="IRR">🇮🇷 IRR</option>
+                                <option value="RUB">🇷🇺 RUB</option>
+                                <option value="CNY">🇨🇳 CNY</option>
+                                <option value="AED">🇦🇪 AED</option>
+                                <option value="USD">🌐 USD</option>
                             </select>
                         </div>
                     </div>
@@ -143,13 +123,28 @@ All Currencies</option>
                 <div class="bg-brics-card border border-brics-border rounded-xl shadow-lg p-5">
                     <div class="border-b border-brics-border pb-3 mb-4">
                         <div class="flex items-center space-x-2">
-                            <span class="px-2 py-0.5 text-[10px] font-bold uppercase rounded bg-sky-950 text-sky-400 border border-sky-800 mb-1">Account Type *</label>
+                            <span class="px-2 py-0.5 text-[10px] font-bold uppercase rounded bg-sky-950 text-sky-400 border border-sky-800">New Participant</span>
+                            <span class="text-xs text-slate-400">KYC & Ledger Setup</span>
+                        </div>
+                        <h3 class="text-base font-bold text-white mt-1">Open Business Account</h3>
+                    </div>
+
+                    <form id="createAccountForm" onsubmit="handleCreateAccount(event)" class="space-y-3">
+                        
+                        <!-- Core API fields -->
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-medium text-slate-300 mb-1">Account Code *</label>
+                                <input type="text" id="accCode" required placeholder="IRR-CLEARING-001" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-md text-xs text-white focus:outline-none focus:border-sky-500 uppercase font-mono">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-300 mb-1">Account Type *</label>
                                 <select id="accType" required class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-md text-xs text-white focus:outline-none focus:border-sky-500">
                                     <option value="customer">customer</option>
-                                    <option value="checking">checking</option>
                                     <option value="clearing">clearing</option>
                                     <option value="nostro">nostro</option>
                                     <option value="vostro">vostro</option>
+                                    <option value="checking">checking</option>
                                 </select>
                             </div>
                         </div>
@@ -157,7 +152,7 @@ All Currencies</option>
                         <div class="grid grid-cols-2 gap-3">
                             <div>
                                 <label class="block text-xs font-medium text-slate-300 mb-1">Currency *</label>
-                                <input type="text" id="accCurrency" required maxlength="5" placeholder="RUB / CNY" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-md text-xs text-white focus:outline-none focus:border-sky-500 uppercase font-mono">
+                                <input type="text" id="accCurrency" required maxlength="5" value="IRR" placeholder="IRR / RUB / CNY" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-md text-xs text-white focus:outline-none focus:border-sky-500 uppercase font-mono">
                             </div>
                             <div>
                                 <label class="block text-xs font-medium text-slate-300 mb-1">Initial Balance</label>
@@ -188,7 +183,7 @@ All Currencies</option>
                                 <div>
                                     <label class="block text-xs font-medium text-slate-300 mb-1">Jurisdiction</label>
                                     <select id="metaCountry" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-md text-xs text-white focus:outline-none focus:border-sky-500">
-                                        <option value="IR">🇮🇷 Iran (IR)</option>
+                                        <option value="IR" selected>🇮🇷 Iran (IR)</option>
                                         <option value="RU">🇷🇺 Russia (RU)</option>
                                         <option value="CN">🇨🇳 China (CN)</option>
                                         <option value="AE">🇦🇪 UAE (AE)</option>
@@ -207,7 +202,7 @@ All Currencies</option>
                             <!-- 5. Purpose & Tags -->
                             <div>
                                 <label class="block text-xs font-medium text-slate-300 mb-1">Purpose / Trade Category</label>
-                                <input type="text" id="metaPurpose" placeholder="e.g. Agricultural Inputs / BYD Import Settlement" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-md text-xs text-white focus:outline-none focus:border-sky-500">
+                                <input type="text" id="metaPurpose" placeholder="e.g. Tehran-Moscow Clearing / Petrochemical" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-md text-xs text-white focus:outline-none focus:border-sky-500">
                             </div>
                         </div>
 
@@ -318,28 +313,6 @@ All Currencies</option>
 
         function renderTable() {
             const tbody = document.getElementById('accountsTableBody');
-            const search = document.getElementById('searchInput').value.toLowerCase().trim();-center text-rose-400 text-xs">
-                            Failed to load accounts. (${err.message})
-                        </td>
-                    </tr>
-                `;
-            }
-        }
-
-        function updateStats() {
-            document.getElementById('statTotalAccounts').innerText = accountsCache.length;
-            const currencies = new Set(accountsCache.map(a => a.currency).filter(Boolean));
-            document.getElementById('statCurrencies').innerText = currencies.size;
-
-            let enrichedCount = 0;
-            accountsCache.forEach(acc => {
-                if (acc.id && loadMeta(acc.id)) enrichedCount++;
-            });
-            document.getElementById('statEnrichedAccounts').innerText = enrichedCount;
-        }
-
-        function renderTable() {
-            const tbody = document.getElementById('accountsTableBody');
             const search = document.getElementById('searchInput').value.toLowerCase().trim();
             const currFilter = document.getElementById('currencyFilter').value;
 
@@ -370,10 +343,24 @@ All Currencies</option>
                 'IR': '🇮🇷 Iran',
                 'RU': '🇷🇺 Russia',
                 'CN': '🇨🇳 China',
-                '-sky-300'}">
+                'AE': '🇦🇪 UAE',
+                'IN': '🇮🇳 India',
+                'OTHER': '🌐 International'
+            };
+
+            tbody.innerHTML = filtered.map(acc => {
+                const meta = acc.id ? loadMeta(acc.id) : null;
+                const isNegative = Number(acc.balance) < 0;
+                const isMalformed = !acc.code || !acc.type;
+
+                return `
+                    <tr class="hover:bg-slate-900/60 cursor-pointer transition border-b border-slate-800/60" onclick="openAccountDetail(${acc.id})">
+                        <td class="py-3 px-4">
+                            <div class="flex items-center space-x-2">
+                                <span class="font-mono font-semibold ${acc.code ? 'text-sky-400' : 'text-slate-500 italic'}">
                                     ${acc.code || '[NO CODE / SYSTEM RECORD]'}
                                 </span>
-                                ${isMalformed ? '<span class="text-[10px] bg-amber-950 text-amber-300 border border-amber-800 px-1.5 py-0.2 rounded">Draft/Raw</span>' : ''}
+                                ${isMalformed ? '<span class="text-[10px] bg-amber-950 text-amber-300 border border-amber-800 px-1.5 py-0.5 rounded">Draft/Raw</span>' : ''}
                             </div>
                             <span class="text-[10px] text-slate-500 font-mono block">ID: ${acc.id}</span>
                         </td>
@@ -447,7 +434,7 @@ All Currencies</option>
 
                 const createdAcc = await res.json();
                 
-                // Key the metadata strictly by ID
+                // Key metadata by ID
                 if (createdAcc.id) {
                     saveMeta(createdAcc.id, metaPayload);
                 }
@@ -456,6 +443,7 @@ All Currencies</option>
                 alertBox.innerText = `Account created successfully (ID: ${createdAcc.id}, Code: ${createdAcc.code})`;
 
                 document.getElementById('createAccountForm').reset();
+                document.getElementById('accCurrency').value = 'IRR'; // Default to IRR
                 await fetchAccounts();
             } catch (err) {
                 alertBox.className = "text-xs p-2.5 rounded border bg-rose-950/70 border-rose-800 text-rose-300 block";
@@ -530,31 +518,7 @@ All Currencies</option>
             const holder = prompt("Enter Business / Account Holder Name:");
             if (!holder) return;
             const country = prompt("Enter Country Code (IR, RU, CN, AE, etc.):", "IR") || "IR";
-            const purpose = prompt("Enter Trade / Business Purpose:", "Import/Export Settlement") || "";
+            const purpose = prompt("Enter Trade / Business Purpose:", "Tehran-Moscow Clearing") || "";
 
             saveMeta(id, {
-                holder: holder.trim(),
-                country: country.toUpperCase().trim(),
-                entityType: "company",
-                regNo: "MANUAL-LINK",
-                purpose: purpose.trim(),
-                createdAt: new Date().toISOString()
-            });
-
-            openAccountDetail(id);
-            renderTable();
-            updateStats();
-        }
-
-        function closeModal() {
-            document.getElementById('detailModal').classList.add('hidden');
-        }
-
-        // Auto load on init
-        window.addEventListener('DOMContentLoaded', () => {
-            checkHealth();
-            fetchAccounts();
-        });
-    </script>
-</body>
-</html>
+                holde
