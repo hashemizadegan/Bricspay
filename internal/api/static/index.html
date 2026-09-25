@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="fa" dir="rtl" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BRICS Pay | Decentralized Cross-Border Settlement Network</title>
+    <title>BRICS Pay | شبکه تسویه فرامرزی</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -28,6 +28,10 @@
         .gradient-glow {
             background: radial-gradient(circle at 50% 20%, rgba(2, 132, 199, 0.15), transparent 70%);
         }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #050811; }
+        ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 3px; }
     </style>
 </head>
 <body class="bg-brics-dark text-slate-100 min-h-screen font-sans antialiased gradient-glow flex flex-col">
@@ -37,44 +41,51 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
             
             <!-- Brand Logo & Identity -->
-            <div class="flex items-center space-x-3 cursor-pointer" onclick="switchTab('landing')">
+            <div class="flex items-center space-x-3 rtl:space-x-reverse cursor-pointer" onclick="switchTab('landing')">
                 <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-600 via-indigo-600 to-amber-500 flex items-center justify-center font-black text-lg text-white shadow-lg shadow-sky-500/25">
                     BP
                 </div>
                 <div>
-                    <div class="flex items-center space-x-2">
+                    <div class="flex items-center space-x-2 rtl:space-x-reverse">
                         <span class="font-extrabold text-lg tracking-wider text-white">BRICS PAY</span>
-                        <span class="px-1.5 py-0.2 text-[9px] font-bold uppercase rounded bg-sky-950 text-sky-400 border border-sky-800">Core Network</span>
+                        <span class="px-1.5 py-0.2 text-[9px] font-bold uppercase rounded bg-sky-950 text-sky-400 border border-sky-800" data-i18n="badge_core">Core Network</span>
                     </div>
-                    <span class="text-[11px] text-slate-400 block -mt-1 font-mono">Cross-Border Settlement Protocol</span>
+                    <span class="text-[11px] text-slate-400 block -mt-1 font-mono" data-i18n="sub_brand">Cross-Border Settlement Protocol</span>
                 </div>
             </div>
 
             <!-- Navigation Tabs -->
-            <nav class="hidden md:flex items-center space-x-1 bg-slate-950/60 p-1 rounded-xl border border-brics-border">
-                <button id="tabBtn-landing" onclick="switchTab('landing')" class="px-4 py-1.5 text-xs font-semibold rounded-lg transition bg-sky-600 text-white shadow">
-                    🌐 Overview & Platform
+            <nav class="hidden md:flex items-center space-x-1 rtl:space-x-reverse bg-slate-950/60 p-1 rounded-xl border border-brics-border">
+                <button id="tabBtn-landing" onclick="switchTab('landing')" class="px-3.5 py-1.5 text-xs font-semibold rounded-lg transition bg-sky-600 text-white shadow">
+                    🌐 <span data-i18n="nav_overview">Overview</span>
                 </button>
-                <button id="tabBtn-accounts" onclick="switchTab('accounts')" class="px-4 py-1.5 text-xs font-semibold rounded-lg transition text-slate-400 hover:text-white hover:bg-slate-900">
-                    🏛️ Accounts & Settlement
+                <button id="tabBtn-accounts" onclick="switchTab('accounts')" class="px-3.5 py-1.5 text-xs font-semibold rounded-lg transition text-slate-400 hover:text-white hover:bg-slate-900">
+                    🏛️ <span data-i18n="nav_accounts">Accounts & Settlement</span>
                 </button>
-                <button id="tabBtn-fx" onclick="switchTab('fx')" class="px-4 py-1.5 text-xs font-semibold rounded-lg transition text-slate-400 hover:text-white hover:bg-slate-900">
-                    💱 FX & Multicurrency
+                <button id="tabBtn-fx" onclick="switchTab('fx')" class="px-3.5 py-1.5 text-xs font-semibold rounded-lg transition text-slate-400 hover:text-white hover:bg-slate-900">
+                    💱 <span data-i18n="nav_fx">FX Corridors</span>
                 </button>
-                <button id="tabBtn-docs" onclick="switchTab('docs')" class="px-4 py-1.5 text-xs font-semibold rounded-lg transition text-slate-400 hover:text-white hover:bg-slate-900">
-                    ⚡ API Explorer
+                <button id="tabBtn-docs" onclick="switchTab('docs')" class="px-3.5 py-1.5 text-xs font-semibold rounded-lg transition text-slate-400 hover:text-white hover:bg-slate-900">
+                    ⚡ <span data-i18n="nav_docs">API Docs</span>
                 </button>
             </nav>
 
-            <!-- Node Status & Quick Action -->
-            <div class="flex items-center space-x-3">
-                <div id="healthBadge" class="flex items-center space-x-2 px-3 py-1 rounded-full text-xs font-medium bg-emerald-950/70 border border-emerald-700/50 text-emerald-300">
+            <!-- Language Switcher & Node Status -->
+            <div class="flex items-center space-x-3 rtl:space-x-reverse">
+                
+                <!-- Language Selector Dropdown -->
+                <div class="relative">
+                    <select id="langSelect" onchange="changeLanguage(this.value)" class="bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-sky-500 font-semibold cursor-pointer">
+                        <option value="fa">🇮🇷 فارسی</option>
+                        <option value="ru">🇷🇺 Русский</option>
+                        <option value="en">🇬🇧 English</option>
+                    </select>
+                </div>
+
+                <div id="healthBadge" class="hidden sm:flex items-center space-x-2 rtl:space-x-reverse px-3 py-1 rounded-full text-xs font-medium bg-emerald-950/70 border border-emerald-700/50 text-emerald-300">
                     <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
                     <span id="healthText">Node Online</span>
                 </div>
-                <button onclick="switchTab('accounts')" class="hidden sm:inline-flex px-3.5 py-1.5 bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white text-xs font-bold rounded-lg shadow-md shadow-sky-600/20 transition">
-                    Open Account
-                </button>
             </div>
         </div>
     </header>
@@ -86,20 +97,20 @@
         <section class="py-16 md:py-24 border-b border-brics-border/50 relative overflow-hidden">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-6 relative z-10">
                 <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full text-xs font-semibold bg-sky-950/80 border border-sky-800 text-sky-300 mb-2">
-                    <span>🚀 Next-Gen Sovereign Financial Messaging & Clearing</span>
+                    <span data-i18n="hero_pill">🚀 Next-Gen Sovereign Financial Messaging & Clearing</span>
                 </div>
-                <h1 class="text-4xl sm:text-6xl font-black text-white tracking-tight leading-tight max-w-4xl mx-auto">
-                    Independent Settlement Infrastructure for <span class="bg-gradient-to-r from-sky-400 via-indigo-300 to-amber-400 bg-clip-text text-transparent">Global Trade</span>
+                <h1 class="text-3xl sm:text-5xl md:text-6xl font-black text-white tracking-tight leading-tight max-w-4xl mx-auto">
+                    <span data-i18n="hero_title_1">زیرساخت مستقل تسویه فرامرزی برای</span> <span class="bg-gradient-to-r from-sky-400 via-indigo-300 to-amber-400 bg-clip-text text-transparent" data-i18n="hero_title_2">تجارت بین‌الملل</span>
                 </h1>
-                <p class="text-base sm:text-lg text-slate-400 max-w-2xl mx-auto font-light leading-relaxed">
-                    Decentralized, multi-currency ledger enabling direct atomic settlements across <strong>IRR</strong>, <strong>RUB</strong>, <strong>CNY</strong>, <strong>AED</strong>, and <strong>INR</strong> without third-party SWIFT dependency.
+                <p class="text-sm sm:text-base md:text-lg text-slate-400 max-w-2xl mx-auto font-light leading-relaxed" data-i18n="hero_desc">
+                    دفتر کل چندارزی و نامتمرکز جهت تسویه آنی مبادلات تجاری با ارزهای ملی ریال (IRR)، روبل (RUB)، یوآن (CNY)، درهم (AED) و روپیه (INR) بدون وابستگی به سوئیفت.
                 </p>
                 <div class="flex flex-wrap items-center justify-center gap-4 pt-4">
                     <button onclick="switchTab('accounts')" class="px-6 py-3 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-bold text-sm shadow-xl shadow-sky-600/30 transition transform hover:-translate-y-0.5">
-                        Launch Ledger Console →
+                        <span data-i18n="btn_enter_ledger">ورود به میز مدیریت لجر →</span>
                     </button>
                     <button onclick="switchTab('docs')" class="px-6 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 font-semibold text-sm transition">
-                        Inspect API Architecture
+                        <span data-i18n="btn_view_api">مشاهده مستندات API</span>
                     </button>
                 </div>
             </div>
@@ -108,61 +119,61 @@
         <!-- Sovereign Currency Corridors -->
         <section class="py-12 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="text-center mb-10">
-                <h2 class="text-xl font-bold text-white">Supported Settlement Corridors</h2>
-                <p class="text-xs text-slate-400 mt-1">Direct clearing & bilateral liquidity facilities</p>
+                <h2 class="text-xl font-bold text-white" data-i18n="corridors_title">کریدورهای فعال تسویه چندجانبه</h2>
+                <p class="text-xs text-slate-400 mt-1" data-i18n="corridors_sub">مبادلات دوجانبه مستقیم بر پایه اتصال سوئیچ‌های شتاب، میر و CIPS</p>
             </div>
             <div class="grid grid-cols-2 sm:grid-cols-5 gap-4">
                 <div class="bg-brics-card border border-brics-border rounded-xl p-4 text-center hover:border-sky-500/50 transition">
-                    <span class="text-2xl">🇮🇷</span>
+                    <span class="text-3xl">🇮🇷</span>
                     <h3 class="text-sm font-bold text-white mt-2 font-mono">IRR</h3>
-                    <p class="text-[11px] text-slate-400">Iranian Rial (Shetab)</p>
+                    <p class="text-[11px] text-slate-400" data-i18n="curr_irr">ریال ایران (شتاب)</p>
                 </div>
                 <div class="bg-brics-card border border-brics-border rounded-xl p-4 text-center hover:border-sky-500/50 transition">
-                    <span class="text-2xl">🇷🇺</span>
+                    <span class="text-3xl">🇷🇺</span>
                     <h3 class="text-sm font-bold text-white mt-2 font-mono">RUB</h3>
-                    <p class="text-[11px] text-slate-400">Russian Ruble (Mir)</p>
+                    <p class="text-[11px] text-slate-400" data-i18n="curr_rub">روبل روسیه (میر)</p>
                 </div>
                 <div class="bg-brics-card border border-brics-border rounded-xl p-4 text-center hover:border-sky-500/50 transition">
-                    <span class="text-2xl">🇨🇳</span>
+                    <span class="text-3xl">🇨🇳</span>
                     <h3 class="text-sm font-bold text-white mt-2 font-mono">CNY</h3>
-                    <p class="text-[11px] text-slate-400">Chinese Yuan (CIPS)</p>
+                    <p class="text-[11px] text-slate-400" data-i18n="curr_cny">یوآن چین (CIPS)</p>
                 </div>
                 <div class="bg-brics-card border border-brics-border rounded-xl p-4 text-center hover:border-sky-500/50 transition">
-                    <span class="text-2xl">🇦🇪</span>
+                    <span class="text-3xl">🇦🇪</span>
                     <h3 class="text-sm font-bold text-white mt-2 font-mono">AED</h3>
-                    <p class="text-[11px] text-slate-400">UAE Dirham (Clearing)</p>
+                    <p class="text-[11px] text-slate-400" data-i18n="curr_aed">درهم امارات (تسویه تجاری)</p>
                 </div>
                 <div class="bg-brics-card border border-brics-border rounded-xl p-4 text-center hover:border-sky-500/50 transition">
-                    <span class="text-2xl">🇮🇳</span>
+                    <span class="text-3xl">🇮🇳</span>
                     <h3 class="text-sm font-bold text-white mt-2 font-mono">INR</h3>
-                    <p class="text-[11px] text-slate-400">Indian Rupee (Vostro)</p>
+                    <p class="text-[11px] text-slate-400" data-i18n="curr_inr">روپیه هند (حساب ووسترو)</p>
                 </div>
             </div>
         </section>
 
-        <!-- Key Pillars Grid -->
+        <!-- Pillars Grid -->
         <section class="py-12 bg-slate-950/40 border-t border-brics-border/40">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div class="bg-brics-card border border-brics-border p-6 rounded-2xl space-y-3">
                         <div class="w-10 h-10 rounded-lg bg-sky-950 text-sky-400 flex items-center justify-center text-xl font-bold">🔒</div>
-                        <h3 class="text-base font-bold text-white">Atomic Double-Entry Ledger</h3>
-                        <p class="text-xs text-slate-400 leading-relaxed">
-                            Strict zero-sum multi-posting verification ensuring balanced books and real-time reconciliation with zero negative balance risks.
+                        <h3 class="text-base font-bold text-white" data-i18n="pillar_1_title">دفتر کل دوطرفه اتمیک (Double-Entry)</h3>
+                        <p class="text-xs text-slate-400 leading-relaxed" data-i18n="pillar_1_desc">
+                            ثبت تراکنش‌های متوازن با برابری بدهکار و بستانکار در لحظه، جلوگیری کامل از موجودی منفی و تسویه بلادرنگ.
                         </p>
                     </div>
                     <div class="bg-brics-card border border-brics-border p-6 rounded-2xl space-y-3">
                         <div class="w-10 h-10 rounded-lg bg-amber-950 text-amber-400 flex items-center justify-center text-xl font-bold">📜</div>
-                        <h3 class="text-base font-bold text-white">Enterprise KYC & Identity</h3>
-                        <p class="text-xs text-slate-400 leading-relaxed">
-                            Full commercial identity binding with legal registration numbers, tax IDs, and jurisdictional governance across BRICS member states.
+                        <h3 class="text-base font-bold text-white" data-i18n="pillar_2_title">شناسه شرکتی و احراز هویت (KYC)</h3>
+                        <p class="text-xs text-slate-400 leading-relaxed" data-i18n="pillar_2_desc">
+                            اتصال مستقیم حساب به شناسه ملی شرکت‌ها، حوزه قضایی کشورهای عضو و ثبت مشخصات دقیق بازرگانی.
                         </p>
                     </div>
                     <div class="bg-brics-card border border-brics-border p-6 rounded-2xl space-y-3">
                         <div class="w-10 h-10 rounded-lg bg-emerald-950 text-emerald-400 flex items-center justify-center text-xl font-bold">⚡</div>
-                        <h3 class="text-base font-bold text-white">Bilateral Liquidity Pools</h3>
-                        <p class="text-xs text-slate-400 leading-relaxed">
-                            Direct nostro/vostro connectivity allowing seamless commodities clearing (oil, grain, machinery) between partner nations.
+                        <h3 class="text-base font-bold text-white" data-i18n="pillar_3_title">استخرهای نقدینگی کالایی و ارزی</h3>
+                        <p class="text-xs text-slate-400 leading-relaxed" data-i18n="pillar_3_desc">
+                            امکان تهاتر و تسویه موازی محموله‌های انرژی، نهاده‌های کشاورزی و قطعات صنعتی میان اعضای اوراسیا و بریکس.
                         </p>
                     </div>
                 </div>
@@ -176,20 +187,20 @@
         <!-- Metrics -->
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div class="bg-brics-card border border-brics-border rounded-xl p-4">
-                <p class="text-xs font-medium text-slate-400">Total Accounts</p>
+                <p class="text-xs font-medium text-slate-400" data-i18n="metric_total_accs">کل حساب‌های ثبت‌شده</p>
                 <h3 id="statTotalAccounts" class="text-2xl font-bold mt-1 text-white">0</h3>
             </div>
             <div class="bg-brics-card border border-brics-border rounded-xl p-4">
-                <p class="text-xs font-medium text-slate-400">Enriched Entities (KYC)</p>
+                <p class="text-xs font-medium text-slate-400" data-i18n="metric_kyc_accs">حساب‌های تجاری احرازشده</p>
                 <h3 id="statEnrichedAccounts" class="text-2xl font-bold mt-1 text-sky-400">0</h3>
             </div>
             <div class="bg-brics-card border border-brics-border rounded-xl p-4">
-                <p class="text-xs font-medium text-slate-400">Active Currencies</p>
+                <p class="text-xs font-medium text-slate-400" data-i18n="metric_active_curr">ارزهای فعال در سیستم</p>
                 <h3 id="statCurrencies" class="text-2xl font-bold mt-1 text-emerald-400">0</h3>
             </div>
             <div class="bg-brics-card border border-brics-border rounded-xl p-4">
-                <p class="text-xs font-medium text-slate-400">Settlement Engine</p>
-                <h3 class="text-2xl font-bold mt-1 text-indigo-400">Online (v1)</h3>
+                <p class="text-xs font-medium text-slate-400" data-i18n="metric_node_status">موتور تسویه لجر</p>
+                <h3 class="text-2xl font-bold mt-1 text-indigo-400">Active (v1)</h3>
             </div>
         </div>
 
@@ -200,13 +211,13 @@
                 <div class="bg-brics-card border border-brics-border rounded-xl shadow-lg overflow-hidden">
                     <div class="p-4 border-b border-brics-border flex flex-wrap items-center justify-between gap-3 bg-slate-900/40">
                         <div>
-                            <h2 class="text-base font-semibold text-white">Ledger Accounts & Positions</h2>
-                            <p class="text-xs text-slate-400">Click any row to view complete enterprise profile & raw JSON</p>
+                            <h2 class="text-base font-semibold text-white" data-i18n="tbl_title">فهرست حساب‌ها و موجودی‌های لجر</h2>
+                            <p class="text-xs text-slate-400" data-i18n="tbl_sub">جهت مشاهده کامل متادیتا و جزئیات حقوقی روی هر سطر کلیک کنید</p>
                         </div>
-                        <div class="flex items-center space-x-2">
-                            <input id="searchInput" oninput="renderTable()" placeholder="Search Code, Name, ID..." type="text" class="px-3 py-1.5 bg-slate-950 border border-slate-700 rounded-md text-xs text-white focus:outline-none focus:border-sky-500 w-44">
+                        <div class="flex items-center space-x-2 rtl:space-x-reverse">
+                            <input id="searchInput" oninput="renderTable()" data-i18n-placeholder="search_placeholder" placeholder="جستجوی کد، نام یا شناسه..." type="text" class="px-3 py-1.5 bg-slate-950 border border-slate-700 rounded-md text-xs text-white focus:outline-none focus:border-sky-500 w-44">
                             <select id="currencyFilter" onchange="renderTable()" class="px-2.5 py-1.5 bg-slate-950 border border-slate-700 rounded-md text-xs text-white focus:outline-none">
-                                <option value="ALL">All Currencies</option>
+                                <option value="ALL" data-i18n="all_currencies">همه ارزها</option>
                                 <option value="IRR">🇮🇷 IRR</option>
                                 <option value="RUB">🇷🇺 RUB</option>
                                 <option value="CNY">🇨🇳 CNY</option>
@@ -217,20 +228,20 @@
                     </div>
 
                     <div class="overflow-x-auto">
-                        <table class="w-full text-left text-sm text-slate-300">
+                        <table class="w-full text-start text-sm text-slate-300">
                             <thead class="bg-slate-950/80 text-xs uppercase tracking-wider text-slate-400 border-b border-brics-border">
                                 <tr>
-                                    <th class="py-3 px-4">Account Code / ID</th>
-                                    <th class="py-3 px-4">Holder & Jurisdiction</th>
-                                    <th class="py-3 px-4">Type</th>
-                                    <th class="py-3 px-4">Currency</th>
-                                    <th class="py-3 px-4 text-right">Balance</th>
+                                    <th class="py-3 px-4" data-i18n="th_code">کد حساب / شناسه</th>
+                                    <th class="py-3 px-4" data-i18n="th_holder">مالک و حوزه قضایی</th>
+                                    <th class="py-3 px-4" data-i18n="th_type">نوع حساب</th>
+                                    <th class="py-3 px-4" data-i18n="th_curr">ارز</th>
+                                    <th class="py-3 px-4 text-end" data-i18n="th_bal">موجودی</th>
                                 </tr>
                             </thead>
                             <tbody id="accountsTableBody" class="divide-y divide-slate-800">
                                 <tr>
-                                    <td colspan="5" class="py-8 text-center text-slate-500 text-xs">
-                                        Loading ledger accounts...
+                                    <td colspan="5" class="py-8 text-center text-slate-500 text-xs" data-i18n="loading_accs">
+                                        در حال دریافت اطلاعات از لجر...
                                     </td>
                                 </tr>
                             </tbody>
@@ -243,86 +254,86 @@
             <div class="space-y-4">
                 <div class="bg-brics-card border border-brics-border rounded-xl shadow-lg p-5">
                     <div class="border-b border-brics-border pb-3 mb-4">
-                        <div class="flex items-center space-x-2">
-                            <span class="px-2 py-0.5 text-[10px] font-bold uppercase rounded bg-sky-950 text-sky-400 border border-sky-800">Enterprise KYC</span>
+                        <div class="flex items-center space-x-2 rtl:space-x-reverse">
+                            <span class="px-2 py-0.5 text-[10px] font-bold uppercase rounded bg-sky-950 text-sky-400 border border-sky-800" data-i18n="form_badge">KYC & Settlement</span>
                         </div>
-                        <h3 class="text-base font-bold text-white mt-1">Open Participant Account</h3>
+                        <h3 class="text-base font-bold text-white mt-1" data-i18n="form_title">افتتاح حساب تجاری در شبکه</h3>
                     </div>
 
                     <form id="createAccountForm" onsubmit="handleCreateAccount(event)" class="space-y-3">
                         <div class="grid grid-cols-2 gap-3">
                             <div>
-                                <label class="block text-xs font-medium text-slate-300 mb-1">Account Code *</label>
+                                <label class="block text-xs font-medium text-slate-300 mb-1" data-i18n="lbl_code">کد حساب *</label>
                                 <input type="text" id="accCode" required placeholder="IRR-CLEARING-001" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-md text-xs text-white focus:outline-none focus:border-sky-500 uppercase font-mono">
                             </div>
                             <div>
-                                <label class="block text-xs font-medium text-slate-300 mb-1">Account Type *</label>
+                                <label class="block text-xs font-medium text-slate-300 mb-1" data-i18n="lbl_type">نوع حساب *</label>
                                 <select id="accType" required class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-md text-xs text-white focus:outline-none focus:border-sky-500">
-                                    <option value="customer">customer</option>
-                                    <option value="clearing">clearing</option>
-                                    <option value="nostro">nostro</option>
-                                    <option value="vostro">vostro</option>
-                                    <option value="checking">checking</option>
+                                    <option value="customer">مشتری (Customer)</option>
+                                    <option value="clearing">تسویه (Clearing)</option>
+                                    <option value="nostro">نوسترو (Nostro)</option>
+                                    <option value="vostro">ووسترو (Vostro)</option>
+                                    <option value="checking">جاری (Checking)</option>
                                 </select>
                             </div>
                         </div>
 
                         <div class="grid grid-cols-2 gap-3">
                             <div>
-                                <label class="block text-xs font-medium text-slate-300 mb-1">Currency *</label>
+                                <label class="block text-xs font-medium text-slate-300 mb-1" data-i18n="lbl_currency">ارز حساب *</label>
                                 <input type="text" id="accCurrency" required maxlength="5" value="IRR" placeholder="IRR / RUB / CNY" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-md text-xs text-white focus:outline-none focus:border-sky-500 uppercase font-mono">
                             </div>
                             <div>
-                                <label class="block text-xs font-medium text-slate-300 mb-1">Initial Balance</label>
+                                <label class="block text-xs font-medium text-slate-300 mb-1" data-i18n="lbl_init_bal">موجودی اولیه</label>
                                 <input type="number" step="any" id="accBalance" value="0" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-md text-xs text-white focus:outline-none focus:border-sky-500 font-mono">
                             </div>
                         </div>
 
                         <div class="pt-2 border-t border-slate-800">
-                            <span class="text-[11px] font-semibold text-sky-400 block mb-2 uppercase tracking-wide">Enterprise Profile (Linked via ID)</span>
+                            <span class="text-[11px] font-semibold text-sky-400 block mb-2 uppercase tracking-wide" data-i18n="lbl_biz_meta">مشخصات هویتی و حقوقی (پیوست با ID)</span>
 
                             <div class="mb-3">
-                                <label class="block text-xs font-medium text-slate-300 mb-1">Account Holder Name *</label>
-                                <input type="text" id="metaHolder" required placeholder="e.g. Amad Sarmaye Hooshmand Eurasia" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-md text-xs text-white focus:outline-none focus:border-sky-500">
+                                <label class="block text-xs font-medium text-slate-300 mb-1" data-i18n="lbl_holder">نام صاحب حساب / نهاد حقوقی *</label>
+                                <input type="text" id="metaHolder" required placeholder="مثال: شرکت آماد سرمایه هوشمند اوراسیا" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-md text-xs text-white focus:outline-none focus:border-sky-500">
                             </div>
 
                             <div class="grid grid-cols-2 gap-3 mb-3">
                                 <div>
-                                    <label class="block text-xs font-medium text-slate-300 mb-1">Entity Type</label>
+                                    <label class="block text-xs font-medium text-slate-300 mb-1" data-i18n="lbl_entity_type">ماهیت شخصیت</label>
                                     <select id="metaEntityType" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-md text-xs text-white focus:outline-none focus:border-sky-500">
-                                        <option value="company">Corporate / Enterprise</option>
-                                        <option value="bank">Financial / Bank</option>
-                                        <option value="individual">Individual / Trader</option>
+                                        <option value="company" data-i18n="opt_corporate">شرکت / بازرگانی</option>
+                                        <option value="bank" data-i18n="opt_bank">بانک / صرافی</option>
+                                        <option value="individual" data-i18n="opt_individual">حقیقی / بازرگان</option>
                                     </select>
                                 </div>
                                 <div>
-                                    <label class="block text-xs font-medium text-slate-300 mb-1">Jurisdiction</label>
+                                    <label class="block text-xs font-medium text-slate-300 mb-1" data-i18n="lbl_jurisdiction">حوزه قضایی</label>
                                     <select id="metaCountry" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-md text-xs text-white focus:outline-none focus:border-sky-500">
-                                        <option value="IR" selected>🇮🇷 Iran (IR)</option>
-                                        <option value="RU">🇷🇺 Russia (RU)</option>
-                                        <option value="CN">🇨🇳 China (CN)</option>
-                                        <option value="AE">🇦🇪 UAE (AE)</option>
-                                        <option value="IN">🇮🇳 India (IN)</option>
-                                        <option value="OTHER">🌐 Other / Int'l</option>
+                                        <option value="IR" selected>🇮🇷 ایران (IR)</option>
+                                        <option value="RU">🇷🇺 روسیه (RU)</option>
+                                        <option value="CN">🇨🇳 چین (CN)</option>
+                                        <option value="AE">🇦🇪 امارات (AE)</option>
+                                        <option value="IN">🇮🇳 هند (IN)</option>
+                                        <option value="OTHER">🌐 سایر کشورها</option>
                                     </select>
                                 </div>
                             </div>
 
                             <div class="mb-3">
-                                <label class="block text-xs font-medium text-slate-300 mb-1">National ID / Registration No.</label>
-                                <input type="text" id="metaRegNo" placeholder="Tax ID / INN / National Code" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-md text-xs text-white focus:outline-none focus:border-sky-500 font-mono">
+                                <label class="block text-xs font-medium text-slate-300 mb-1" data-i18n="lbl_reg_no">شناسه ملی / شماره ثبت شرکت</label>
+                                <input type="text" id="metaRegNo" placeholder="شناسه ملی، INN یا کد ثبتی" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-md text-xs text-white focus:outline-none focus:border-sky-500 font-mono">
                             </div>
 
                             <div>
-                                <label class="block text-xs font-medium text-slate-300 mb-1">Purpose / Trade Category</label>
-                                <input type="text" id="metaPurpose" placeholder="e.g. Tehran-Moscow Clearing / Petrochemical" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-md text-xs text-white focus:outline-none focus:border-sky-500">
+                                <label class="block text-xs font-medium text-slate-300 mb-1" data-i18n="lbl_purpose">موضوع فعالیت و کارکرد حساب</label>
+                                <input type="text" id="metaPurpose" placeholder="مثال: تسویه تهاتری کالاهای اساسی تهران-مسکو" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-md text-xs text-white focus:outline-none focus:border-sky-500">
                             </div>
                         </div>
 
                         <div id="formAlert" class="hidden text-xs p-2.5 rounded border"></div>
 
-                        <button id="submitBtn" type="submit" class="w-full py-2.5 px-4 bg-sky-600 hover:bg-sky-500 text-white font-semibold text-xs rounded-md shadow-md shadow-sky-600/30 transition flex items-center justify-center space-x-2">
-                            <span>Register & Open Account</span>
+                        <button id="submitBtn" type="submit" class="w-full py-2.5 px-4 bg-sky-600 hover:bg-sky-500 text-white font-semibold text-xs rounded-md shadow-md shadow-sky-600/30 transition flex items-center justify-center space-x-2 rtl:space-x-reverse">
+                            <span data-i18n="btn_submit_account">ثبت و افتتاح حساب در لجر</span>
                         </button>
                     </form>
                 </div>
@@ -335,13 +346,13 @@
     <div id="view-fx" class="hidden flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full space-y-6">
         <div class="bg-brics-card border border-brics-border rounded-2xl p-8 text-center space-y-4 max-w-2xl mx-auto">
             <span class="text-4xl">💱</span>
-            <h2 class="text-2xl font-bold text-white">Cross-Border FX & Atomic Swaps</h2>
-            <p class="text-sm text-slate-400 leading-relaxed">
-                The atomic cross-currency settlement engine is prepared for the next release. This module will allow instant bilateral swaps between <strong>IRR/RUB</strong>, <strong>IRR/CNY</strong>, and <strong>RUB/AED</strong> backed by central bank clearing corridors.
+            <h2 class="text-2xl font-bold text-white" data-i18n="fx_title">تبادل ارزی و سوآپ فرامرزی (Cross-Border FX)</h2>
+            <p class="text-sm text-slate-400 leading-relaxed" data-i18n="fx_desc">
+                موتور تبادل ارزی و موازنه خطوط اعتباری بین کریدورهای <strong>IRR/RUB</strong>، <strong>IRR/CNY</strong> و <strong>RUB/AED</strong> آماده پیاده‌سازی فاز بعد می‌باشد.
             </p>
             <div class="pt-4">
                 <button onclick="switchTab('accounts')" class="px-5 py-2.5 bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-xs font-bold transition">
-                    View Current Ledger Positions
+                    <span data-i18n="fx_btn_back">بازگشت به موجودی حساب‌ها</span>
                 </button>
             </div>
         </div>
@@ -350,8 +361,8 @@
     <!-- TAB 4: API & DEVELOPER DOCS -->
     <div id="view-docs" class="hidden flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full space-y-6">
         <div class="bg-brics-card border border-brics-border rounded-2xl p-6 space-y-4">
-            <h2 class="text-lg font-bold text-white">BRICS Pay Core API Endpoints</h2>
-            <div class="space-y-3 font-mono text-xs">
+            <h2 class="text-lg font-bold text-white" data-i18n="api_title">مستندات و اندپوینت‌های هسته لجر BRICS Pay</h2>
+            <div class="space-y-3 font-mono text-xs" dir="ltr">
                 <div class="p-3 bg-slate-950 rounded-lg border border-slate-800 flex justify-between items-center">
                     <div><span class="text-emerald-400 font-bold">GET</span> <span class="text-slate-200">/health</span></div>
                     <span class="text-slate-500">Service health & DB heartbeat</span>
@@ -375,11 +386,11 @@
     <!-- Universal Footer -->
     <footer class="border-t border-brics-border bg-brics-card py-6 mt-auto">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-wrap justify-between items-center text-xs text-slate-500">
-            <p>© 2026 BRICS Pay Consortium. All rights reserved.</p>
-            <div class="flex space-x-4">
-                <span>Autonomous Decentralized Ledger</span>
+            <p data-i18n="footer_copy">© ۲۰۲۶ کنسرسیوم BRICS Pay. کلیه حقوق محفوظ است.</p>
+            <div class="flex space-x-4 rtl:space-x-reverse">
+                <span data-i18n="footer_node">نود فعال: رله تهران - مسکو</span>
                 <span>•</span>
-                <span>Node: Tehran/Moscow Relay</span>
+                <span>Autonomous Sovereign Network</span>
             </div>
         </div>
     </footer>
@@ -388,206 +399,11 @@
     <div id="detailModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div class="bg-brics-card border border-brics-border rounded-xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
             <div class="flex items-center justify-between border-b border-brics-border pb-3">
-                <h3 class="text-base font-bold text-white">Account Profile & Ledger State</h3>
+                <h3 class="text-base font-bold text-white" data-i18n="modal_title">جزئیات حساب و وضعیت ثبتی</h3>
                 <button onclick="closeModal()" class="text-slate-400 hover:text-white text-lg font-bold">✕</button>
             </div>
             
             <div id="modalContent" class="space-y-4 max-h-[70vh] overflow-y-auto"></div>
 
             <div class="pt-3 border-t border-brics-border flex justify-end">
-                <button onclick="closeModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-xs font-semibold rounded text-white transition">
-                    Close
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Script Engine -->
-    <script>
-        const API_BASE = window.location.origin;
-        let accountsCache = [];
-
-        // Tab Navigation
-        function switchTab(tabId) {
-            const tabs = ['landing', 'accounts', 'fx', 'docs'];
-            tabs.forEach(t => {
-                const view = document.getElementById(`view-${t}`);
-                const btn = document.getElementById(`tabBtn-${t}`);
-                if (t === tabId) {
-                    view.classList.remove('hidden');
-                    if (btn) {
-                        btn.className = "px-4 py-1.5 text-xs font-semibold rounded-lg transition bg-sky-600 text-white shadow";
-                    }
-                } else {
-                    view.classList.add('hidden');
-                    if (btn) {
-                        btn.className = "px-4 py-1.5 text-xs font-semibold rounded-lg transition text-slate-400 hover:text-white hover:bg-slate-900";
-                    }
-                }
-            });
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-
-        // Metadata storage
-        function getMetaKey(id) { return `brics_meta_${id}`; }
-        function loadMeta(id) {
-            try {
-                const raw = localStorage.getItem(getMetaKey(id));
-                return raw ? JSON.parse(raw) : null;
-            } catch(e) { return null; }
-        }
-        function saveMeta(id, metaObj) { localStorage.setItem(getMetaKey(id), JSON.stringify(metaObj)); }
-
-        async function checkHealth() {
-            const badge = document.getElementById('healthBadge');
-            const text = document.getElementById('healthText');
-            try {
-                const res = await fetch(`${API_BASE}/health`);
-                if (res.ok) {
-                    const data = await res.json();
-                    text.innerText = `Healthy (${data.status || 'OK'})`;
-                    badge.className = "flex items-center space-x-2 px-3 py-1 rounded-full text-xs font-medium bg-emerald-950/70 border border-emerald-700/50 text-emerald-300";
-                } else throw new Error();
-            } catch (err) {
-                text.innerText = 'Node Unreachable';
-                badge.className = "flex items-center space-x-2 px-3 py-1 rounded-full text-xs font-medium bg-rose-950/70 border border-rose-700/50 text-rose-300";
-            }
-        }
-
-        async function fetchAccounts() {
-            try {
-                const res = await fetch(`${API_BASE}/api/v1/accounts`);
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                accountsCache = await res.json();
-                renderTable();
-                updateStats();
-            } catch (err) {
-                document.getElementById('accountsTableBody').innerHTML = `
-                    <tr><td colspan="5" class="py-6 text-center text-rose-400 text-xs">Failed to load accounts. (${err.message})</td></tr>
-                `;
-            }
-        }
-
-        function updateStats() {
-            document.getElementById('statTotalAccounts').innerText = accountsCache.length;
-            const currencies = new Set(accountsCache.map(a => a.currency).filter(Boolean));
-            document.getElementById('statCurrencies').innerText = currencies.size;
-            let enrichedCount = 0;
-            accountsCache.forEach(acc => { if (acc.id && loadMeta(acc.id)) enrichedCount++; });
-            document.getElementById('statEnrichedAccounts').innerText = enrichedCount;
-        }
-
-        function renderTable() {
-            const tbody = document.getElementById('accountsTableBody');
-            const search = document.getElementById('searchInput').value.toLowerCase().trim();
-            const currFilter = document.getElementById('currencyFilter').value;
-
-            const filtered = accountsCache.filter(acc => {
-                const meta = acc.id ? loadMeta(acc.id) : null;
-                const holder = meta?.holder?.toLowerCase() || '';
-                const code = (acc.code || '').toLowerCase();
-                const id = String(acc.id || '');
-                return (!search || code.includes(search) || id.includes(search) || holder.includes(search)) &&
-                       (currFilter === 'ALL' || acc.currency === currFilter);
-            });
-
-            if (filtered.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" class="py-8 text-center text-slate-500 text-xs">No accounts match criteria.</td></tr>`;
-                return;
-            }
-
-            const countryFlags = { 'IR': '🇮🇷 Iran', 'RU': '🇷🇺 Russia', 'CN': '🇨🇳 China', 'AE': '🇦🇪 UAE', 'IN': '🇮🇳 India', 'OTHER': '🌐 Other' };
-
-            tbody.innerHTML = filtered.map(acc => {
-                const meta = acc.id ? loadMeta(acc.id) : null;
-                const isNegative = Number(acc.balance) < 0;
-                return `
-                    <tr class="hover:bg-slate-900/60 cursor-pointer transition border-b border-slate-800/60" onclick="openAccountDetail(${acc.id})">
-                        <td class="py-3 px-4">
-                            <span class="font-mono font-semibold ${acc.code ? 'text-sky-400' : 'text-slate-500 italic'}">${acc.code || '[NO CODE]'}</span>
-                            <span class="text-[10px] text-slate-500 font-mono block">ID: ${acc.id}</span>
-                        </td>
-                        <td class="py-3 px-4">
-                            ${meta ? `<div class="font-medium text-slate-200 text-xs">${meta.holder}</div><div class="text-[10px] text-slate-400">${countryFlags[meta.country] || meta.country} • ${meta.entityType}</div>` : `<span class="text-xs text-slate-500 italic">No business profile</span>`}
-                        </td>
-                        <td class="py-3 px-4"><span class="px-2 py-0.5 rounded text-[11px] font-mono bg-slate-800 text-slate-300 border border-slate-700">${acc.type || 'unknown'}</span></td>
-                        <td class="py-3 px-4 font-mono font-medium text-xs text-white">${acc.currency || '---'}</td>
-                        <td class="py-3 px-4 text-right font-mono font-semibold text-xs ${isNegative ? 'text-rose-400' : 'text-emerald-400'}">${Number(acc.balance || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                    </tr>
-                `;
-            }).join('');
-        }
-
-        async function handleCreateAccount(e) {
-            e.preventDefault();
-            const btn = document.getElementById('submitBtn');
-            const alertBox = document.getElementById('formAlert');
-            alertBox.className = "hidden text-xs p-2.5 rounded border";
-            btn.disabled = true;
-
-            const payload = {
-                code: document.getElementById('accCode').value.trim().toUpperCase(),
-                type: document.getElementById('accType').value.trim().toLowerCase(),
-                currency: document.getElementById('accCurrency').value.trim().toUpperCase(),
-                balance: parseFloat(document.getElementById('accBalance').value) || 0
-            };
-
-            const metaPayload = {
-                holder: document.getElementById('metaHolder').value.trim(),
-                entityType: document.getElementById('metaEntityType').value,
-                country: document.getElementById('metaCountry').value,
-                regNo: document.getElementById('metaRegNo').value.trim(),
-                purpose: document.getElementById('metaPurpose').value.trim(),
-                createdAt: new Date().toISOString()
-            };
-
-            try {
-                const res = await fetch(`${API_BASE}/api/v1/accounts`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-                if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `HTTP ${res.status}`);
-                const created = await res.json();
-                if (created.id) saveMeta(created.id, metaPayload);
-                alertBox.className = "text-xs p-2.5 rounded border bg-emerald-950/70 border-emerald-800 text-emerald-300 block";
-                alertBox.innerText = `Account created (ID: ${created.id}, Code: ${created.code})`;
-                document.getElementById('createAccountForm').reset();
-                document.getElementById('accCurrency').value = 'IRR';
-                await fetchAccounts();
-            } catch (err) {
-                alertBox.className = "text-xs p-2.5 rounded border bg-rose-950/70 border-rose-800 text-rose-300 block";
-                alertBox.innerText = `Error: ${err.message}`;
-            } finally {
-                btn.disabled = false;
-            }
-        }
-
-        function openAccountDetail(id) {
-            const acc = accountsCache.find(a => a.id === id);
-            if (!acc) return;
-            const meta = loadMeta(id);
-            document.getElementById('modalContent').innerHTML = `
-                <div class="bg-slate-950 p-3 rounded-lg border border-slate-800 space-y-2 text-xs">
-                    <div class="flex justify-between"><span class="text-slate-400">ID:</span><span class="font-mono text-sky-400 font-bold">${acc.id}</span></div>
-                    <div class="flex justify-between"><span class="text-slate-400">Code:</span><span class="font-mono text-white font-bold">${acc.code || '[Empty]'}</span></div>
-                    <div class="flex justify-between"><span class="text-slate-400">Type:</span><span class="font-mono">${acc.type || 'N/A'}</span></div>
-                    <div class="flex justify-between"><span class="text-slate-400">Balance:</span><span class="font-mono font-bold text-emerald-400">${Number(acc.balance).toLocaleString()} ${acc.currency}</span></div>
-                </div>
-                <div class="border-t border-slate-800 pt-3 text-xs">
-                    <h4 class="font-bold text-sky-400 mb-2">Enterprise Profile</h4>
-                    ${meta ? `<p><strong>Holder:</strong> ${meta.holder}</p><p><strong>Country:</strong> ${meta.country}</p><p><strong>Reg No:</strong> ${meta.regNo || '---'}</p><p><strong>Purpose:</strong> ${meta.purpose || '---'}</p>` : `<span class="text-slate-500">No profile attached.</span>`}
-                </div>
-            `;
-            document.getElementById('detailModal').classList.remove('hidden');
-        }
-
-        function closeModal() { document.getElementById('detailModal').classList.add('hidden'); }
-
-        window.addEventListener('DOMContentLoaded', () => {
-            checkHealth();
-            fetchAccounts();
-        });
-    </script>
-</body>
-</html>
+                <button onclick="closeModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-xs font-semibold rounded text-white transition" data-i18n="btn_close">
