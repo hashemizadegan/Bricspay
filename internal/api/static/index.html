@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BRICS Pay | Enterprise Ledger Console</title>
+    <title>BRICS Pay | Decentralized Cross-Border Settlement Network</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -13,74 +13,195 @@
                 extend: {
                     colors: {
                         brics: {
-                            dark: '#06090f',
-                            card: '#0d131f',
+                            dark: '#050811',
+                            card: '#0c1222',
                             border: '#1e293b',
-                            accent: '#0284c7'
+                            accent: '#0284c7',
+                            gold: '#f59e0b'
                         }
                     }
                 }
             }
         }
     </script>
+    <style>
+        .gradient-glow {
+            background: radial-gradient(circle at 50% 20%, rgba(2, 132, 199, 0.15), transparent 70%);
+        }
+    </style>
 </head>
-<body class="bg-brics-dark text-slate-100 min-h-screen font-sans antialiased">
+<body class="bg-brics-dark text-slate-100 min-h-screen font-sans antialiased gradient-glow flex flex-col">
 
-    <!-- Header Navigation -->
-    <header class="border-b border-brics-border bg-brics-card/80 backdrop-blur sticky top-0 z-30">
+    <!-- Top Universal Navigation Bar -->
+    <header class="border-b border-brics-border bg-brics-card/90 backdrop-blur-md sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-            <div class="flex items-center space-x-3">
-                <div class="w-9 h-9 rounded-lg bg-gradient-to-tr from-sky-600 to-indigo-600 flex items-center justify-center font-bold text-lg text-white shadow-lg shadow-sky-500/20">
+            
+            <!-- Brand Logo & Identity -->
+            <div class="flex items-center space-x-3 cursor-pointer" onclick="switchTab('landing')">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-600 via-indigo-600 to-amber-500 flex items-center justify-center font-black text-lg text-white shadow-lg shadow-sky-500/25">
                     BP
                 </div>
                 <div>
-                    <span class="font-bold text-lg tracking-wide text-white">BRICS Pay</span>
-                    <span class="text-xs text-slate-400 block -mt-1 font-mono">Core Ledger & Settlement</span>
+                    <div class="flex items-center space-x-2">
+                        <span class="font-extrabold text-lg tracking-wider text-white">BRICS PAY</span>
+                        <span class="px-1.5 py-0.2 text-[9px] font-bold uppercase rounded bg-sky-950 text-sky-400 border border-sky-800">Core Network</span>
+                    </div>
+                    <span class="text-[11px] text-slate-400 block -mt-1 font-mono">Cross-Border Settlement Protocol</span>
                 </div>
             </div>
-            <div class="flex items-center space-x-3 text-sm">
+
+            <!-- Navigation Tabs -->
+            <nav class="hidden md:flex items-center space-x-1 bg-slate-950/60 p-1 rounded-xl border border-brics-border">
+                <button id="tabBtn-landing" onclick="switchTab('landing')" class="px-4 py-1.5 text-xs font-semibold rounded-lg transition bg-sky-600 text-white shadow">
+                    🌐 Overview & Platform
+                </button>
+                <button id="tabBtn-accounts" onclick="switchTab('accounts')" class="px-4 py-1.5 text-xs font-semibold rounded-lg transition text-slate-400 hover:text-white hover:bg-slate-900">
+                    🏛️ Accounts & Settlement
+                </button>
+                <button id="tabBtn-fx" onclick="switchTab('fx')" class="px-4 py-1.5 text-xs font-semibold rounded-lg transition text-slate-400 hover:text-white hover:bg-slate-900">
+                    💱 FX & Multicurrency
+                </button>
+                <button id="tabBtn-docs" onclick="switchTab('docs')" class="px-4 py-1.5 text-xs font-semibold rounded-lg transition text-slate-400 hover:text-white hover:bg-slate-900">
+                    ⚡ API Explorer
+                </button>
+            </nav>
+
+            <!-- Node Status & Quick Action -->
+            <div class="flex items-center space-x-3">
                 <div id="healthBadge" class="flex items-center space-x-2 px-3 py-1 rounded-full text-xs font-medium bg-emerald-950/70 border border-emerald-700/50 text-emerald-300">
                     <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                    <span id="healthText">Checking Node...</span>
+                    <span id="healthText">Node Online</span>
                 </div>
-                <button onclick="fetchAccounts()" class="px-3 py-1.5 rounded-md bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 border border-slate-700 transition">
-                    ↻ Refresh
+                <button onclick="switchTab('accounts')" class="hidden sm:inline-flex px-3.5 py-1.5 bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white text-xs font-bold rounded-lg shadow-md shadow-sky-600/20 transition">
+                    Open Account
                 </button>
             </div>
         </div>
     </header>
 
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+    <!-- TAB 1: LANDING & OVERVIEW PAGE -->
+    <div id="view-landing" class="flex-1">
         
-        <!-- Top Metrics Overview -->
+        <!-- Hero Section -->
+        <section class="py-16 md:py-24 border-b border-brics-border/50 relative overflow-hidden">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-6 relative z-10">
+                <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full text-xs font-semibold bg-sky-950/80 border border-sky-800 text-sky-300 mb-2">
+                    <span>🚀 Next-Gen Sovereign Financial Messaging & Clearing</span>
+                </div>
+                <h1 class="text-4xl sm:text-6xl font-black text-white tracking-tight leading-tight max-w-4xl mx-auto">
+                    Independent Settlement Infrastructure for <span class="bg-gradient-to-r from-sky-400 via-indigo-300 to-amber-400 bg-clip-text text-transparent">Global Trade</span>
+                </h1>
+                <p class="text-base sm:text-lg text-slate-400 max-w-2xl mx-auto font-light leading-relaxed">
+                    Decentralized, multi-currency ledger enabling direct atomic settlements across <strong>IRR</strong>, <strong>RUB</strong>, <strong>CNY</strong>, <strong>AED</strong>, and <strong>INR</strong> without third-party SWIFT dependency.
+                </p>
+                <div class="flex flex-wrap items-center justify-center gap-4 pt-4">
+                    <button onclick="switchTab('accounts')" class="px-6 py-3 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-bold text-sm shadow-xl shadow-sky-600/30 transition transform hover:-translate-y-0.5">
+                        Launch Ledger Console →
+                    </button>
+                    <button onclick="switchTab('docs')" class="px-6 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 font-semibold text-sm transition">
+                        Inspect API Architecture
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Sovereign Currency Corridors -->
+        <section class="py-12 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-10">
+                <h2 class="text-xl font-bold text-white">Supported Settlement Corridors</h2>
+                <p class="text-xs text-slate-400 mt-1">Direct clearing & bilateral liquidity facilities</p>
+            </div>
+            <div class="grid grid-cols-2 sm:grid-cols-5 gap-4">
+                <div class="bg-brics-card border border-brics-border rounded-xl p-4 text-center hover:border-sky-500/50 transition">
+                    <span class="text-2xl">🇮🇷</span>
+                    <h3 class="text-sm font-bold text-white mt-2 font-mono">IRR</h3>
+                    <p class="text-[11px] text-slate-400">Iranian Rial (Shetab)</p>
+                </div>
+                <div class="bg-brics-card border border-brics-border rounded-xl p-4 text-center hover:border-sky-500/50 transition">
+                    <span class="text-2xl">🇷🇺</span>
+                    <h3 class="text-sm font-bold text-white mt-2 font-mono">RUB</h3>
+                    <p class="text-[11px] text-slate-400">Russian Ruble (Mir)</p>
+                </div>
+                <div class="bg-brics-card border border-brics-border rounded-xl p-4 text-center hover:border-sky-500/50 transition">
+                    <span class="text-2xl">🇨🇳</span>
+                    <h3 class="text-sm font-bold text-white mt-2 font-mono">CNY</h3>
+                    <p class="text-[11px] text-slate-400">Chinese Yuan (CIPS)</p>
+                </div>
+                <div class="bg-brics-card border border-brics-border rounded-xl p-4 text-center hover:border-sky-500/50 transition">
+                    <span class="text-2xl">🇦🇪</span>
+                    <h3 class="text-sm font-bold text-white mt-2 font-mono">AED</h3>
+                    <p class="text-[11px] text-slate-400">UAE Dirham (Clearing)</p>
+                </div>
+                <div class="bg-brics-card border border-brics-border rounded-xl p-4 text-center hover:border-sky-500/50 transition">
+                    <span class="text-2xl">🇮🇳</span>
+                    <h3 class="text-sm font-bold text-white mt-2 font-mono">INR</h3>
+                    <p class="text-[11px] text-slate-400">Indian Rupee (Vostro)</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Key Pillars Grid -->
+        <section class="py-12 bg-slate-950/40 border-t border-brics-border/40">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="bg-brics-card border border-brics-border p-6 rounded-2xl space-y-3">
+                        <div class="w-10 h-10 rounded-lg bg-sky-950 text-sky-400 flex items-center justify-center text-xl font-bold">🔒</div>
+                        <h3 class="text-base font-bold text-white">Atomic Double-Entry Ledger</h3>
+                        <p class="text-xs text-slate-400 leading-relaxed">
+                            Strict zero-sum multi-posting verification ensuring balanced books and real-time reconciliation with zero negative balance risks.
+                        </p>
+                    </div>
+                    <div class="bg-brics-card border border-brics-border p-6 rounded-2xl space-y-3">
+                        <div class="w-10 h-10 rounded-lg bg-amber-950 text-amber-400 flex items-center justify-center text-xl font-bold">📜</div>
+                        <h3 class="text-base font-bold text-white">Enterprise KYC & Identity</h3>
+                        <p class="text-xs text-slate-400 leading-relaxed">
+                            Full commercial identity binding with legal registration numbers, tax IDs, and jurisdictional governance across BRICS member states.
+                        </p>
+                    </div>
+                    <div class="bg-brics-card border border-brics-border p-6 rounded-2xl space-y-3">
+                        <div class="w-10 h-10 rounded-lg bg-emerald-950 text-emerald-400 flex items-center justify-center text-xl font-bold">⚡</div>
+                        <h3 class="text-base font-bold text-white">Bilateral Liquidity Pools</h3>
+                        <p class="text-xs text-slate-400 leading-relaxed">
+                            Direct nostro/vostro connectivity allowing seamless commodities clearing (oil, grain, machinery) between partner nations.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- TAB 2: ACCOUNTS & SETTLEMENT DASHBOARD -->
+    <div id="view-accounts" class="hidden flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full space-y-8">
+        
+        <!-- Metrics -->
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div class="bg-brics-card border border-brics-border rounded-xl p-4 shadow-sm">
+            <div class="bg-brics-card border border-brics-border rounded-xl p-4">
                 <p class="text-xs font-medium text-slate-400">Total Accounts</p>
                 <h3 id="statTotalAccounts" class="text-2xl font-bold mt-1 text-white">0</h3>
             </div>
-            <div class="bg-brics-card border border-brics-border rounded-xl p-4 shadow-sm">
+            <div class="bg-brics-card border border-brics-border rounded-xl p-4">
                 <p class="text-xs font-medium text-slate-400">Enriched Entities (KYC)</p>
                 <h3 id="statEnrichedAccounts" class="text-2xl font-bold mt-1 text-sky-400">0</h3>
             </div>
-            <div class="bg-brics-card border border-brics-border rounded-xl p-4 shadow-sm">
+            <div class="bg-brics-card border border-brics-border rounded-xl p-4">
                 <p class="text-xs font-medium text-slate-400">Active Currencies</p>
                 <h3 id="statCurrencies" class="text-2xl font-bold mt-1 text-emerald-400">0</h3>
             </div>
-            <div class="bg-brics-card border border-brics-border rounded-xl p-4 shadow-sm">
-                <p class="text-xs font-medium text-slate-400">Settlement Status</p>
-                <h3 class="text-2xl font-bold mt-1 text-indigo-400">Operational</h3>
+            <div class="bg-brics-card border border-brics-border rounded-xl p-4">
+                <p class="text-xs font-medium text-slate-400">Settlement Engine</p>
+                <h3 class="text-2xl font-bold mt-1 text-indigo-400">Online (v1)</h3>
             </div>
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
             
-            <!-- Left / Col 1 & 2: Accounts Table -->
+            <!-- Accounts Table -->
             <div class="lg:col-span-2 space-y-4">
                 <div class="bg-brics-card border border-brics-border rounded-xl shadow-lg overflow-hidden">
                     <div class="p-4 border-b border-brics-border flex flex-wrap items-center justify-between gap-3 bg-slate-900/40">
                         <div>
-                            <h2 class="text-base font-semibold text-white">Accounts & Settlement Positions</h2>
-                            <p class="text-xs text-slate-400">Click any row to inspect complete KYC & ledger metadata</p>
+                            <h2 class="text-base font-semibold text-white">Ledger Accounts & Positions</h2>
+                            <p class="text-xs text-slate-400">Click any row to view complete enterprise profile & raw JSON</p>
                         </div>
                         <div class="flex items-center space-x-2">
                             <input id="searchInput" oninput="renderTable()" placeholder="Search Code, Name, ID..." type="text" class="px-3 py-1.5 bg-slate-950 border border-slate-700 rounded-md text-xs text-white focus:outline-none focus:border-sky-500 w-44">
@@ -118,20 +239,17 @@
                 </div>
             </div>
 
-            <!-- Right / Col 3: Enriched Business Account Creation Form (Option B) -->
+            <!-- Creation Form -->
             <div class="space-y-4">
                 <div class="bg-brics-card border border-brics-border rounded-xl shadow-lg p-5">
                     <div class="border-b border-brics-border pb-3 mb-4">
                         <div class="flex items-center space-x-2">
-                            <span class="px-2 py-0.5 text-[10px] font-bold uppercase rounded bg-sky-950 text-sky-400 border border-sky-800">New Participant</span>
-                            <span class="text-xs text-slate-400">KYC & Ledger Setup</span>
+                            <span class="px-2 py-0.5 text-[10px] font-bold uppercase rounded bg-sky-950 text-sky-400 border border-sky-800">Enterprise KYC</span>
                         </div>
-                        <h3 class="text-base font-bold text-white mt-1">Open Business Account</h3>
+                        <h3 class="text-base font-bold text-white mt-1">Open Participant Account</h3>
                     </div>
 
                     <form id="createAccountForm" onsubmit="handleCreateAccount(event)" class="space-y-3">
-                        
-                        <!-- Core API fields -->
                         <div class="grid grid-cols-2 gap-3">
                             <div>
                                 <label class="block text-xs font-medium text-slate-300 mb-1">Account Code *</label>
@@ -160,17 +278,14 @@
                             </div>
                         </div>
 
-                        <!-- Business Metadata (Option B) -->
                         <div class="pt-2 border-t border-slate-800">
-                            <span class="text-[11px] font-semibold text-sky-400 block mb-2 uppercase tracking-wide">Enterprise Profile (Metadata linked by ID)</span>
+                            <span class="text-[11px] font-semibold text-sky-400 block mb-2 uppercase tracking-wide">Enterprise Profile (Linked via ID)</span>
 
-                            <!-- 1. Account Holder Name -->
                             <div class="mb-3">
                                 <label class="block text-xs font-medium text-slate-300 mb-1">Account Holder Name *</label>
                                 <input type="text" id="metaHolder" required placeholder="e.g. Amad Sarmaye Hooshmand Eurasia" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-md text-xs text-white focus:outline-none focus:border-sky-500">
                             </div>
 
-                            <!-- 2. Entity Type & 3. Country -->
                             <div class="grid grid-cols-2 gap-3 mb-3">
                                 <div>
                                     <label class="block text-xs font-medium text-slate-300 mb-1">Entity Type</label>
@@ -193,13 +308,11 @@
                                 </div>
                             </div>
 
-                            <!-- 4. National ID / Registration No -->
                             <div class="mb-3">
-                                <label class="block text-xs font-medium text-slate-300 mb-1">National ID / Commercial Reg No.</label>
+                                <label class="block text-xs font-medium text-slate-300 mb-1">National ID / Registration No.</label>
                                 <input type="text" id="metaRegNo" placeholder="Tax ID / INN / National Code" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-md text-xs text-white focus:outline-none focus:border-sky-500 font-mono">
                             </div>
 
-                            <!-- 5. Purpose & Tags -->
                             <div>
                                 <label class="block text-xs font-medium text-slate-300 mb-1">Purpose / Trade Category</label>
                                 <input type="text" id="metaPurpose" placeholder="e.g. Tehran-Moscow Clearing / Petrochemical" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-md text-xs text-white focus:outline-none focus:border-sky-500">
@@ -216,21 +329,70 @@
             </div>
 
         </div>
-    </main>
+    </div>
+
+    <!-- TAB 3: FX & MULTICURRENCY PREVIEW -->
+    <div id="view-fx" class="hidden flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full space-y-6">
+        <div class="bg-brics-card border border-brics-border rounded-2xl p-8 text-center space-y-4 max-w-2xl mx-auto">
+            <span class="text-4xl">💱</span>
+            <h2 class="text-2xl font-bold text-white">Cross-Border FX & Atomic Swaps</h2>
+            <p class="text-sm text-slate-400 leading-relaxed">
+                The atomic cross-currency settlement engine is prepared for the next release. This module will allow instant bilateral swaps between <strong>IRR/RUB</strong>, <strong>IRR/CNY</strong>, and <strong>RUB/AED</strong> backed by central bank clearing corridors.
+            </p>
+            <div class="pt-4">
+                <button onclick="switchTab('accounts')" class="px-5 py-2.5 bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-xs font-bold transition">
+                    View Current Ledger Positions
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 4: API & DEVELOPER DOCS -->
+    <div id="view-docs" class="hidden flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full space-y-6">
+        <div class="bg-brics-card border border-brics-border rounded-2xl p-6 space-y-4">
+            <h2 class="text-lg font-bold text-white">BRICS Pay Core API Endpoints</h2>
+            <div class="space-y-3 font-mono text-xs">
+                <div class="p-3 bg-slate-950 rounded-lg border border-slate-800 flex justify-between items-center">
+                    <div><span class="text-emerald-400 font-bold">GET</span> <span class="text-slate-200">/health</span></div>
+                    <span class="text-slate-500">Service health & DB heartbeat</span>
+                </div>
+                <div class="p-3 bg-slate-950 rounded-lg border border-slate-800 flex justify-between items-center">
+                    <div><span class="text-emerald-400 font-bold">GET</span> <span class="text-slate-200">/api/v1/accounts</span></div>
+                    <span class="text-slate-500">List all ledger accounts</span>
+                </div>
+                <div class="p-3 bg-slate-950 rounded-lg border border-slate-800 flex justify-between items-center">
+                    <div><span class="text-sky-400 font-bold">POST</span> <span class="text-slate-200">/api/v1/accounts</span></div>
+                    <span class="text-slate-500">Create a new ledger account</span>
+                </div>
+                <div class="p-3 bg-slate-950 rounded-lg border border-slate-800 flex justify-between items-center">
+                    <div><span class="text-sky-400 font-bold">POST</span> <span class="text-slate-200">/api/v1/transactions</span></div>
+                    <span class="text-slate-500">Post balanced atomic transactions</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Universal Footer -->
+    <footer class="border-t border-brics-border bg-brics-card py-6 mt-auto">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-wrap justify-between items-center text-xs text-slate-500">
+            <p>© 2026 BRICS Pay Consortium. All rights reserved.</p>
+            <div class="flex space-x-4">
+                <span>Autonomous Decentralized Ledger</span>
+                <span>•</span>
+                <span>Node: Tehran/Moscow Relay</span>
+            </div>
+        </div>
+    </footer>
 
     <!-- Account Details Modal -->
     <div id="detailModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div class="bg-brics-card border border-brics-border rounded-xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
             <div class="flex items-center justify-between border-b border-brics-border pb-3">
-                <h3 class="text-base font-bold text-white flex items-center space-x-2">
-                    <span>Account Profile & Ledger State</span>
-                </h3>
+                <h3 class="text-base font-bold text-white">Account Profile & Ledger State</h3>
                 <button onclick="closeModal()" class="text-slate-400 hover:text-white text-lg font-bold">✕</button>
             </div>
             
-            <div id="modalContent" class="space-y-4 max-h-[70vh] overflow-y-auto">
-                <!-- Dynamically populated -->
-            </div>
+            <div id="modalContent" class="space-y-4 max-h-[70vh] overflow-y-auto"></div>
 
             <div class="pt-3 border-t border-brics-border flex justify-end">
                 <button onclick="closeModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-xs font-semibold rounded text-white transition">
@@ -240,27 +402,41 @@
         </div>
     </div>
 
-    <!-- Client-Side Engine Script -->
+    <!-- Script Engine -->
     <script>
         const API_BASE = window.location.origin;
         let accountsCache = [];
 
-        function getMetaKey(id) {
-            return `brics_meta_${id}`;
+        // Tab Navigation
+        function switchTab(tabId) {
+            const tabs = ['landing', 'accounts', 'fx', 'docs'];
+            tabs.forEach(t => {
+                const view = document.getElementById(`view-${t}`);
+                const btn = document.getElementById(`tabBtn-${t}`);
+                if (t === tabId) {
+                    view.classList.remove('hidden');
+                    if (btn) {
+                        btn.className = "px-4 py-1.5 text-xs font-semibold rounded-lg transition bg-sky-600 text-white shadow";
+                    }
+                } else {
+                    view.classList.add('hidden');
+                    if (btn) {
+                        btn.className = "px-4 py-1.5 text-xs font-semibold rounded-lg transition text-slate-400 hover:text-white hover:bg-slate-900";
+                    }
+                }
+            });
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
+        // Metadata storage
+        function getMetaKey(id) { return `brics_meta_${id}`; }
         function loadMeta(id) {
             try {
                 const raw = localStorage.getItem(getMetaKey(id));
                 return raw ? JSON.parse(raw) : null;
-            } catch(e) {
-                return null;
-            }
+            } catch(e) { return null; }
         }
-
-        function saveMeta(id, metaObj) {
-            localStorage.setItem(getMetaKey(id), JSON.stringify(metaObj));
-        }
+        function saveMeta(id, metaObj) { localStorage.setItem(getMetaKey(id), JSON.stringify(metaObj)); }
 
         async function checkHealth() {
             const badge = document.getElementById('healthBadge');
@@ -271,9 +447,7 @@
                     const data = await res.json();
                     text.innerText = `Healthy (${data.status || 'OK'})`;
                     badge.className = "flex items-center space-x-2 px-3 py-1 rounded-full text-xs font-medium bg-emerald-950/70 border border-emerald-700/50 text-emerald-300";
-                } else {
-                    throw new Error();
-                }
+                } else throw new Error();
             } catch (err) {
                 text.innerText = 'Node Unreachable';
                 badge.className = "flex items-center space-x-2 px-3 py-1 rounded-full text-xs font-medium bg-rose-950/70 border border-rose-700/50 text-rose-300";
@@ -288,13 +462,8 @@
                 renderTable();
                 updateStats();
             } catch (err) {
-                console.error(err);
                 document.getElementById('accountsTableBody').innerHTML = `
-                    <tr>
-                        <td colspan="5" class="py-6 text-center text-rose-400 text-xs">
-                            Failed to load accounts. (${err.message})
-                        </td>
-                    </tr>
+                    <tr><td colspan="5" class="py-6 text-center text-rose-400 text-xs">Failed to load accounts. (${err.message})</td></tr>
                 `;
             }
         }
@@ -303,11 +472,8 @@
             document.getElementById('statTotalAccounts').innerText = accountsCache.length;
             const currencies = new Set(accountsCache.map(a => a.currency).filter(Boolean));
             document.getElementById('statCurrencies').innerText = currencies.size;
-
             let enrichedCount = 0;
-            accountsCache.forEach(acc => {
-                if (acc.id && loadMeta(acc.id)) enrichedCount++;
-            });
+            accountsCache.forEach(acc => { if (acc.id && loadMeta(acc.id)) enrichedCount++; });
             document.getElementById('statEnrichedAccounts').innerText = enrichedCount;
         }
 
@@ -319,74 +485,34 @@
             const filtered = accountsCache.filter(acc => {
                 const meta = acc.id ? loadMeta(acc.id) : null;
                 const holder = meta?.holder?.toLowerCase() || '';
-                const purpose = meta?.purpose?.toLowerCase() || '';
                 const code = (acc.code || '').toLowerCase();
                 const id = String(acc.id || '');
-
-                const matchesSearch = !search || code.includes(search) || id.includes(search) || holder.includes(search) || purpose.includes(search);
-                const matchesCurr = currFilter === 'ALL' || acc.currency === currFilter;
-                return matchesSearch && matchesCurr;
+                return (!search || code.includes(search) || id.includes(search) || holder.includes(search)) &&
+                       (currFilter === 'ALL' || acc.currency === currFilter);
             });
 
             if (filtered.length === 0) {
-                tbody.innerHTML = `
-                    <tr>
-                        <td colspan="5" class="py-8 text-center text-slate-500 text-xs">
-                            No accounts match the criteria.
-                        </td>
-                    </tr>
-                `;
+                tbody.innerHTML = `<tr><td colspan="5" class="py-8 text-center text-slate-500 text-xs">No accounts match criteria.</td></tr>`;
                 return;
             }
 
-            const countryFlags = {
-                'IR': '🇮🇷 Iran',
-                'RU': '🇷🇺 Russia',
-                'CN': '🇨🇳 China',
-                'AE': '🇦🇪 UAE',
-                'IN': '🇮🇳 India',
-                'OTHER': '🌐 International'
-            };
+            const countryFlags = { 'IR': '🇮🇷 Iran', 'RU': '🇷🇺 Russia', 'CN': '🇨🇳 China', 'AE': '🇦🇪 UAE', 'IN': '🇮🇳 India', 'OTHER': '🌐 Other' };
 
             tbody.innerHTML = filtered.map(acc => {
                 const meta = acc.id ? loadMeta(acc.id) : null;
                 const isNegative = Number(acc.balance) < 0;
-                const isMalformed = !acc.code || !acc.type;
-
                 return `
                     <tr class="hover:bg-slate-900/60 cursor-pointer transition border-b border-slate-800/60" onclick="openAccountDetail(${acc.id})">
                         <td class="py-3 px-4">
-                            <div class="flex items-center space-x-2">
-                                <span class="font-mono font-semibold ${acc.code ? 'text-sky-400' : 'text-slate-500 italic'}">
-                                    ${acc.code || '[NO CODE / SYSTEM RECORD]'}
-                                </span>
-                                ${isMalformed ? '<span class="text-[10px] bg-amber-950 text-amber-300 border border-amber-800 px-1.5 py-0.5 rounded">Draft/Raw</span>' : ''}
-                            </div>
+                            <span class="font-mono font-semibold ${acc.code ? 'text-sky-400' : 'text-slate-500 italic'}">${acc.code || '[NO CODE]'}</span>
                             <span class="text-[10px] text-slate-500 font-mono block">ID: ${acc.id}</span>
                         </td>
                         <td class="py-3 px-4">
-                            ${meta ? `
-                                <div class="font-medium text-slate-200 text-xs">${meta.holder}</div>
-                                <div class="text-[10px] text-slate-400 flex items-center space-x-1 mt-0.5">
-                                    <span>${countryFlags[meta.country] || meta.country}</span>
-                                    <span>•</span>
-                                    <span class="capitalize">${meta.entityType}</span>
-                                </div>
-                            ` : `
-                                <span class="text-xs text-slate-500 italic">No business profile</span>
-                            `}
+                            ${meta ? `<div class="font-medium text-slate-200 text-xs">${meta.holder}</div><div class="text-[10px] text-slate-400">${countryFlags[meta.country] || meta.country} • ${meta.entityType}</div>` : `<span class="text-xs text-slate-500 italic">No business profile</span>`}
                         </td>
-                        <td class="py-3 px-4">
-                            <span class="px-2 py-0.5 rounded text-[11px] font-mono bg-slate-800 text-slate-300 border border-slate-700">
-                                ${acc.type || 'unknown'}
-                            </span>
-                        </td>
-                        <td class="py-3 px-4 font-mono font-medium text-xs text-white">
-                            ${acc.currency || '---'}
-                        </td>
-                        <td class="py-3 px-4 text-right font-mono font-semibold text-xs ${isNegative ? 'text-rose-400' : 'text-emerald-400'}">
-                            ${Number(acc.balance || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
-                        </td>
+                        <td class="py-3 px-4"><span class="px-2 py-0.5 rounded text-[11px] font-mono bg-slate-800 text-slate-300 border border-slate-700">${acc.type || 'unknown'}</span></td>
+                        <td class="py-3 px-4 font-mono font-medium text-xs text-white">${acc.currency || '---'}</td>
+                        <td class="py-3 px-4 text-right font-mono font-semibold text-xs ${isNegative ? 'text-rose-400' : 'text-emerald-400'}">${Number(acc.balance || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
                     </tr>
                 `;
             }).join('');
@@ -396,13 +522,9 @@
             e.preventDefault();
             const btn = document.getElementById('submitBtn');
             const alertBox = document.getElementById('formAlert');
-
             alertBox.className = "hidden text-xs p-2.5 rounded border";
-            alertBox.innerText = "";
             btn.disabled = true;
-            btn.innerText = "Provisioning Account...";
 
-            // 1. Core API Payload
             const payload = {
                 code: document.getElementById('accCode').value.trim().toUpperCase(),
                 type: document.getElementById('accType').value.trim().toLowerCase(),
@@ -410,7 +532,6 @@
                 balance: parseFloat(document.getElementById('accBalance').value) || 0
             };
 
-            // 2. Business Metadata (Option B)
             const metaPayload = {
                 holder: document.getElementById('metaHolder').value.trim(),
                 entityType: document.getElementById('metaEntityType').value,
@@ -426,31 +547,19 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
-
-                if (!res.ok) {
-                    const errData = await res.json().catch(() => ({}));
-                    throw new Error(errData.error || `HTTP ${res.status}`);
-                }
-
-                const createdAcc = await res.json();
-                
-                // Key metadata by ID
-                if (createdAcc.id) {
-                    saveMeta(createdAcc.id, metaPayload);
-                }
-
+                if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `HTTP ${res.status}`);
+                const created = await res.json();
+                if (created.id) saveMeta(created.id, metaPayload);
                 alertBox.className = "text-xs p-2.5 rounded border bg-emerald-950/70 border-emerald-800 text-emerald-300 block";
-                alertBox.innerText = `Account created successfully (ID: ${createdAcc.id}, Code: ${createdAcc.code})`;
-
+                alertBox.innerText = `Account created (ID: ${created.id}, Code: ${created.code})`;
                 document.getElementById('createAccountForm').reset();
-                document.getElementById('accCurrency').value = 'IRR'; // Default to IRR
+                document.getElementById('accCurrency').value = 'IRR';
                 await fetchAccounts();
             } catch (err) {
                 alertBox.className = "text-xs p-2.5 rounded border bg-rose-950/70 border-rose-800 text-rose-300 block";
-                alertBox.innerText = `Failed to create account: ${err.message}`;
+                alertBox.innerText = `Error: ${err.message}`;
             } finally {
                 btn.disabled = false;
-                btn.innerText = "Register & Open Account";
             }
         }
 
@@ -458,67 +567,27 @@
             const acc = accountsCache.find(a => a.id === id);
             if (!acc) return;
             const meta = loadMeta(id);
-
-            const content = document.getElementById('modalContent');
-            content.innerHTML = `
-                <div class="bg-slate-950 p-3 rounded-lg border border-slate-800 space-y-2">
-                    <div class="flex justify-between items-center text-xs">
-                        <span class="text-slate-400">Database Record ID:</span>
-                        <span class="font-mono text-sky-400 font-bold">${acc.id}</span>
-                    </div>
-                    <div class="flex justify-between items-center text-xs">
-                        <span class="text-slate-400">Account Code:</span>
-                        <span class="font-mono text-white font-bold">${acc.code || '[Empty Code]'}</span>
-                    </div>
-                    <div class="flex justify-between items-center text-xs">
-                        <span class="text-slate-400">Account Type:</span>
-                        <span class="font-mono text-slate-300">${acc.type || 'N/A'}</span>
-                    </div>
-                    <div class="flex justify-between items-center text-xs">
-                        <span class="text-slate-400">Currency / Balance:</span>
-                        <span class="font-mono font-bold ${Number(acc.balance) < 0 ? 'text-rose-400' : 'text-emerald-400'}">
-                            ${Number(acc.balance).toLocaleString()} ${acc.currency}
-                        </span>
-                    </div>
+            document.getElementById('modalContent').innerHTML = `
+                <div class="bg-slate-950 p-3 rounded-lg border border-slate-800 space-y-2 text-xs">
+                    <div class="flex justify-between"><span class="text-slate-400">ID:</span><span class="font-mono text-sky-400 font-bold">${acc.id}</span></div>
+                    <div class="flex justify-between"><span class="text-slate-400">Code:</span><span class="font-mono text-white font-bold">${acc.code || '[Empty]'}</span></div>
+                    <div class="flex justify-between"><span class="text-slate-400">Type:</span><span class="font-mono">${acc.type || 'N/A'}</span></div>
+                    <div class="flex justify-between"><span class="text-slate-400">Balance:</span><span class="font-mono font-bold text-emerald-400">${Number(acc.balance).toLocaleString()} ${acc.currency}</span></div>
                 </div>
-
-                <div class="border-t border-slate-800 pt-3">
-                    <h4 class="text-xs uppercase font-bold text-sky-400 mb-2">Enterprise Business Metadata</h4>
-                    ${meta ? `
-                        <div class="space-y-1.5 text-xs text-slate-300">
-                            <p><strong class="text-slate-400">Holder:</strong> ${meta.holder}</p>
-                            <p><strong class="text-slate-400">Jurisdiction:</strong> ${meta.country}</p>
-                            <p><strong class="text-slate-400">Entity:</strong> ${meta.entityType}</p>
-                            <p><strong class="text-slate-400">Tax / Reg No:</strong> ${meta.regNo || '---'}</p>
-                            <p><strong class="text-slate-400">Trade Purpose:</strong> ${meta.purpose || '---'}</p>
-                            <p class="text-[10px] text-slate-500 pt-1">Storage Key: <code>brics_meta_${acc.id}</code></p>
-                        </div>
-                    ` : `
-                        <div class="p-3 bg-slate-900 border border-slate-800 rounded text-xs text-slate-400">
-                            No business profile attached to ID <strong>${acc.id}</strong>.
-                            <div class="mt-2">
-                                <button onclick="attachPromptMeta(${acc.id})" class="px-2.5 py-1 bg-sky-700 hover:bg-sky-600 text-white rounded text-[11px]">
-                                    + Attach Business Identity Now
-                                </button>
-                            </div>
-                        </div>
-                    `}
-                </div>
-
-                <div class="border-t border-slate-800 pt-3">
-                    <h4 class="text-xs uppercase font-bold text-slate-400 mb-1">Raw Ledger Response</h4>
-                    <pre class="bg-black/60 p-2.5 rounded text-[11px] font-mono text-emerald-300 overflow-x-auto">${JSON.stringify(acc, null, 2)}</pre>
+                <div class="border-t border-slate-800 pt-3 text-xs">
+                    <h4 class="font-bold text-sky-400 mb-2">Enterprise Profile</h4>
+                    ${meta ? `<p><strong>Holder:</strong> ${meta.holder}</p><p><strong>Country:</strong> ${meta.country}</p><p><strong>Reg No:</strong> ${meta.regNo || '---'}</p><p><strong>Purpose:</strong> ${meta.purpose || '---'}</p>` : `<span class="text-slate-500">No profile attached.</span>`}
                 </div>
             `;
-
             document.getElementById('detailModal').classList.remove('hidden');
         }
 
-        function attachPromptMeta(id) {
-            const holder = prompt("Enter Business / Account Holder Name:");
-            if (!holder) return;
-            const country = prompt("Enter Country Code (IR, RU, CN, AE, etc.):", "IR") || "IR";
-            const purpose = prompt("Enter Trade / Business Purpose:", "Tehran-Moscow Clearing") || "";
+        function closeModal() { document.getElementById('detailModal').classList.add('hidden'); }
 
-            saveMeta(id, {
-                holde
+        window.addEventListener('DOMContentLoaded', () => {
+            checkHealth();
+            fetchAccounts();
+        });
+    </script>
+</body>
+</html>
