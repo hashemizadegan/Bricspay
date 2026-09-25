@@ -12,17 +12,11 @@
             theme: {
                 extend: {
                     colors: {
-                        brand: {
-                            50: '#f0f9ff',
-                            500: '#0ea5e9',
-                            600: '#0284c7',
-                            900: '#0c4a6e',
-                        },
                         brics: {
-                            dark: '#070b13',
-                            card: '#0f172a',
+                            dark: '#06090f',
+                            card: '#0d131f',
                             border: '#1e293b',
-                            accent: '#38bdf8'
+                            accent: '#0284c7'
                         }
                     }
                 }
@@ -33,7 +27,7 @@
 <body class="bg-brics-dark text-slate-100 min-h-screen font-sans antialiased">
 
     <!-- Header Navigation -->
-    <header class="border-b border-brics-border bg-brics-card/70 backdrop-blur sticky top-0 z-30">
+    <header class="border-b border-brics-border bg-brics-card/80 backdrop-blur sticky top-0 z-30">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
             <div class="flex items-center space-x-3">
                 <div class="w-9 h-9 rounded-lg bg-gradient-to-tr from-sky-600 to-indigo-600 flex items-center justify-center font-bold text-lg text-white shadow-lg shadow-sky-500/20">
@@ -65,7 +59,7 @@
                 <h3 id="statTotalAccounts" class="text-2xl font-bold mt-1 text-white">0</h3>
             </div>
             <div class="bg-brics-card border border-brics-border rounded-xl p-4 shadow-sm">
-                <p class="text-xs font-medium text-slate-400">Identified Entities (KYC/B2B)</p>
+                <p class="text-xs font-medium text-slate-400">Enriched Entities (KYC)</p>
                 <h3 id="statEnrichedAccounts" class="text-2xl font-bold mt-1 text-sky-400">0</h3>
             </div>
             <div class="bg-brics-card border border-brics-border rounded-xl p-4 shadow-sm">
@@ -73,10 +67,8 @@
                 <h3 id="statCurrencies" class="text-2xl font-bold mt-1 text-emerald-400">0</h3>
             </div>
             <div class="bg-brics-card border border-brics-border rounded-xl p-4 shadow-sm">
-                <p class="text-xs font-medium text-slate-400">Audit Status</p>
-                <h3 class="text-2xl font-bold mt-1 text-indigo-400 flex items-center space-x-1">
-                    <span>Verified</span>
-                </h3>
+                <p class="text-xs font-medium text-slate-400">Settlement Status</p>
+                <h3 class="text-2xl font-bold mt-1 text-indigo-400">Operational</h3>
             </div>
         </div>
 
@@ -114,6 +106,27 @@
                                 </tr>
                             </thead>
                             <tbody id="accountsTableBody" class="divide-y divide-slate-800">
+All Currencies</option>
+                                <option value="RUB">RUB</option>
+                                <option value="CNY">CNY</option>
+                                <option value="AED">AED</option>
+                                <option value="USD">USD</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm text-slate-300">
+                            <thead class="bg-slate-950/80 text-xs uppercase tracking-wider text-slate-400 border-b border-brics-border">
+                                <tr>
+                                    <th class="py-3 px-4">Account Code / ID</th>
+                                    <th class="py-3 px-4">Holder & Jurisdiction</th>
+                                    <th class="py-3 px-4">Type</th>
+                                    <th class="py-3 px-4">Currency</th>
+                                    <th class="py-3 px-4 text-right">Balance</th>
+                                </tr>
+                            </thead>
+                            <tbody id="accountsTableBody" class="divide-y divide-slate-800">
                                 <tr>
                                     <td colspan="5" class="py-8 text-center text-slate-500 text-xs">
                                         Loading ledger accounts...
@@ -130,23 +143,7 @@
                 <div class="bg-brics-card border border-brics-border rounded-xl shadow-lg p-5">
                     <div class="border-b border-brics-border pb-3 mb-4">
                         <div class="flex items-center space-x-2">
-                            <span class="px-2 py-0.5 text-[10px] font-bold uppercase rounded bg-sky-950 text-sky-400 border border-sky-800">B2B Onboarding</span>
-                            <span class="text-xs text-slate-400">Option B Enriched</span>
-                        </div>
-                        <h2 class="text-lg font-semibold text-white mt-1">Open Trade Account</h2>
-                        <p class="text-xs text-slate-400">Links ledger state directly with verified enterprise identity.</p>
-                    </div>
-
-                    <form id="createAccountForm" onsubmit="handleCreateAccount(event)" class="space-y-3.5">
-                        
-                        <!-- Core Ledger Fields -->
-                        <div class="grid grid-cols-2 gap-3">
-                            <div>
-                                <label class="block text-xs font-medium text-slate-300 mb-1">Account Code *</label>
-                                <input type="text" id="accCode" required placeholder="e.g. AMAD-RUB-01" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-md text-xs text-white focus:outline-none focus:border-sky-500 uppercase font-mono">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-medium text-slate-300 mb-1">Account Type *</label>
+                            <span class="px-2 py-0.5 text-[10px] font-bold uppercase rounded bg-sky-950 text-sky-400 border border-sky-800 mb-1">Account Type *</label>
                                 <select id="accType" required class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-md text-xs text-white focus:outline-none focus:border-sky-500">
                                     <option value="customer">customer</option>
                                     <option value="checking">checking</option>
@@ -160,7 +157,7 @@
                         <div class="grid grid-cols-2 gap-3">
                             <div>
                                 <label class="block text-xs font-medium text-slate-300 mb-1">Currency *</label>
-                                <input type="text" id="accCurrency" required maxlength="4" placeholder="RUB / CNY" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-md text-xs text-white focus:outline-none focus:border-sky-500 uppercase font-mono">
+                                <input type="text" id="accCurrency" required maxlength="5" placeholder="RUB / CNY" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-md text-xs text-white focus:outline-none focus:border-sky-500 uppercase font-mono">
                             </div>
                             <div>
                                 <label class="block text-xs font-medium text-slate-300 mb-1">Initial Balance</label>
@@ -168,7 +165,7 @@
                             </div>
                         </div>
 
-                        <!-- Business Metadata (Option B - Enriched fields) -->
+                        <!-- Business Metadata (Option B) -->
                         <div class="pt-2 border-t border-slate-800">
                             <span class="text-[11px] font-semibold text-sky-400 block mb-2 uppercase tracking-wide">Enterprise Profile (Metadata linked by ID)</span>
 
@@ -214,28 +211,6 @@
                             </div>
                         </div>
 
-                        <div id="formAlert" class="hidden text-xs p🇺 Russia (RU)</option>
-                                        <option value="CN">🇨🇳 China (CN)</option>
-                                        <option value="AE">🇦🇪 UAE (AE)</option>
-                                        <option value="IN">🇮🇳 India (IN)</option>
-                                        <option value="OTHER">🌐 Other / Int'l</option>
-                                    </select>
-                                </div>
-                            </div>
-
-                            <!-- 4. National ID / Registration No -->
-                            <div class="mb-3">
-                                <label class="block text-xs font-medium text-slate-300 mb-1">National ID / Commercial Reg No.</label>
-                                <input type="text" id="metaRegNo" placeholder="Tax ID / INN / National Code" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-md text-xs text-white focus:outline-none focus:border-sky-500 font-mono">
-                            </div>
-
-                            <!-- 5. Purpose & Tags -->
-                            <div>
-                                <label class="block text-xs font-medium text-slate-300 mb-1">Purpose / Trade Category</label>
-                                <input type="text" id="metaPurpose" placeholder="e.g. Agricultural Inputs / BYD Import Settlement" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-md text-xs text-white focus:outline-none focus:border-sky-500">
-                            </div>
-                        </div>
-
                         <div id="formAlert" class="hidden text-xs p-2.5 rounded border"></div>
 
                         <button id="submitBtn" type="submit" class="w-full py-2.5 px-4 bg-sky-600 hover:bg-sky-500 text-white font-semibold text-xs rounded-md shadow-md shadow-sky-600/30 transition flex items-center justify-center space-x-2">
@@ -249,7 +224,39 @@
     </main>
 
     <!-- Account Details Modal -->
-    <div id="detailModal(id));
+    <div id="detailModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-brics-card border border-brics-border rounded-xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
+            <div class="flex items-center justify-between border-b border-brics-border pb-3">
+                <h3 class="text-base font-bold text-white flex items-center space-x-2">
+                    <span>Account Profile & Ledger State</span>
+                </h3>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-white text-lg font-bold">✕</button>
+            </div>
+            
+            <div id="modalContent" class="space-y-4 max-h-[70vh] overflow-y-auto">
+                <!-- Dynamically populated -->
+            </div>
+
+            <div class="pt-3 border-t border-brics-border flex justify-end">
+                <button onclick="closeModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-xs font-semibold rounded text-white transition">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Client-Side Engine Script -->
+    <script>
+        const API_BASE = window.location.origin;
+        let accountsCache = [];
+
+        function getMetaKey(id) {
+            return `brics_meta_${id}`;
+        }
+
+        function loadMeta(id) {
+            try {
+                const raw = localStorage.getItem(getMetaKey(id));
                 return raw ? JSON.parse(raw) : null;
             } catch(e) {
                 return null;
@@ -311,6 +318,28 @@
 
         function renderTable() {
             const tbody = document.getElementById('accountsTableBody');
+            const search = document.getElementById('searchInput').value.toLowerCase().trim();-center text-rose-400 text-xs">
+                            Failed to load accounts. (${err.message})
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+
+        function updateStats() {
+            document.getElementById('statTotalAccounts').innerText = accountsCache.length;
+            const currencies = new Set(accountsCache.map(a => a.currency).filter(Boolean));
+            document.getElementById('statCurrencies').innerText = currencies.size;
+
+            let enrichedCount = 0;
+            accountsCache.forEach(acc => {
+                if (acc.id && loadMeta(acc.id)) enrichedCount++;
+            });
+            document.getElementById('statEnrichedAccounts').innerText = enrichedCount;
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('accountsTableBody');
             const search = document.getElementById('searchInput').value.toLowerCase().trim();
             const currFilter = document.getElementById('currencyFilter').value;
 
@@ -337,25 +366,11 @@
                 return;
             }
 
-            tbody.innerHTML = filtered.map(acc => {
-                const meta = acc.id ? loadMeta(acc.id) : null;
-                const isMalformed = !acc.code || !acc.type;
-                const isNegative = Number(acc.balance) < 0;
-
-                const countryFlags = {
-                    'IR': '🇮🇷 IR',
-                    'RU': '🇷🇺 RU',
-                    'CN': '🇨🇳 CN',
-                    'AE': '🇦🇪 AE',
-                    'IN': '🇮🇳 IN',
-                    'OTHER': '🌐 Global'
-                };
-
-                return `
-                    <tr onclick="openAccountDetail(${acc.id})" class="hover:bg-slate-800/50 cursor-pointer transition border-b border-slate-800/60">
-                        <td class="py-3 px-4">
-                            <div class="flex items-center space-x-2">
-                                <span class="font-mono text-xs font-semibold ${isMalformed ? 'text-amber-400' : 'text-sky-300'}">
+            const countryFlags = {
+                'IR': '🇮🇷 Iran',
+                'RU': '🇷🇺 Russia',
+                'CN': '🇨🇳 China',
+                '-sky-300'}">
                                     ${acc.code || '[NO CODE / SYSTEM RECORD]'}
                                 </span>
                                 ${isMalformed ? '<span class="text-[10px] bg-amber-950 text-amber-300 border border-amber-800 px-1.5 py-0.2 rounded">Draft/Raw</span>' : ''}
@@ -371,7 +386,7 @@
                                     <span class="capitalize">${meta.entityType}</span>
                                 </div>
                             ` : `
-                                <span class="text-xs text-slate-500 italic">No business metadata</span>
+                                <span class="text-xs text-slate-500 italic">No business profile</span>
                             `}
                         </td>
                         <td class="py-3 px-4">
@@ -480,11 +495,66 @@
                 </div>
 
                 <div class="border-t border-slate-800 pt-3">
-                    <h4 class="text-xs uppercase font-bold text-sky-400 mb-2">Option B: Enterprise Business Metadata</h4>
+                    <h4 class="text-xs uppercase font-bold text-sky-400 mb-2">Enterprise Business Metadata</h4>
                     ${meta ? `
                         <div class="space-y-1.5 text-xs text-slate-300">
                             <p><strong class="text-slate-400">Holder:</strong> ${meta.holder}</p>
                             <p><strong class="text-slate-400">Jurisdiction:</strong> ${meta.country}</p>
                             <p><strong class="text-slate-400">Entity:</strong> ${meta.entityType}</p>
                             <p><strong class="text-slate-400">Tax / Reg No:</strong> ${meta.regNo || '---'}</p>
-                            <p><stron
+                            <p><strong class="text-slate-400">Trade Purpose:</strong> ${meta.purpose || '---'}</p>
+                            <p class="text-[10px] text-slate-500 pt-1">Storage Key: <code>brics_meta_${acc.id}</code></p>
+                        </div>
+                    ` : `
+                        <div class="p-3 bg-slate-900 border border-slate-800 rounded text-xs text-slate-400">
+                            No business profile attached to ID <strong>${acc.id}</strong>.
+                            <div class="mt-2">
+                                <button onclick="attachPromptMeta(${acc.id})" class="px-2.5 py-1 bg-sky-700 hover:bg-sky-600 text-white rounded text-[11px]">
+                                    + Attach Business Identity Now
+                                </button>
+                            </div>
+                        </div>
+                    `}
+                </div>
+
+                <div class="border-t border-slate-800 pt-3">
+                    <h4 class="text-xs uppercase font-bold text-slate-400 mb-1">Raw Ledger Response</h4>
+                    <pre class="bg-black/60 p-2.5 rounded text-[11px] font-mono text-emerald-300 overflow-x-auto">${JSON.stringify(acc, null, 2)}</pre>
+                </div>
+            `;
+
+            document.getElementById('detailModal').classList.remove('hidden');
+        }
+
+        function attachPromptMeta(id) {
+            const holder = prompt("Enter Business / Account Holder Name:");
+            if (!holder) return;
+            const country = prompt("Enter Country Code (IR, RU, CN, AE, etc.):", "IR") || "IR";
+            const purpose = prompt("Enter Trade / Business Purpose:", "Import/Export Settlement") || "";
+
+            saveMeta(id, {
+                holder: holder.trim(),
+                country: country.toUpperCase().trim(),
+                entityType: "company",
+                regNo: "MANUAL-LINK",
+                purpose: purpose.trim(),
+                createdAt: new Date().toISOString()
+            });
+
+            openAccountDetail(id);
+            renderTable();
+            updateStats();
+        }
+
+        function closeModal() {
+            document.getElementById('detailModal').classList.add('hidden');
+        }
+
+        // Auto load on init
+        window.addEventListener('DOMContentLoaded', () => {
+            checkHealth();
+            fetchAccounts();
+        });
+    </script>
+</body>
+</html>
