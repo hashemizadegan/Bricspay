@@ -1,538 +1,833 @@
 <!DOCTYPE html>
-<html lang="fa" dir="rtl">
+<html lang="fa" dir="rtl" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BRICS Pay | Core Ledger Dashboard</title>
-    <style>
-        :root {
-            --bg-color: #06090e;
-            --card-bg: #0d131d;
-            --border-color: #1a2332;
-            --primary: #00d2ff;
-            --primary-hover: #00b4db;
-            --success: #00e676;
-            --danger: #ff5252;
-            --text-main: #f0f4f8;
-            --text-muted: #8b9bb4;
-        }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
-        body {
-            background-color: var(--bg-color);
-            color: var(--text-main);
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Vazirmatn", "IRANSans", sans-serif;
-            line-height: 1.6;
-            padding: 1.5rem;
-        }
-
-        .container {
-            max-width: 1100px;
-            margin: 0 auto;
-        }
-
-        /* Top Bar */
-        header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding-bottom: 1.5rem;
-            border-bottom: 1px solid var(--border-color);
-            margin-bottom: 2rem;
-            flex-wrap: wrap;
-            gap: 1rem;
-        }
-
-        .brand-title {
-            font-size: 1.6rem;
-            font-weight: 700;
-            color: var(--primary);
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .header-actions {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-
-        select.lang-select {
-            background: var(--card-bg);
-            color: var(--text-main);
-            border: 1px solid var(--border-color);
-            padding: 0.45rem 1rem;
-            border-radius: 6px;
-            cursor: pointer;
-            outline: none;
-            font-size: 0.9rem;
-        }
-
-        .status-badge {
-            padding: 0.4rem 0.8rem;
-            background: rgba(0, 210, 255, 0.08);
-            border: 1px solid rgba(0, 210, 255, 0.25);
-            border-radius: 6px;
-            font-size: 0.85rem;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .status-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background-color: var(--success);
-        }
-
-        /* Grid Cards */
-        .grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1.5rem;
-            margin-bottom: 2rem;
-        }
-
-        @media (max-width: 768px) {
-            .grid {
-                grid-template-columns: 1fr;
+    <title>BRICS Pay | شبکه تسویه فرامرزی</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brics: {
+                            dark: '#050811',
+                            card: '#0c1222',
+                            border: '#1e293b',
+                            accent: '#0284c7',
+                            gold: '#f59e0b'
+                        }
+                    }
+                }
             }
         }
-
-        .card {
-            background: var(--card-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            padding: 1.25rem;
+    </script>
+    <style>
+        .gradient-glow {
+            background: radial-gradient(circle at 50% 20%, rgba(2, 132, 199, 0.15), transparent 70%);
         }
-
-        .card-header {
-            font-size: 1.1rem;
-            font-weight: 600;
-            color: var(--text-main);
-            margin-bottom: 1rem;
-            padding-bottom: 0.5rem;
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        /* Forms */
-        .form-group {
-            margin-bottom: 1rem;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 0.35rem;
-            font-size: 0.85rem;
-            color: var(--text-muted);
-        }
-
-        input, select {
-            width: 100%;
-            padding: 0.6rem 0.8rem;
-            background: #090e15;
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            color: var(--text-main);
-            font-size: 0.9rem;
-            outline: none;
-            transition: border-color 0.2s;
-        }
-
-        input:focus, select:focus {
-            border-color: var(--primary);
-        }
-
-        button.btn {
-            display: inline-block;
-            width: 100%;
-            padding: 0.65rem 1rem;
-            background: var(--primary);
-            color: #04080e;
-            border: none;
-            border-radius: 6px;
-            font-weight: 600;
-            font-size: 0.9rem;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-
-        button.btn:hover {
-            background: var(--primary-hover);
-        }
-
-        /* Tables */
-        .table-responsive {
-            overflow-x: auto;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.85rem;
-            text-align: inherit;
-        }
-
-        th, td {
-            padding: 0.75rem 0.9rem;
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        th {
-            color: var(--text-muted);
-            font-weight: 500;
-        }
-
-        /* Alerts & Response */
-        .alert {
-            padding: 0.6rem 0.9rem;
-            border-radius: 6px;
-            font-size: 0.85rem;
-            margin-top: 0.8rem;
-            display: none;
-        }
-
-        .alert-success {
-            background: rgba(0, 230, 118, 0.1);
-            color: var(--success);
-            border: 1px solid rgba(0, 230, 118, 0.25);
-        }
-
-        .alert-error {
-            background: rgba(255, 82, 82, 0.1);
-            color: var(--danger);
-            border: 1px solid rgba(255, 82, 82, 0.25);
-        }
-
-        footer {
-            margin-top: 2rem;
-            text-align: center;
-            color: var(--text-muted);
-            font-size: 0.8rem;
-            padding-top: 1.5rem;
-            border-top: 1px solid var(--border-color);
-        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #050811; }
+        ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 3px; }
     </style>
 </head>
-<body>
-    <div class="container">
-        <header>
-            <div>
-                <div class="brand-title">BRICS Pay Core Ledger</div>
-                <div class="status-badge" style="margin-top: 0.4rem;">
-                    <span class="status-dot"></span>
-                    <span id="txt-sys-status">وضعیت سیستم: آنلاین (عملیاتی)</span>
-                </div>
-            </div>
-            <div class="header-actions">
-                <select id="languageSelect" class="lang-select" onchange="changeLanguage(this.value)">
-                    <option value="fa">فارسی (FA)</option>
-                    <option value="en">English (EN)</option>
-                    <option value="ru">Русский (RU)</option>
-                </select>
-            </div>
-        </header>
+<body class="bg-brics-dark text-slate-100 min-h-screen font-sans antialiased gradient-glow flex flex-col">
 
-        <main>
-            <div class="grid">
-                <!-- Create Account -->
-                <div class="card">
-                    <h2 class="card-header" id="txt-hdr-create-acc">افتتاح حساب جدید</h2>
-                    <form id="createAccountForm" onsubmit="handleCreateAccount(event)">
-                        <div class="form-group">
-                            <label for="accId" id="lbl-acc-id">شناسه حساب</label>
-                            <input type="text" id="accId" placeholder="acc_ru_01" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="accCurrency" id="lbl-currency">ارز پایه</label>
-                            <select id="accCurrency" required>
-                                <option value="RUB">RUB (روبل روسیه)</option>
-                                <option value="IRR">IRR (ریال ایران)</option>
-                                <option value="CNY">CNY (یوآن چین)</option>
-                                <option value="AED">AED (درهم امارات)</option>
-                                <option value="USD">USD</option>
-                            </select>
-                        </div>
-                        <button type="submit" class="btn" id="btn-submit-acc">ثبت حساب</button>
-                    </form>
-                    <div id="accAlert" class="alert"></div>
+    <!-- Top Universal Navigation Bar -->
+    <header class="border-b border-brics-border bg-brics-card/90 backdrop-blur-md sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            
+            <!-- Brand Logo & Identity -->
+            <div class="flex items-center space-x-3 rtl:space-x-reverse cursor-pointer" onclick="switchTab('landing')">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-600 via-indigo-600 to-amber-500 flex items-center justify-center font-black text-lg text-white shadow-lg shadow-sky-500/25">
+                    BP
                 </div>
-
-                <!-- Post Transaction -->
-                <div class="card">
-                    <h2 class="card-header" id="txt-hdr-post-tx">ثبت تراکنش تسویه</h2>
-                    <form id="txForm" onsubmit="handlePostTransaction(event)">
-                        <div class="form-group">
-                            <label for="txFrom" id="lbl-from-acc">حساب بدهکار (From)</label>
-                            <input type="text" id="txFrom" placeholder="acc_ru_01" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="txTo" id="lbl-to-acc">حساب بستانکار (To)</label>
-                            <input type="text" id="txTo" placeholder="acc_ir_01" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="txAmount" id="lbl-amount">مبلغ</label>
-                            <input type="number" id="txAmount" step="0.01" min="0.01" placeholder="1000.00" required>
-                        </div>
-                        <button type="submit" class="btn" id="btn-submit-tx">انتقال وجه</button>
-                    </form>
-                    <div id="txAlert" class="alert"></div>
+                <div>
+                    <div class="flex items-center space-x-2 rtl:space-x-reverse">
+                        <span class="font-extrabold text-lg tracking-wider text-white">BRICS PAY</span>
+                        <span class="px-1.5 py-0.2 text-[9px] font-bold uppercase rounded bg-sky-950 text-sky-400 border border-sky-800" data-i18n="badge_core">Core Network</span>
+                    </div>
+                    <span class="text-[11px] text-slate-400 block -mt-1 font-mono" data-i18n="sub_brand">Cross-Border Settlement Protocol</span>
                 </div>
             </div>
 
-            <!-- Accounts Ledger Table -->
-            <div class="card">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                    <h2 class="card-header" style="border-bottom: none; margin: 0; padding: 0;" id="txt-hdr-accounts">حساب‌های فعال در لجر</h2>
-                    <button onclick="fetchAccounts()" style="background: transparent; color: var(--primary); border: 1px solid var(--border-color); padding: 0.35rem 0.8rem; border-radius: 4px; cursor: pointer;" id="btn-refresh">به‌روزرسانی ⟳</button>
+            <!-- Navigation Tabs -->
+            <nav class="hidden md:flex items-center space-x-1 rtl:space-x-reverse bg-slate-950/60 p-1 rounded-xl border border-brics-border">
+                <button id="tabBtn-landing" onclick="switchTab('landing')" class="px-3.5 py-1.5 text-xs font-semibold rounded-lg transition bg-sky-600 text-white shadow">
+                    🌐 <span data-i18n="nav_overview">Overview</span>
+                </button>
+                <button id="tabBtn-accounts" onclick="switchTab('accounts')" class="px-3.5 py-1.5 text-xs font-semibold rounded-lg transition text-slate-400 hover:text-white hover:bg-slate-900">
+                    🏛️ <span data-i18n="nav_accounts">Accounts & Settlement</span>
+                </button>
+                <button id="tabBtn-fx" onclick="switchTab('fx')" class="px-3.5 py-1.5 text-xs font-semibold rounded-lg transition text-slate-400 hover:text-white hover:bg-slate-900">
+                    💱 <span data-i18n="nav_fx">FX Corridors</span>
+                </button>
+                <button id="tabBtn-docs" onclick="switchTab('docs')" class="px-3.5 py-1.5 text-xs font-semibold rounded-lg transition text-slate-400 hover:text-white hover:bg-slate-900">
+                    ⚡ <span data-i18n="nav_docs">API Docs</span>
+                </button>
+            </nav>
+
+            <!-- Language Switcher & Node Status -->
+            <div class="flex items-center space-x-3 rtl:space-x-reverse">
+                
+                <!-- Language Selector Dropdown -->
+                <div class="relative">
+                    <select id="langSelect" onchange="changeLanguage(this.value)" class="bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-sky-500 font-semibold cursor-pointer">
+                        <option value="fa">🇮🇷 فارسی</option>
+                        <option value="ru">🇷🇺 Русский</option>
+                        <option value="en">🇬🇧 English</option>
+                    </select>
                 </div>
-                <div class="table-responsive">
-                    <table id="accountsTable">
-                        <thead>
-                            <tr>
-                                <th id="th-acc-id">شناسه حساب</th>
-                                <th id="th-currency">ارز</th>
-                                <th id="th-balance">موجودی دفترکل</th>
-                                <th id="th-created">تاریخ ایجاد</th>
-                            </tr>
-                        </thead>
-                        <tbody id="accountsTableBody">
-                            <tr>
-                                <td colspan="4" style="text-align: center; color: var(--text-muted);" id="txt-loading">در حال فراخوانی داده‌ها...</td>
-                            </tr>
-                        </tbody>
-                    </table>
+
+                <div id="healthBadge" class="hidden sm:flex items-center space-x-2 rtl:space-x-reverse px-3 py-1 rounded-full text-xs font-medium bg-emerald-950/70 border border-emerald-700/50 text-emerald-300">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span id="healthText">Node Online</span>
                 </div>
             </div>
-        </main>
+        </div>
+    </header>
 
-        <footer>
-            <span id="txt-footer">زیرساخت آزمایشی تسویه چندارزی فرامرزی BRICS Pay • اتصال به هسته Go</span>
-        </footer>
+    <!-- TAB 1: LANDING & OVERVIEW PAGE -->
+    <div id="view-landing" class="flex-1">
+        
+        <!-- Hero Section -->
+        <section class="py-16 md:py-24 border-b border-brics-border/50 relative overflow-hidden">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-6 relative z-10">
+                <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full text-xs font-semibold bg-sky-950/80 border border-sky-800 text-sky-300 mb-2">
+                    <span data-i18n="hero_pill">🚀 Next-Gen Sovereign Financial Messaging & Clearing</span>
+                </div>
+                <h1 class="text-3xl sm:text-5xl md:text-6xl font-black text-white tracking-tight leading-tight max-w-4xl mx-auto">
+                    <span data-i18n="hero_title_1">زیرساخت مستقل تسویه فرامرزی برای</span> <span class="bg-gradient-to-r from-sky-400 via-indigo-300 to-amber-400 bg-clip-text text-transparent" data-i18n="hero_title_2">تجارت بین‌الملل</span>
+                </h1>
+                <p class="text-sm sm:text-base md:text-lg text-slate-400 max-w-2xl mx-auto font-light leading-relaxed" data-i18n="hero_desc">
+                    دفتر کل چندارزی و نامتمرکز جهت تسویه آنی مبادلات تجاری با ارزهای ملی ریال (IRR)، روبل (RUB)، یوآن (CNY)، درهم (AED) و روپیه (INR) بدون وابستگی به سوئیفت.
+                </p>
+                <div class="flex flex-wrap items-center justify-center gap-4 pt-4">
+                    <button onclick="switchTab('accounts')" class="px-6 py-3 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-bold text-sm shadow-xl shadow-sky-600/30 transition transform hover:-translate-y-0.5">
+                        <span data-i18n="btn_enter_ledger">ورود به میز مدیریت لجر →</span>
+                    </button>
+                    <button onclick="switchTab('docs')" class="px-6 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 font-semibold text-sm transition">
+                        <span data-i18n="btn_view_api">مشاهده مستندات API</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Sovereign Currency Corridors -->
+        <section class="py-12 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-10">
+                <h2 class="text-xl font-bold text-white" data-i18n="corridors_title">کریدورهای فعال تسویه چندجانبه</h2>
+                <p class="text-xs text-slate-400 mt-1" data-i18n="corridors_sub">مبادلات دوجانبه مستقیم بر پایه اتصال سوئیچ‌های شتاب، میر و CIPS</p>
+            </div>
+            <div class="grid grid-cols-2 sm:grid-cols-5 gap-4">
+                <div class="bg-brics-card border border-brics-border rounded-xl p-4 text-center hover:border-sky-500/50 transition">
+                    <span class="text-3xl">🇮🇷</span>
+                    <h3 class="text-sm font-bold text-white mt-2 font-mono">IRR</h3>
+                    <p class="text-[11px] text-slate-400" data-i18n="curr_irr">ریال ایران (شتاب)</p>
+                </div>
+                <div class="bg-brics-card border border-brics-border rounded-xl p-4 text-center hover:border-sky-500/50 transition">
+                    <span class="text-3xl">🇷🇺</span>
+                    <h3 class="text-sm font-bold text-white mt-2 font-mono">RUB</h3>
+                    <p class="text-[11px] text-slate-400" data-i18n="curr_rub">روبل روسیه (میر)</p>
+                </div>
+                <div class="bg-brics-card border border-brics-border rounded-xl p-4 text-center hover:border-sky-500/50 transition">
+                    <span class="text-3xl">🇨🇳</span>
+                    <h3 class="text-sm font-bold text-white mt-2 font-mono">CNY</h3>
+                    <p class="text-[11px] text-slate-400" data-i18n="curr_cny">یوآن چین (CIPS)</p>
+                </div>
+                <div class="bg-brics-card border border-brics-border rounded-xl p-4 text-center hover:border-sky-500/50 transition">
+                    <span class="text-3xl">🇦🇪</span>
+                    <h3 class="text-sm font-bold text-white mt-2 font-mono">AED</h3>
+                    <p class="text-[11px] text-slate-400" data-i18n="curr_aed">درهم امارات (تسویه تجاری)</p>
+                </div>
+                <div class="bg-brics-card border border-brics-border rounded-xl p-4 text-center hover:border-sky-500/50 transition">
+                    <span class="text-3xl">🇮🇳</span>
+                    <h3 class="text-sm font-bold text-white mt-2 font-mono">INR</h3>
+                    <p class="text-[11px] text-slate-400" data-i18n="curr_inr">روپیه هند (حساب ووسترو)</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Pillars Grid -->
+        <section class="py-12 bg-slate-950/40 border-t border-brics-border/40">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="bg-brics-card border border-brics-border p-6 rounded-2xl space-y-3">
+                        <div class="w-10 h-10 rounded-lg bg-sky-950 text-sky-400 flex items-center justify-center text-xl font-bold">🔒</div>
+                        <h3 class="text-base font-bold text-white" data-i18n="pillar_1_title">دفتر کل دوطرفه اتمیک (Double-Entry)</h3>
+                        <p class="text-xs text-slate-400 leading-relaxed" data-i18n="pillar_1_desc">
+                            ثبت تراکنش‌های متوازن با برابری بدهکار و بستانکار در لحظه، جلوگیری کامل از موجودی منفی و تسویه بلادرنگ.
+                        </p>
+                    </div>
+                    <div class="bg-brics-card border border-brics-border p-6 rounded-2xl space-y-3">
+                        <div class="w-10 h-10 rounded-lg bg-amber-950 text-amber-400 flex items-center justify-center text-xl font-bold">📜</div>
+                        <h3 class="text-base font-bold text-white" data-i18n="pillar_2_title">شناسه شرکتی و احراز هویت (KYC)</h3>
+                        <p class="text-xs text-slate-400 leading-relaxed" data-i18n="pillar_2_desc">
+                            اتصال مستقیم حساب به شناسه ملی شرکت‌ها، حوزه قضایی کشورهای عضو و ثبت مشخصات دقیق بازرگانی.
+                        </p>
+                    </div>
+                    <div class="bg-brics-card border border-brics-border p-6 rounded-2xl space-y-3">
+                        <div class="w-10 h-10 rounded-lg bg-emerald-950 text-emerald-400 flex items-center justify-center text-xl font-bold">⚡</div>
+                        <h3 class="text-base font-bold text-white" data-i18n="pillar_3_title">استخرهای نقدینگی کالایی و ارزی</h3>
+                        <p class="text-xs text-slate-400 leading-relaxed" data-i18n="pillar_3_desc">
+                            امکان تهاتر و تسویه موازی محموله‌های انرژی، نهاده‌های کشاورزی و قطعات صنعتی میان اعضای اوراسیا و بریکس.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
     </div>
 
+    <!-- TAB 2: ACCOUNTS & SETTLEMENT DASHBOARD -->
+    <div id="view-accounts" class="hidden flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full space-y-8">
+        
+        <!-- Metrics -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div class="bg-brics-card border border-brics-border rounded-xl p-4">
+                <p class="text-xs font-medium text-slate-400" data-i18n="metric_total_accs">کل حساب‌های ثبت‌شده</p>
+                <h3 id="statTotalAccounts" class="text-2xl font-bold mt-1 text-white">0</h3>
+            </div>
+            <div class="bg-brics-card border border-brics-border rounded-xl p-4">
+                <p class="text-xs font-medium text-slate-400" data-i18n="metric_kyc_accs">حساب‌های تجاری احرازشده</p>
+                <h3 id="statEnrichedAccounts" class="text-2xl font-bold mt-1 text-sky-400">0</h3>
+            </div>
+            <div class="bg-brics-card border border-brics-border rounded-xl p-4">
+                <p class="text-xs font-medium text-slate-400" data-i18n="metric_active_curr">ارزهای فعال در سیستم</p>
+                <h3 id="statCurrencies" class="text-2xl font-bold mt-1 text-emerald-400">0</h3>
+            </div>
+            <div class="bg-brics-card border border-brics-border rounded-xl p-4">
+                <p class="text-xs font-medium text-slate-400" data-i18n="metric_node_status">موتور تسویه لجر</p>
+                <h3 class="text-2xl font-bold mt-1 text-indigo-400">Active (v1)</h3>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            <!-- Accounts Table -->
+            <div class="lg:col-span-2 space-y-4">
+                <div class="bg-brics-card border border-brics-border rounded-xl shadow-lg overflow-hidden">
+                    <div class="p-4 border-b border-brics-border flex flex-wrap items-center justify-between gap-3 bg-slate-900/40">
+                        <div>
+                            <h2 class="text-base font-semibold text-white" data-i18n="tbl_title">فهرست حساب‌ها و موجودی‌های لجر</h2>
+                            <p class="text-xs text-slate-400" data-i18n="tbl_sub">جهت مشاهده کامل متادیتا و جزئیات حقوقی روی هر سطر کلیک کنید</p>
+                        </div>
+                        <div class="flex items-center space-x-2 rtl:space-x-reverse">
+                            <input id="searchInput" oninput="renderTable()" data-i18n-placeholder="search_placeholder" placeholder="جستجوی کد، نام یا شناسه..." type="text" class="px-3 py-1.5 bg-slate-950 border border-slate-700 rounded-md text-xs text-white focus:outline-none focus:border-sky-500 w-44">
+                            <select id="currencyFilter" onchange="renderTable()" class="px-2.5 py-1.5 bg-slate-950 border border-slate-700 rounded-md text-xs text-white focus:outline-none">
+                                <option value="ALL" data-i18n="all_currencies">همه ارزها</option>
+                                <option value="IRR">🇮🇷 IRR</option>
+                                <option value="RUB">🇷🇺 RUB</option>
+                                <option value="CNY">🇨🇳 CNY</option>
+                                <option value="AED">🇦🇪 AED</option>
+                                <option value="USD">🌐 USD</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-start text-sm text-slate-300">
+                            <thead class="bg-slate-950/80 text-xs uppercase tracking-wider text-slate-400 border-b border-brics-border">
+                                <tr>
+                                    <th class="py-3 px-4" data-i18n="th_code">کد حساب / شناسه</th>
+                                    <th class="py-3 px-4" data-i18n="th_holder">مالک و حوزه قضایی</th>
+                                    <th class="py-3 px-4" data-i18n="th_type">نوع حساب</th>
+                                    <th class="py-3 px-4" data-i18n="th_curr">ارز</th>
+                                    <th class="py-3 px-4 text-end" data-i18n="th_bal">موجودی</th>
+                                </tr>
+                            </thead>
+                            <tbody id="accountsTableBody" class="divide-y divide-slate-800">
+                                <tr>
+                                    <td colspan="5" class="py-8 text-center text-slate-500 text-xs" data-i18n="loading_accs">
+                                        در حال دریافت اطلاعات از لجر...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Creation Form -->
+            <div class="space-y-4">
+                <div class="bg-brics-card border border-brics-border rounded-xl shadow-lg p-5">
+                    <div class="border-b border-brics-border pb-3 mb-4">
+                        <div class="flex items-center space-x-2 rtl:space-x-reverse">
+                            <span class="px-2 py-0.5 text-[10px] font-bold uppercase rounded bg-sky-950 text-sky-400 border border-sky-800" data-i18n="form_badge">KYC & Settlement</span>
+                        </div>
+                        <h3 class="text-base font-bold text-white mt-1" data-i18n="form_title">افتتاح حساب تجاری در شبکه</h3>
+                    </div>
+
+                    <form id="createAccountForm" onsubmit="handleCreateAccount(event)" class="space-y-3">
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-medium text-slate-300 mb-1" data-i18n="lbl_code">کد حساب *</label>
+                                <input type="text" id="accCode" required placeholder="IRR-CLEARING-001" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-md text-xs text-white focus:outline-none focus:border-sky-500 uppercase font-mono">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-300 mb-1" data-i18n="lbl_type">نوع حساب *</label>
+                                <select id="accType" required class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-md text-xs text-white focus:outline-none focus:border-sky-500">
+                                    <option value="customer">مشتری (Customer)</option>
+                                    <option value="clearing">تسویه (Clearing)</option>
+                                    <option value="nostro">نوسترو (Nostro)</option>
+                                    <option value="vostro">ووسترو (Vostro)</option>
+                                    <option value="checking">جاری (Checking)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-medium text-slate-300 mb-1" data-i18n="lbl_currency">ارز حساب *</label>
+                                <input type="text" id="accCurrency" required maxlength="5" value="IRR" placeholder="IRR / RUB / CNY" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-md text-xs text-white focus:outline-none focus:border-sky-500 uppercase font-mono">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-300 mb-1" data-i18n="lbl_init_bal">موجودی اولیه</label>
+                                <input type="number" step="any" id="accBalance" value="0" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-md text-xs text-white focus:outline-none focus:border-sky-500 font-mono">
+                            </div>
+                        </div>
+
+                        <div class="pt-2 border-t border-slate-800">
+                            <span class="text-[11px] font-semibold text-sky-400 block mb-2 uppercase tracking-wide" data-i18n="lbl_biz_meta">مشخصات هویتی و حقوقی (پیوست با ID)</span>
+
+                            <div class="mb-3">
+                                <label class="block text-xs font-medium text-slate-300 mb-1" data-i18n="lbl_holder">نام صاحب حساب / نهاد حقوقی *</label>
+                                <input type="text" id="metaHolder" required placeholder="مثال: شرکت آماد سرمایه هوشمند اوراسیا" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-md text-xs text-white focus:outline-none focus:border-sky-500">
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-3 mb-3">
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-300 mb-1" data-i18n="lbl_entity_type">ماهیت شخصیت</label>
+                                    <select id="metaEntityType" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-md text-xs text-white focus:outline-none focus:border-sky-500">
+                                        <option value="company" data-i18n="opt_corporate">شرکت / بازرگانی</option>
+                                        <option value="bank" data-i18n="opt_bank">بانک / صرافی</option>
+                                        <option value="individual" data-i18n="opt_individual">حقیقی / بازرگان</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-300 mb-1" data-i18n="lbl_jurisdiction">حوزه قضایی</label>
+                                    <select id="metaCountry" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-md text-xs text-white focus:outline-none focus:border-sky-500">
+                                        <option value="IR" selected>🇮🇷 ایران (IR)</option>
+                                        <option value="RU">🇷🇺 روسیه (RU)</option>
+                                        <option value="CN">🇨🇳 چین (CN)</option>
+                                        <option value="AE">🇦🇪 امارات (AE)</option>
+                                        <option value="IN">🇮🇳 هند (IN)</option>
+                                        <option value="OTHER">🌐 سایر کشورها</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="block text-xs font-medium text-slate-300 mb-1" data-i18n="lbl_reg_no">شناسه ملی / شماره ثبت شرکت</label>
+                                <input type="text" id="metaRegNo" placeholder="شناسه ملی، INN یا کد ثبتی" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-md text-xs text-white focus:outline-none focus:border-sky-500 font-mono">
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-medium text-slate-300 mb-1" data-i18n="lbl_purpose">موضوع فعالیت و کارکرد حساب</label>
+                                <input type="text" id="metaPurpose" placeholder="مثال: تسویه تهاتری کالاهای اساسی تهران-مسکو" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-md text-xs text-white focus:outline-none focus:border-sky-500">
+                            </div>
+                        </div>
+
+                        <div id="formAlert" class="hidden text-xs p-2.5 rounded border"></div>
+
+                        <button id="submitBtn" type="submit" class="w-full py-2.5 px-4 bg-sky-600 hover:bg-sky-500 text-white font-semibold text-xs rounded-md shadow-md shadow-sky-600/30 transition flex items-center justify-center space-x-2 rtl:space-x-reverse">
+                            <span data-i18n="btn_submit_account">ثبت و افتتاح حساب در لجر</span>
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- TAB 3: FX & MULTICURRENCY PREVIEW -->
+    <div id="view-fx" class="hidden flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full space-y-6">
+        <div class="bg-brics-card border border-brics-border rounded-2xl p-8 text-center space-y-4 max-w-2xl mx-auto">
+            <span class="text-4xl">💱</span>
+            <h2 class="text-2xl font-bold text-white" data-i18n="fx_title">تبادل ارزی و سوآپ فرامرزی (Cross-Border FX)</h2>
+            <p class="text-sm text-slate-400 leading-relaxed" data-i18n="fx_desc">
+                موتور تبادل ارزی و موازنه خطوط اعتباری بین کریدورهای <strong>IRR/RUB</strong>، <strong>IRR/CNY</strong> و <strong>RUB/AED</strong> آماده پیاده‌سازی فاز بعد می‌باشد.
+            </p>
+            <div class="pt-4">
+                <button onclick="switchTab('accounts')" class="px-5 py-2.5 bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-xs font-bold transition">
+                    <span data-i18n="fx_btn_back">بازگشت به موجودی حساب‌ها</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 4: API & DEVELOPER DOCS -->
+    <div id="view-docs" class="hidden flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full space-y-6">
+        <div class="bg-brics-card border border-brics-border rounded-2xl p-6 space-y-4">
+            <h2 class="text-lg font-bold text-white" data-i18n="api_title">مستندات و اندپوینت‌های هسته لجر BRICS Pay</h2>
+            <div class="space-y-3 font-mono text-xs" dir="ltr">
+                <div class="p-3 bg-slate-950 rounded-lg border border-slate-800 flex justify-between items-center">
+                    <div><span class="text-emerald-400 font-bold">GET</span> <span class="text-slate-200">/health</span></div>
+                    <span class="text-slate-500">Service health & DB heartbeat</span>
+                </div>
+                <div class="p-3 bg-slate-950 rounded-lg border border-slate-800 flex justify-between items-center">
+                    <div><span class="text-emerald-400 font-bold">GET</span> <span class="text-slate-200">/api/v1/accounts</span></div>
+                    <span class="text-slate-500">List all ledger accounts</span>
+                </div>
+                <div class="p-3 bg-slate-950 rounded-lg border border-slate-800 flex justify-between items-center">
+                    <div><span class="text-sky-400 font-bold">POST</span> <span class="text-slate-200">/api/v1/accounts</span></div>
+                    <span class="text-slate-500">Create a new ledger account</span>
+                </div>
+                <div class="p-3 bg-slate-950 rounded-lg border border-slate-800 flex justify-between items-center">
+                    <div><span class="text-sky-400 font-bold">POST</span> <span class="text-slate-200">/api/v1/transactions</span></div>
+                    <span class="text-slate-500">Post balanced atomic transactions</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Universal Footer -->
+    <footer class="border-t border-brics-border bg-brics-card py-6 mt-auto">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-wrap justify-between items-center text-xs text-slate-500">
+            <p data-i18n="footer_copy">© ۲۰۲۶ کنسرسیوم BRICS Pay. کلیه حقوق محفوظ است.</p>
+            <div class="flex space-x-4 rtl:space-x-reverse">
+                <span data-i18n="footer_node">نود فعال: رله تهران - مسکو</span>
+                <span>•</span>
+                <span>Autonomous Sovereign Network</span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Account Details Modal -->
+    <div id="detailModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-brics-card border border-brics-border rounded-xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
+            <div class="flex items-center justify-between border-b border-brics-border pb-3">
+                <h3 class="text-base font-bold text-white" data-i18n="modal_title">جزئیات حساب و وضعیت ثبتی</h3>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-white text-lg font-bold">✕</button>
+            </div>
+            
+            <div id="modalContent" class="space-y-4 max-h-[70vh] overflow-y-auto"></div>
+
+            <div class="pt-3 border-t border-brics-border flex justify-end">
+                <button onclick="closeModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-xs font-semibold rounded text-white transition" data-i18n="btn_close">
+                    بستن
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Translations & Script Engine -->
     <script>
+        const API_BASE = window.location.origin;
+        let accountsCache = [];
+
+        // Dictionary for 3 languages
         const translations = {
             fa: {
-                dir: "rtl",
-                title: "BRICS Pay | Core Ledger Dashboard",
-                sysStatus: "وضعیت سیستم: آنلاین (عملیاتی)",
-                hdrCreateAcc: "افتتاح حساب جدید",
-                lblAccId: "شناسه حساب",
-                lblCurrency: "ارز پایه",
-                btnSubmitAcc: "ثبت حساب",
-                hdrPostTx: "ثبت تراکنش تسویه",
-                lblFromAcc: "حساب بدهکار (From)",
-                lblToAcc: "حساب بستانکار (To)",
-                lblAmount: "مبلغ",
-                btnSubmitTx: "انتقال وجه",
-                hdrAccounts: "حساب‌های فعال در لجر",
-                btnRefresh: "به‌روزرسانی ⟳",
-                thAccId: "شناسه حساب",
-                thCurrency: "ارز",
-                thBalance: "موجودی دفترکل",
-                thCreated: "تاریخ ایجاد",
-                txtLoading: "در حال فراخوانی داده‌ها...",
-                emptyAccounts: "هیچ حسابی یافت نشد.",
-                accSuccess: "حساب با موفقیت در لجر ثبت شد.",
-                txSuccess: "تراکنش تسویه با موفقیت پردازش شد.",
-                footer: "زیرساخت آزمایشی تسویه چندارزی فرامرزی BRICS Pay • اتصال به هسته Go"
-            },
-            en: {
-                dir: "ltr",
-                title: "BRICS Pay | Core Ledger Dashboard",
-                sysStatus: "System Status: Operational",
-                hdrCreateAcc: "Open New Account",
-                lblAccId: "Account ID",
-                lblCurrency: "Base Currency",
-                btnSubmitAcc: "Register Account",
-                hdrPostTx: "Submit Settlement Transaction",
-                lblFromAcc: "Debit Account (From)",
-                lblToAcc: "Credit Account (To)",
-                lblAmount: "Amount",
-                btnSubmitTx: "Transfer Funds",
-                hdrAccounts: "Active Ledger Accounts",
-                btnRefresh: "Refresh ⟳",
-                thAccId: "Account ID",
-                thCurrency: "Currency",
-                thBalance: "Ledger Balance",
-                thCreated: "Created At",
-                txtLoading: "Loading accounts...",
-                emptyAccounts: "No registered accounts found.",
-                accSuccess: "Account registered successfully.",
-                txSuccess: "Settlement transaction executed successfully.",
-                footer: "BRICS Pay Cross-border Multi-currency Settlement Sandbox • Go Core API"
+                page_title: "BRICS Pay | شبکه تسویه فرامرزی",
+                badge_core: "شبکه اصلی",
+                sub_brand: "پروتکل تسویه مبادلات بین‌المللی",
+                nav_overview: "معرفی پلتفرم",
+                nav_accounts: "حساب‌ها و تسویه",
+                nav_fx: "کریدورهای ارزی",
+                nav_docs: "مستندات API",
+                hero_pill: "🚀 سامانه پیام‌رسانی و تسویه مستقل مالی",
+                hero_title_1: "زیرساخت مستقل تسویه فرامرزی برای",
+                hero_title_2: "تجارت بین‌الملل",
+                hero_desc: "دفتر کل چندارزی و نامتمرکز جهت تسویه آنی مبادلات تجاری با ارزهای ملی ریال (IRR)، روبل (RUB)، یوآن (CNY)، درهم (AED) و روپیه (INR) بدون وابستگی به سوئیفت.",
+                btn_enter_ledger: "ورود به میز مدیریت لجر ←",
+                btn_view_api: "مشاهده مستندات API",
+                corridors_title: "کریدورهای فعال تسویه چندجانبه",
+                corridors_sub: "مبادلات دوجانبه مستقیم بر پایه اتصال سوئیچ‌های شتاب، میر و CIPS",
+                curr_irr: "ریال ایران (شتاب)",
+                curr_rub: "روبل روسیه (میر)",
+                curr_cny: "یوآن چین (CIPS)",
+                curr_aed: "درهم امارات (تسویه تجاری)",
+                curr_inr: "روپیه هند (حساب ووسترو)",
+                pillar_1_title: "دفتر کل دوطرفه اتمیک (Double-Entry)",
+                pillar_1_desc: "ثبت تراکنش‌های متوازن با برابری بدهکار و بستانکار در لحظه، جلوگیری کامل از موجودی منفی و تسویه بلادرنگ.",
+                pillar_2_title: "شناسه شرکتی و احراز هویت (KYC)",
+                pillar_2_desc: "اتصال مستقیم حساب به شناسه ملی شرکت‌ها، حوزه قضایی کشورهای عضو و ثبت مشخصات دقیق بازرگانی.",
+                pillar_3_title: "استخرهای نقدینگی کالایی و ارزی",
+                pillar_3_desc: "امکان تهاتر و تسویه موازی محموله‌های انرژی، نهاده‌های کشاورزی و قطعات صنعتی میان اعضای اوراسیا و بریکس.",
+                metric_total_accs: "کل حساب‌های ثبت‌شده",
+                metric_kyc_accs: "حساب‌های تجاری احرازشده",
+                metric_active_curr: "ارزهای فعال در سیستم",
+                metric_node_status: "موتور تسویه لجر",
+                tbl_title: "فهرست حساب‌ها و موجودی‌های لجر",
+                tbl_sub: "جهت مشاهده کامل متادیتا و جزئیات حقوقی روی هر سطر کلیک کنید",
+                search_placeholder: "جستجوی کد، نام یا شناسه...",
+                all_currencies: "همه ارزها",
+                th_code: "کد حساب / شناسه",
+                th_holder: "مالک و حوزه قضایی",
+                th_type: "نوع حساب",
+                th_curr: "ارز",
+                th_bal: "موجودی",
+                loading_accs: "در حال دریافت اطلاعات از لجر...",
+                no_accs_found: "هیچ حسابی یافت نشد.",
+                no_profile: "فاقد پروفایل حقوقی",
+                form_badge: "احراز هویت و تسویه",
+                form_title: "افتتاح حساب تجاری در شبکه",
+                lbl_code: "کد حساب *",
+                lbl_type: "نوع حساب *",
+                lbl_currency: "ارز حساب *",
+                lbl_init_bal: "موجودی اولیه",
+                lbl_biz_meta: "مشخصات هویتی و حقوقی (پیوست با ID)",
+                lbl_holder: "نام صاحب حساب / نهاد حقوقی *",
+                lbl_entity_type: "ماهیت شخصیت",
+                opt_corporate: "شرکت / بازرگانی",
+                opt_bank: "بانک / صرافی",
+                opt_individual: "حقیقی / بازرگان",
+                lbl_jurisdiction: "حوزه قضایی",
+                lbl_reg_no: "شناسه ملی / شماره ثبت شرکت",
+                lbl_purpose: "موضوع فعالیت و کارکرد حساب",
+                btn_submit_account: "ثبت و افتتاح حساب در لجر",
+                fx_title: "تبادل ارزی و سوآپ فرامرزی (Cross-Border FX)",
+                fx_desc: "موتور تبادل ارزی و موازنه خطوط اعتباری بین کریدورهای IRR/RUB، IRR/CNY و RUB/AED آماده پیاده‌سازی فاز بعد می‌باشد.",
+                fx_btn_back: "بازگشت به موجودی حساب‌ها",
+                api_title: "مستندات و اندپوینت‌های هسته لجر BRICS Pay",
+                footer_copy: "© ۲۰۲۶ کنسرسیوم BRICS Pay. کلیه حقوق محفوظ است.",
+                footer_node: "نود فعال: رله تهران - مسکو",
+                modal_title: "جزئیات حساب و وضعیت ثبتی",
+                btn_close: "بستن"
             },
             ru: {
-                dir: "ltr",
-                title: "BRICS Pay | Панель управления реестром",
-                sysStatus: "Статус системы: Работает штатно",
-                hdrCreateAcc: "Открыть новый счет",
-                lblAccId: "Идентификатор счета",
-                lblCurrency: "Базовая валюта",
-                btnSubmitAcc: "Зарегистрировать счет",
-                hdrPostTx: "Провести расчетную транзакцию",
-                lblFromAcc: "Дебетовый счет (Отправитель)",
-                lblToAcc: "Кредитовый счет (Получатель)",
-                lblAmount: "Сумма",
-                btnSubmitTx: "Перевести средства",
-                hdrAccounts: "Активные счета в реестре",
-                btnRefresh: "Обновить ⟳",
-                thAccId: "ID счета",
-                thCurrency: "Валюта",
-                thBalance: "Баланс реестра",
-                thCreated: "Дата создания",
-                txtLoading: "Загрузка счетов...",
-                emptyAccounts: "Счета не найдены.",
-                accSuccess: "Счет успешно зарегистрирован в реестре.",
-                txSuccess: "Расчетная транзакция успешно завершена.",
-                footer: "BRICS Pay — Песочница трансграничных расчетов в нацвалютах • Go Core"
+                page_title: "BRICS Pay | Трансграничная расчетная сеть",
+                badge_core: "Основная сеть",
+                sub_brand: "Протокол трансграничных расчетов",
+                nav_overview: "Обзор платформы",
+                nav_accounts: "Счета и клиринг",
+                nav_fx: "Валютные коридоры",
+                nav_docs: "Документация API",
+                hero_pill: "🚀 Суверенная система финансовых сообщений и клиринга",
+                hero_title_1: "Независимая расчетная инфраструктура для",
+                hero_title_2: "международной торговли",
+                hero_desc: "Децентрализованный мультивалютный реестр для прямых атомарных расчетов в IRR, RUB, CNY, AED и INR без зависимости от SWIFT.",
+                btn_enter_ledger: "Открыть реестр расчетов →",
+                btn_view_api: "Спецификация API",
+                corridors_title: "Поддерживаемые расчетные коридоры",
+                corridors_sub: "Прямой клиринг и двусторонняя ликвидность через Мир, Shetab и CIPS",
+                curr_irr: "Иранский риал (Shetab)",
+                curr_rub: "Российский рубль (Мир)",
+                curr_cny: "Китайский юань (CIPS)",
+                curr_aed: "Дирхам ОАЭ (Клиринг)",
+                curr_inr: "Индийская рупия (Востро)",
+                pillar_1_title: "Двойная запись и атомарность",
+                pillar_1_desc: "Строгая проверка нулевой суммы проводок, исключение отрицательных балансов и сверка в реальном времени.",
+                pillar_2_title: "Корпоративная идентификация (KYC)",
+                pillar_2_desc: "Привязка ИНН, регистрационных номеров и юрисдикций стран-участниц БРИКС.",
+                pillar_3_title: "Ликвидность для торговли сырьем",
+                pillar_3_desc: "Обеспечение прямых взаиморасчетов по энергоносителям, зерну и промышленной продукции.",
+                metric_total_accs: "Всего счетов",
+                metric_kyc_accs: "Счетов с профилем KYC",
+                metric_active_curr: "Активных валют",
+                metric_node_status: "Клиринговый модуль",
+                tbl_title: "Счета реестра и балансовые позиции",
+                tbl_sub: "Нажмите на строку для просмотра полного юридического профиля",
+                search_placeholder: "Поиск кода, компании или ID...",
+                all_currencies: "Все валюты",
+                th_code: "Код счета / ID",
+                th_holder: "Владелец и юрисдикция",
+                th_type: "Тип счета",
+                th_curr: "Валюта",
+                th_bal: "Баланс",
+                loading_accs: "Загрузка счетов реестра...",
+                no_accs_found: "Счета не найдены.",
+                no_profile: "Нет профиля",
+                form_badge: "KYC и Клиринг",
+                form_title: "Регистрация счета участника",
+                lbl_code: "Код счета *",
+                lbl_type: "Тип счета *",
+                lbl_currency: "Валюта *",
+                lbl_init_bal: "Начальный баланс",
+                lbl_biz_meta: "Корпоративные реквизиты (Привязка к ID)",
+                lbl_holder: "Наименование компании / владельца *",
+                lbl_entity_type: "Тип организации",
+                opt_corporate: "Корпоративный / Компания",
+                opt_bank: "Финансовый / Банк",
+                opt_individual: "Индивидуальный / Трейдер",
+                lbl_jurisdiction: "Юрисдикция",
+                lbl_reg_no: "ИНН / Регистрационный номер",
+                lbl_purpose: "Назначение / Торговая категория",
+                btn_submit_account: "Открыть счет в реестре",
+                fx_title: "Трансграничный FX и валютный обмен",
+                fx_desc: "Модуль конвертации и клиринга между коридорами IRR/RUB, IRR/CNY и RUB/AED готов к запуску во второй фазе.",
+                fx_btn_back: "Вернуться к реестру счетов",
+                api_title: "API интерфейсы BRICS Pay Core Ledger",
+                footer_copy: "© 2026 Консорциум BRICS Pay. Все права защищены.",
+                footer_node: "Узел: Реле Тегеран - Москва",
+                modal_title: "Профиль счета и баланс",
+                btn_close: "Закрыть"
+            },
+            en: {
+                page_title: "BRICS Pay | Cross-Border Settlement Network",
+                badge_core: "Core Network",
+                sub_brand: "Cross-Border Settlement Protocol",
+                nav_overview: "Overview",
+                nav_accounts: "Accounts & Settlement",
+                nav_fx: "FX Corridors",
+                nav_docs: "API Docs",
+                hero_pill: "🚀 Next-Gen Sovereign Financial Messaging & Clearing",
+                hero_title_1: "Independent Settlement Infrastructure for",
+                hero_title_2: "Global Trade",
+                hero_desc: "Decentralized, multi-currency ledger enabling direct atomic settlements across IRR, RUB, CNY, AED, and INR without third-party SWIFT dependency.",
+                btn_enter_ledger: "Launch Ledger Console →",
+                btn_view_api: "Inspect API Docs",
+                corridors_title: "Supported Settlement Corridors",
+                corridors_sub: "Direct clearing & bilateral liquidity facilities via Shetab, Mir and CIPS",
+                curr_irr: "Iranian Rial (Shetab)",
+                curr_rub: "Russian Ruble (Mir)",
+                curr_cny: "Chinese Yuan (CIPS)",
+                curr_aed: "UAE Dirham (Clearing)",
+                curr_inr: "Indian Rupee (Vostro)",
+                pillar_1_title: "Atomic Double-Entry Ledger",
+                pillar_1_desc: "Strict zero-sum multi-posting verification ensuring balanced books and real-time reconciliation with zero negative balance risks.",
+                pillar_2_title: "Enterprise KYC & Identity",
+                pillar_2_desc: "Full commercial identity binding with legal registration numbers, tax IDs, and jurisdictional governance across BRICS member states.",
+                pillar_3_title: "Bilateral Liquidity Pools",
+                pillar_3_desc: "Direct nostro/vostro connectivity allowing seamless commodities clearing (oil, grain, machinery) between partner nations.",
+                metric_total_accs: "Total Accounts",
+                metric_kyc_accs: "Enriched Entities (KYC)",
+                metric_active_curr: "Active Currencies",
+                metric_node_status: "Settlement Engine",
+                tbl_title: "Ledger Accounts & Positions",
+                tbl_sub: "Click any row to view complete enterprise profile & raw JSON",
+                search_placeholder: "Search Code, Name, ID...",
+                all_currencies: "All Currencies",
+                th_code: "Account Code / ID",
+                th_holder: "Holder & Jurisdiction",
+                th_type: "Type",
+                th_curr: "Currency",
+                th_bal: "Balance",
+                loading_accs: "Loading ledger accounts...",
+                no_accs_found: "No accounts match criteria.",
+                no_profile: "No business profile",
+                form_badge: "KYC & Settlement",
+                form_title: "Open Participant Account",
+                lbl_code: "Account Code *",
+                lbl_type: "Account Type *",
+                lbl_currency: "Currency *",
+                lbl_init_bal: "Initial Balance",
+                lbl_biz_meta: "Enterprise Profile (Linked via ID)",
+                lbl_holder: "Account Holder Name *",
+                lbl_entity_type: "Entity Type",
+                opt_corporate: "Corporate / Enterprise",
+                opt_bank: "Financial / Bank",
+                opt_individual: "Individual / Trader",
+                lbl_jurisdiction: "Jurisdiction",
+                lbl_reg_no: "National ID / Registration No.",
+                lbl_purpose: "Purpose / Trade Category",
+                btn_submit_account: "Register & Open Account",
+                fx_title: "Cross-Border FX & Atomic Swaps",
+                fx_desc: "The atomic cross-currency settlement engine will allow instant bilateral swaps between IRR/RUB, IRR/CNY, and RUB/AED backed by central clearing facilities.",
+                fx_btn_back: "BackLedger Accounts & Positions",
+                tbl_sub: "Click any row to view complete enterprise profile & raw JSON",
+                search_placeholder: "Search Code, Name, ID...",
+                all_currencies: "All Currencies",
+                th_code: "Account Code / ID",
+                th_holder: "Holder & Jurisdiction",
+                th_type: "Type",
+                th_curr: "Currency",
+                th_bal: "Balance",
+                loading_accs: "Loading ledger accounts...",
+                no_accs_found: "No accounts match criteria.",
+                no_profile: "No business profile",
+                form_badge: "KYC & Settlement",
+                form_title: "Open Participant Account",
+                lbl_code: "Account Code *",
+                lbl_type: "Account Type *",
+                lbl_currency: "Currency *",
+                lbl_init_bal: "Initial Balance",
+                lbl_biz_meta: "Enterprise Profile (Linked via ID)",
+                lbl_holder: "Account Holder Name *",
+                lbl_entity_type: "Entity Type",
+                opt_corporate: "Corporate / Enterprise",
+                opt_bank: "Financial / Bank",
+                opt_individual: "Individual / Trader",
+                lbl_jurisdiction: "Jurisdiction",
+                lbl_reg_no: "National ID / Registration No.",
+                lbl_purpose: "Purpose / Trade Category",
+                btn_submit_account: "Register & Open Account",
+                fx_title: "Cross-Border FX & Atomic Swaps",
+                fx_desc: "The atomic cross-currency settlement engine will allow instant bilateral swaps between IRR/RUB, IRR/CNY, and RUB/AED backed by central clearing facilities.",
+                fx_btn_back: "Back to Accounts Table",
+                api_title: "BRICS Pay Core API Endpoints",
+                footer_copy: "© 2026 BRICS Pay Consortium. All rights reserved.",
+                footer_node: "Active Node: Tehran - Moscow Relay",
+                modal_title: "Account Profile & Ledger State",
+                btn_close: "Close-xs font-semibold rounded-lg transition bg-sky-600 text-white shadow";
+                } else {
+                    view.classList.add('hidden');
+                    if (btn) btn.className = "px-3.5 py-1.5 text-xs font-semibold rounded-lg transition text-slate-400 hover:text-white hover:bg-slate-900";
+                }
+            });
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // Storage helpers
+        function getMetaKey(id) { return `brics_meta_${id}`; }
+        function loadMeta(id) {
+            try {
+                const raw = localStorage.getItem(getMetaKey(id));
+                return raw ? JSON.parse(raw) : null;
+            } catch(e) { return null; }
+        }
+        function saveMeta(id, metaObj) { localStorage.setItem(getMetaKey(id), JSON.stringify(metaObj)); }
+
+        async function checkHealth() {
+            const badge = document.getElementById('healthBadge');
+            const text = document.getElementById('healthText');
+            try {
+                const res = await fetch(`${API_BASE}/health`);
+                if (res.ok) {
+                    const data = await res.json();
+                    text.innerText = `Healthy (${data.status || 'OK'})`;
+                    badge.className = "hidden sm:flex items-center space-x-2 rtl:space-x-reverse px-3 py-1 rounded-full text-xs font-medium bg-emerald-950/70 border border-emerald-700/50 text-emerald-300";
+                } else throw new Error();
+            } catch (err) {
+                text.innerText = 'Node Unreachable';
+                badge.className = "hidden sm:flex items-center space-x-2 rtl:space-x-reverse px-3 py-1 rounded-full text-xs font-medium bg-rose-950/70 border border-rose-700/50 text-rose-300";
             }
-        };
-
-        let currentLang = localStorage.getItem("bricspay_lang") || "fa";
-
-        function changeLanguage(lang) {
-            if (!translations[lang]) return;
-            currentLang = lang;
-            localStorage.setItem("bricspay_lang", lang);
-
-            const t = translations[lang];
-            document.documentElement.lang = lang;
-            document.documentElement.dir = t.dir;
-            document.title = t.title;
-
-            document.getElementById("languageSelect").value = lang;
-            document.getElementById("txt-sys-status").innerText = t.sysStatus;
-            document.getElementById("txt-hdr-create-acc").innerText = t.hdrCreateAcc;
-            document.getElementById("lbl-acc-id").innerText = t.lblAccId;
-            document.getElementById("lbl-currency").innerText = t.lblCurrency;
-            document.getElementById("btn-submit-acc").innerText = t.btnSubmitAcc;
-            document.getElementById("txt-hdr-post-tx").innerText = t.hdrPostTx;
-            document.getElementById("lbl-from-acc").innerText = t.lblFromAcc;
-            document.getElementById("lbl-to-acc").innerText = t.lblToAcc;
-            document.getElementById("lbl-amount").innerText = t.lblAmount;
-            document.getElementById("btn-submit-tx").innerText = t.btnSubmitTx;
-            document.getElementById("txt-hdr-accounts").innerText = t.hdrAccounts;
-            document.getElementById("btn-refresh").innerText = t.btnRefresh;
-            document.getElementById("th-acc-id").innerText = t.thAccId;
-            document.getElementById("th-currency").innerText = t.thCurrency;
-            document.getElementById("th-balance").innerText = t.thBalance;
-            document.getElementById("th-created").innerText = t.thCreated;
-            document.getElementById("txt-footer").innerText = t.footer;
-
-            fetchAccounts();
         }
 
         async function fetchAccounts() {
-            const tbody = document.getElementById("accountsTableBody");
-            const t = translations[currentLang];
             try {
-                const res = await fetch("/api/v1/accounts");
-                if (!res.ok) throw new Error("HTTP error " + res.status);
-                const data = await res.json();
-                
-                tbody.innerHTML = "";
-                if (!data || data.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--text-muted);">${t.emptyAccounts}</td></tr>`;
-                    return;
-                }
-
-                data.forEach(acc => {
-                    const row = document.createElement("tr");
-                    const dateStr = acc.created_at ? new Date(acc.created_at).toLocaleString(currentLang === 'fa' ? 'fa-IR' : (currentLang === 'ru' ? 'ru-RU' : 'en-US')) : "-";
-                    row.innerHTML = `
-                        <td><strong>${acc.id || acc.account_id || "-"}</strong></td>
-                        <td>${acc.currency || "-"}</td>
-                        <td>${Number(acc.balance || 0).toLocaleString()}</td>
-                        <td>${dateStr}</td>
-                    `;
-                    tbody.appendChild(row);
-                });
+                const res = await fetch(`${API_BASE}/api/v1/accounts`);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                accountsCache = await res.json();
+                renderTable();
+                updateStats();
             } catch (err) {
-                tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--danger);">API Error: ${err.message}</td></tr>`;
+                document.getElementById('accountsTableBody').innerHTML = `
+                    <tr><td colspan="5" class="py-6 text-center text-rose-400 text-xs">Failed to load accounts. (${err.message})</td></tr>
+                `;
             }
+        }
+
+        function updateStats() {
+            document.getElementById('statTotalAccounts').innerText = accountsCache.length;
+            const currencies = new Set(accountsCache.map(a => a.currency).filter(Boolean));
+            document.getElementById('statCurrencies').innerText = currencies.size;
+            let enrichedCount = 0;
+            accountsCache.forEach(acc => { if (acc.id && loadMeta(acc.id)) enrichedCount++; });
+            document.getElementById('statEnrichedAccounts').innerText = enrichedCount;
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('accountsTableBody');
+            const search = document.getElementById('searchInput').value.toLowerCase().trim();
+            const currFilter = document.getElementById('currencyFilter').value;
+            const dict = translations[currentLang];
+
+            const filtered = accountsCache.filter(acc => {
+                const meta = acc.id ? loadMeta(acc.id) : null;
+                const holder = meta?.holder?.toLowerCase() || '';
+                const code = (acc.code || '').toLowerCase();
+                const id = String(acc.id || '');
+                return (!search || code.includes(search) || id.includes(search) || holder.includes(search)) &&
+                       (currFilter === 'ALL' || acc.currency === currFilter);
+            });
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="py-8 text-center text-slate-500 text-xs">${dict.no_accs_found}</td></tr>`;
+                return;
+            }
+
+            const countryFlags = { 'IR': '🇮🇷 Iran', 'RU': '🇷🇺 Russia', 'CN': '🇨🇳 China', 'AE': '🇦🇪 UAE', 'IN': '🇮🇳 India', 'OTHER': '🌐 Other' };
+
+            tbody.innerHTML = filtered.map(acc => {
+                const meta = acc.id ? loadMeta(acc.id) : null;
+                const isNegative = Number(acc.balance) < 0;
+                return `
+                    <tr class="hover:bg-slate-900/60 cursor-pointer transition border-b border-slate-800/60" onclick="openAccountDetail(${acc.id})">
+                        <td class="py-3 px-4">
+                            <span class="font-mono font-semibold ${acc.code ? 'text-sky-400' : 'text-slate-500 italic'}">${acc.code || '[NO CODE]'}</span>
+                            <span class="text-[10px] text-slate-500 font-mono block">ID: ${acc.id}</span>
+                        </td>
+                        <td class="py-3 px-4">
+                            ${meta ? `<div class="font-medium text-slate-200 text-xs">${meta.holder}</div><div class="text-[10px] text-slate-400">${countryFlags[meta.country] || meta.country} • ${meta.entityType}</div>` : `<span class="text-xs text-slate-500 italic">${dict.no_profile}</span>`}
+                        </td>
+                        <td class="py-3 px-4"><span class="px-2 py-0.5 rounded text-[11px] font-mono bg-slate-800 text-slate-300 border border-slate-700">${acc.type || 'unknown'}</span></td>
+                        <td class="py-3 px-4 font-mono font-medium text-xs text-white">${acc.currency || '---'}</td>
+                        <td class="py-3 px-4 text-end font-mono font-semibold text-xs ${isNegative ? 'text-rose-400' : 'text-emerald-400'}">${Number(acc.balance || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                    </tr>
+                `;
+            }).join('');
         }
 
         async function handleCreateAccount(e) {
             e.preventDefault();
-            const id = document.getElementById("accId").value.trim();
-            const currency = document.getElementById("accCurrency").value;
-            const alertBox = document.getElementById("accAlert");
-            const t = translations[currentLang];
+            const btn = document.getElementById('submitBtn');
+            const alertBox = document.getElementById('formAlert');
+            alertBox.className = "hidden text-xs p-2.5 rounded border";
+            btn.disabled = true;
+
+            const payload = {
+                code: document.getElementById('accCode').value.trim().toUpperCase(),
+                type: document.getElementById('accType').value.trim().toLowerCase(),
+                currency: document.getElementById('accCurrency').value.trim().toUpperCase(),
+                balance: parseFloat(document.getElementById('accBalance').value) || 0
+            };
+
+            const metaPayload = {
+                holder: document.getElementById('metaHolder').value.trim(),
+                entityType: document.getElementById('metaEntityType').value,
+                country: document.getElementById('metaCountry').value,
+                regNo: document.getElementById('metaRegNo').value.trim(),
+                purpose: document.getElementById('metaPurpose').value.trim(),
+                createdAt: new Date().toISOString()
+            };
 
             try {
-                const res = await fetch("/api/v1/accounts", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ id: id, currency: currency })
+                const res = await fetch(`${API_BASE}/api/v1/accounts`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
                 });
-
-                if (!res.ok) {
-                    const errData = await res.text();
-                    throw new Error(errData || "Failed to create account");
-                }
-
-                alertBox.className = "alert alert-success";
-                alertBox.innerText = t.accSuccess;
-                alertBox.style.display = "block";
-                document.getElementById("createAccountForm").reset();
-                fetchAccounts();
+                if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `HTTP ${res.status}`);
+                const created = await res.json();
+                if (created.id) saveMeta(created.id, metaPayload);
+                alertBox.className = "text-xs p-2.5 rounded border bg-emerald-950/70 border-emerald-800 text-emerald-300 block";
+                alertBox.innerText = `Account created successfully (ID: ${created.id}, Code: ${created.code})`;
+                document.getElementById('createAccountForm').reset();
+                document.getElementById('accCurrency').value = 'IRR';
+                await fetchAccounts();
             } catch (err) {
-                alertBox.className = "alert alert-error";
-                alertBox.innerText = err.message;
-                alertBox.style.display = "block";
+                alertBox.className = "text-xs p-2.5 rounded border bg-rose-950/70 border-rose-800 text-rose-300 block";
+                alertBox.innerText = `Error: ${err.message}`;
+            } finally {
+                btn.disabled = false;
             }
-            setTimeout(() => { alertBox.style.display = "none"; }, 5000);
         }
 
-        async function handlePostTransaction(e) {
-            e.preventDefault();
-            const from = document.getElementById("txFrom").value.trim();
-            const to = document.getElementById("txTo").value.trim();
-            const amount = parseFloat(document.getElementById("txAmount").value);
-            const alertBox = document.getElementById("txAlert");
-            const t = translations[currentLang];
-
-            try {
-                const res = await fetch("/api/v1/transactions", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        from_account: from,
-                        to_account: to,
-                        amount: amount
-                    })
-                });
-
-                if (!res.ok) {
-                    const errData = await res.text();
-                    throw new Error(errData || "Transaction failed");
-                }
-
-                alertBox.className = "alert alert-success";
-                alertBox.innerText = t.txSuccess;
-                alertBox.style.display = "block";
-                document.getElementById("txForm").reset();
-                fetchAccounts();
-            } catch (err) {
-                alertBox.className = "alert alert-error";
-                alertBox.innerText = err.message;
-                alertBox.style.display = "block";
-            }
-            setTimeout(() => { alertBox.style.display = "none"; }, 5000);
+        function openAccountDetail(id) {
+            const acc = accountsCache.find(a => a.id === id);
+            if (!acc) return;
+            const meta = loadMeta(id);
+            document.getElementById('modalContent').innerHTML = `
+                <div class="bg-slate-950 p-3 rounded-lg border border-slate-800 space-y-2 text-xs">
+                    <div class="flex justify-between"><span class="text-slate-400">ID:</span><span class="font-mono text-sky-400 font-bold">${acc.id}</span></div>
+                    <div class="flex justify-between"><span class="text-slate-400">Code:</span><span class="font-mono text-white font-bold">${acc.code || '[Empty]'}</span></div>
+                    <div class="flex justify-between"><span class="text-slate-400">Type:</span><span class="font-mono">${acc.type || 'N/A'}</span></div>
+                    <div class="flex justify-between"><span class="text-slate-400">Balance:</span><span class="font-mono font-bold text-emerald-400">${Number(acc.balance).toLocaleString()} ${acc.currency}</span></div>
+                </div>
+                <div class="border-t border-slate-800 pt-3 text-xs">
+                    <h4 class="font-bold text-sky-400 mb-2">Corporate Profile (KYC)</h4>
+                    ${meta ? `
+                        <p class="mb-1"><strong>Holder:</strong> ${meta.holder}</p>
+                        <p class="mb-1"><strong>Jurisdiction:</strong> ${meta.country}</p>
+                        <p class="mb-1"><strong>Entity Type:</strong> ${meta.entityType}</p>
+                        <p class="mb-1"><strong>Reg No:</strong> ${meta.regNo || '---'}</p>
+                        <p class="mb-1"><strong>Purpose:</strong> ${meta.purpose || '---'}</p>
+                    ` : `<span class="text-slate-500 italic">No KYC profile attached.</span>`}
+                </div>
+            `;
+            document.getElementById('detailModal').classList.remove('hidden');
         }
 
-        // Initialize on page load
-        document.addEventListener("DOMContentLoaded", () => {
+        function closeModal() { document.getElementById('detailModal').classList.add('hidden'); }
+
+        window.addEventListener('DOMContentLoaded', () => {
             changeLanguage(currentLang);
+            checkHealth();
+            fetchAccounts();
         });
     </script>
 </body>
