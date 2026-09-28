@@ -1,11 +1,8 @@
 package main
 
-package main
-
 import (
 	"context"
 	"embed"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -13,10 +10,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/bricspay/internal/api"
-	"github.com/bricspay/internal/auth"
-	"github.com/bricspay/internal/db"
-	"github.com/bricspay/internal/ledger"
+	"bricspay/internal/api"
+	"bricspay/internal/auth"
+	"bricspay/internal/db"
+	"bricspay/internal/ledger"
 )
 
 //go:embed static/*
