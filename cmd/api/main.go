@@ -28,11 +28,24 @@ func main() {
 	server := api.NewServer(database)
 
 	mux := http.NewServeMux()
+
+	// سرو کردن فایل‌های CSS و JS استاتیک
+	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(api.StaticFS())))
+
+	// روت‌های اصلی برنامه
 	mux.HandleFunc("/", server.HandleRoot)
 	mux.HandleFunc("/health", server.HealthCheck)
 	mux.HandleFunc("/api/v1/accounts", server.HandleAccounts)
 	mux.HandleFunc("/api/v1/transactions", server.HandleTransactions)
 	mux.HandleFunc("/api/v1/banks", server.HandleBanks)
+
+	// روت‌های احراز هویت و KYC
+	mux.HandleFunc("/api/v1/auth/register", server.HandleRegister)
+	mux.HandleFunc("/api/v1/auth/login", server.HandleLogin)
+	mux.HandleFunc("/api/v1/kyc/upload", server.HandleKYCUpload)
+	mux.HandleFunc("/api/v1/admin/profiles", server.HandleAdminProfiles)
+	mux.HandleFunc("/api/v1/admin/decision", server.HandleAdminDecision)
+	mux.HandleFunc("/api/v1/admin/audit", server.HandleAdminAudit)
 
 	httpServer := &http.Server{
 		Addr:         ":" + port,
