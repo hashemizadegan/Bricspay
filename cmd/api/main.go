@@ -19,20 +19,10 @@ func main() {
 		port = "8080"
 	}
 
-	dbURL := os.Getenv("DATABASE_URL")
-	if dbURL == "" {
-		log.Println("DATABASE_URL not set; running with nil db (in-memory/limited mode)")
-	}
-
-	var databaseConn *db.Database = nil
-	var sqlDB = (*struct{ *http.Server })(nil) // placeholder check
-
-	database, err := db.InitDB(dbURL)
+	databaseURL := os.Getenv("DATABASE_URL")
+	database, err := db.InitDB(databaseURL)
 	if err != nil {
-		log.Printf("Warning: Database connection failed: %v. Running in mock/fallback mode.\n", err)
-	} else {
-		log.Println("Successfully connected to PostgreSQL database.")
-		defer database.Close()
+		log.Printf("Warning: Failed to connect to database: %v. Running in in-memory mode.", err)
 	}
 
 	server := api.NewServer(database)
@@ -47,13 +37,13 @@ func main() {
 	httpServer := &http.Server{
 		Addr:         ":" + port,
 		Handler:      mux,
-		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 10 * time.Second,
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 15 * time.Second,
 		IdleTimeout:  60 * time.Second,
 	}
 
 	go func() {
-		log.Printf("BRICS Pay Gateway starting on port %s\n", port)
+		log.Printf("BRICS Pay Server starting on port %s...", port)
 		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("Server error: %v", err)
 		}
@@ -63,13 +53,12 @@ func main() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	log.Println("Shutting down server...")
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	log.Println("Shutting down server gracefully...")
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	if err := httpServer.Shutdown(ctx); err != nil {
 		log.Fatalf("Server forced to shutdown: %v", err)
 	}
-
-	log.Println("Server gracefully stopped.")
+	log.Println("Server stopped successfully.")
 }
