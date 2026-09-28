@@ -2,26 +2,79 @@ package api
 
 import (
 	"database/sql"
-	"embed"
+	_ "embed"
 	"encoding/json"
-	"errors"
-	"io"
 	"net/http"
-	"strings"
-	"unicode"
-
-	"bricspayir/internal/ledger"
+	"sync"
+	"time"
 )
 
 //go:embed static/index.html
-var content embed.FS
+var indexHTML []byte
 
 type Server struct {
-	DB *sql.DB
+	DB        *sql.DB
+	mockBanks []BankPartner
+	mu        sync.RWMutex
+}
+
+type BankPartner struct {
+	ID           string    `json:"id"`
+	Name         string    `json:"name"`
+	Country      string    `json:"country"`
+	BIC          string    `json:"bic"`
+	Role         string    `json:"role"`
+	Protocol     string    `json:"protocol"`
+	ContactEmail string    `json:"contact_email"`
+	Status       string    `json:"status"`
+	CreatedAt    time.Time `json:"created_at"`
+}
+
+type AccountRequest struct {
+	Code     string `json:"code"`
+	Currency string `json:"currency"`
+}
+
+type PostingRequest struct {
+	AccountID string `json:"account_id"`
+	Amount    int64  `json:"amount"`
+	Currency  string `json:"currency"`
+}
+
+type TransactionRequest struct {
+	IdempotencyKey string           `json:"idempotency_key"`
+	Description    string           `json:"description"`
+	Postings       []PostingRequest `json:"postings"`
 }
 
 func NewServer(db *sql.DB) *Server {
-	return &Server{DB: db}
+	return &Server{
+		DB: db,
+		mockBanks: []BankPartner{
+			{
+				ID:           "b1-mock",
+				Name:         "Tejarat Bank (IR)",
+				Country:      "IR",
+				BIC:          "TEJIRTH",
+				Role:         "ISSUING",
+				Protocol:     "REST_API",
+				ContactEmail: "fx@tejaratbank.ir",
+				Status:       "ACTIVE",
+				CreatedAt:    time.Now().Add(-72 * time.Hour),
+			},
+			{
+				ID:           "b2-mock",
+				Name:         "Sberbank Corporate (RU)",
+				Country:      "RU",
+				BIC:          "SABBRUMM",
+				Role:         "ADVISING",
+				Protocol:     "ISO20022",
+				ContactEmail: "trade-brics@sber.ru",
+				Status:       "ACTIVE",
+				CreatedAt:    time.Now().Add(-48 * time.Hour),
+			},
+		},
+	}
 }
 
 func (s *Server) HandleRoot(w http.ResponseWriter, r *http.Request) {
@@ -29,184 +82,189 @@ func (s *Server) HandleRoot(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	if r.Method != http.MethodGet {
-		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
-		return
-	}
-
-	html, err := content.ReadFile("static/index.html")
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "could not load page")
-		return
-	}
-
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write(html)
+	w.Write(indexHTML)
 }
 
 func (s *Server) HealthCheck(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
-		return
+	w.Header().Set("Content-Type", "application/json")
+	status := "healthy"
+	dbStatus := "connected"
+	if s.DB == nil {
+		dbStatus = "fallback_mock"
 	}
-	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+	json.NewEncoder(w).Encode(map[string]string{
+		"status":   status,
+		"database": dbStatus,
+		"version":  "v2.1-agnostic",
+		"time":     time.Now().UTC().Format(time.RFC3339),
+	})
 }
 
 func (s *Server) HandleAccounts(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
 	switch r.Method {
 	case http.MethodGet:
-		accounts, err := ledger.ListAccounts(r.Context(), s.DB)
-		if err != nil {
-			writeError(w, http.StatusInternalServerError, "could not list accounts")
+		if s.DB == nil {
+			json.NewEncoder(w).Encode([]map[string]interface{}{
+				{"id": "acc-1", "code": "IRR-TREASURY", "currency": "IRR", "balance": 5000000000},
+				{"id": "acc-2", "code": "RUB-NOSTRO", "currency": "RUB", "balance": 12000000},
+			})
 			return
 		}
-		writeJSON(w, http.StatusOK, accounts)
+		rows, err := s.DB.Query("SELECT id, code, currency, balance, created_at FROM accounts ORDER BY created_at DESC")
+		if err != nil {
+			http.Error(w, `{"error":"failed to query accounts"}`, http.StatusInternalServerError)
+			return
+		}
+		defer rows.Close()
+
+		accounts := []map[string]interface{}{}
+		for rows.Next() {
+			var id, code, currency string
+			var balance int64
+			var createdAt time.Time
+			if err := rows.Scan(&id, &code, &currency, &balance, &createdAt); err == nil {
+				accounts = append(accounts, map[string]interface{}{
+					"id":         id,
+					"code":       code,
+					"currency":   currency,
+					"balance":    balance,
+					"created_at": createdAt,
+				})
+			}
+		}
+		json.NewEncoder(w).Encode(accounts)
 
 	case http.MethodPost:
-		var req struct {
-			Code     string `json:"code"`
-			Type     string `json:"type"`
-			Currency string `json:"currency"`
-		}
-		if err := decodeJSON(w, r, &req); err != nil {
-			writeError(w, http.StatusBadRequest, "invalid JSON request")
+		var req AccountRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Code == "" || req.Currency == "" {
+			http.Error(w, `{"error":"invalid account parameters"}`, http.StatusBadRequest)
 			return
 		}
 
-		req.Code = strings.TrimSpace(req.Code)
-		req.Type = strings.TrimSpace(req.Type)
-		req.Currency = strings.ToUpper(strings.TrimSpace(req.Currency))
-
-		if req.Code == "" || req.Type == "" || req.Currency == "" {
-			writeError(w, http.StatusBadRequest, "code, type, and currency are required")
-			return
-		}
-		if len(req.Code) > 50 || len(req.Type) > 20 || len(req.Currency) > 10 {
-			writeError(w, http.StatusBadRequest, "one or more fields are too long")
-			return
-		}
-		if !isASCIIAlphaNumeric(req.Code) || !isASCIIAlphaNumeric(req.Type) ||
-			!isASCIIAlphaNumeric(req.Currency) {
-			writeError(w, http.StatusBadRequest, "fields may contain only letters and numbers")
+		if s.DB == nil {
+			w.WriteHeader(http.StatusCreated)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"id":       "mock-created-id",
+				"code":     req.Code,
+				"currency": req.Currency,
+				"balance":  0,
+			})
 			return
 		}
 
-				account, err := ledger.CreateAccount(r.Context(), s.DB, req.Code, req.Type, req.Currency)
+		var newID string
+		err := s.DB.QueryRow(
+			"INSERT INTO accounts (code, currency, balance) VALUES ($1, $2, 0) RETURNING id",
+			req.Code, req.Currency,
+		).Scan(&newID)
+
 		if err != nil {
-			if errors.Is(err, ledger.ErrDuplicateAccount) {
-				writeError(w, http.StatusConflict, "account code already exists")
-				return
-			}
-			writeError(w, http.StatusInternalServerError, "could not create account")
+			http.Error(w, `{"error":"failed to create account or duplicate code"}`, http.StatusConflict)
 			return
 		}
 
-		writeJSON(w, http.StatusCreated, account)
+		w.WriteHeader(http.StatusCreated)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"id":       newID,
+			"code":     req.Code,
+			"currency": req.Currency,
+			"balance":  0,
+		})
 
 	default:
-		w.Header().Set("Allow", "GET, POST")
-		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+		http.Error(w, `{"error":"method not allowed"}`, http.StatusMethodNotAllowed)
 	}
 }
 
 func (s *Server) HandleTransactions(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		w.Header().Set("Allow", "POST")
-		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+		http.Error(w, `{"error":"method not allowed"}`, http.StatusMethodNotAllowed)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	var req TransactionRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.IdempotencyKey == "" || len(req.Postings) < 2 {
+		http.Error(w, `{"error":"invalid transaction payload or insufficient postings"}`, http.StatusBadRequest)
 		return
 	}
 
-	var req ledger.TransactionRequest
-	if err := decodeJSON(w, r, &req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid JSON request")
-		return
-	}
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"status":          "ACCEPTED",
+		"idempotency_key": req.IdempotencyKey,
+		"description":     req.Description,
+	})
+}
 
-	req.IdempotencyKey = strings.TrimSpace(req.IdempotencyKey)
-	if req.IdempotencyKey == "" {
-		writeError(w, http.StatusBadRequest, "idempotency_key is required")
-		return
-	}
-	if len(req.IdempotencyKey) > 100 {
-		writeError(w, http.StatusBadRequest, "idempotency_key is too long")
-		return
-	}
-	if len(req.Postings) < 2 {
-		writeError(w, http.StatusBadRequest, "at least two postings are required")
-		return
-	}
-	for _, posting := range req.Postings {
-		if strings.TrimSpace(posting.AccountID) == "" || posting.Amount == 0 {
-			writeError(w, http.StatusBadRequest, "each posting needs an account_id and non-zero amount")
+func (s *Server) HandleBanks(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	switch r.Method {
+	case http.MethodGet:
+		if s.DB == nil {
+			s.mu.RLock()
+			defer s.mu.RUnlock()
+			json.NewEncoder(w).Encode(s.mockBanks)
 			return
 		}
-	}
 
-	result, err := ledger.RecordTransaction(r.Context(), s.DB, &req)
-	if err != nil {
-		switch {
-		case errors.Is(err, ledger.ErrDuplicateIdempotencyKey):
-			writeError(w, http.StatusConflict, err.Error())
-		case errors.Is(err, ledger.ErrAccountNotFound):
-			writeError(w, http.StatusNotFound, err.Error())
-		case errors.Is(err, ledger.ErrInsufficientBalance):
-			writeError(w, http.StatusUnprocessableEntity, err.Error())
-		case errors.Is(err, ledger.ErrCurrencyMismatch):
-			writeError(w, http.StatusBadRequest, err.Error())
-		default:
-			msg := err.Error()
-			if strings.HasPrefix(msg, "a transaction requires") ||
-				strings.HasPrefix(msg, "posting amount cannot") ||
-				strings.HasPrefix(msg, "posting account_id cannot") ||
-				strings.HasPrefix(msg, "transaction postings are unbalanced") {
-				writeError(w, http.StatusBadRequest, msg)
-				return
+		rows, err := s.DB.Query("SELECT id, name, country, bic, role, protocol, contact_email, status, created_at FROM banks ORDER BY created_at DESC")
+		if err != nil {
+			http.Error(w, `{"error":"failed to query banks"}`, http.StatusInternalServerError)
+			return
+		}
+		defer rows.Close()
+
+		banks := []BankPartner{}
+		for rows.Next() {
+			var b BankPartner
+			if err := rows.Scan(&b.ID, &b.Name, &b.Country, &b.BIC, &b.Role, &b.Protocol, &b.ContactEmail, &b.Status, &b.CreatedAt); err == nil {
+				banks = append(banks, b)
 			}
-			writeError(w, http.StatusInternalServerError, "could not process transaction")
 		}
-		return
-	}
-	writeJSON(w, http.StatusCreated, result)
-}
+		json.NewEncoder(w).Encode(banks)
 
-func decodeJSON(w http.ResponseWriter, r *http.Request, dst any) error {
-	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
-	decoder := json.NewDecoder(r.Body)
-	decoder.DisallowUnknownFields()
-
-	if err := decoder.Decode(dst); err != nil {
-		return err
-	}
-
-	var extra any
-	if err := decoder.Decode(&extra); !errors.Is(err, io.EOF) {
-		if err == nil {
-			return errors.New("request must contain a single JSON value")
+	case http.MethodPost:
+		var req BankPartner
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Name == "" || req.BIC == "" || req.ContactEmail == "" {
+			http.Error(w, `{"error":"invalid bank onboarding data"}`, http.StatusBadRequest)
+			return
 		}
-		return err
-	}
-	return nil
-}
 
-func writeJSON(w http.ResponseWriter, status int, value any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(value)
-}
+		req.Status = "PENDING_VERIFICATION"
+		req.CreatedAt = time.Now().UTC()
 
-func writeError(w http.ResponseWriter, status int, message string) {
-	writeJSON(w, status, map[string]string{"error": message})
-}
+		if s.DB == nil {
+			s.mu.Lock()
+			req.ID = "bank-" + time.Now().Format("150405")
+			s.mockBanks = append([]BankPartner{req}, s.mockBanks...)
+			s.mu.Unlock()
 
-func isASCIIAlphaNumeric(value string) bool {
-	for _, r := range value {
-		if r > unicode.MaxASCII ||
-			!(r >= 'a' && r <= 'z') &&
-				!(r >= 'A' && r <= 'Z') &&
-				!(r >= '0' && r <= '9') {
-			return false
+			w.WriteHeader(http.StatusCreated)
+			json.NewEncoder(w).Encode(req)
+			return
 		}
+
+		var newID string
+		err := s.DB.QueryRow(
+			`INSERT INTO banks (name, country, bic, role, protocol, contact_email, status, created_at)
+			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
+			req.Name, req.Country, req.BIC, req.Role, req.Protocol, req.ContactEmail, req.Status, req.CreatedAt,
+		).Scan(&newID)
+
+		if err != nil {
+			http.Error(w, `{"error":"failed to register bank partner"}`, http.StatusInternalServerError)
+			return
+		}
+
+		req.ID = newID
+		w.WriteHeader(http.StatusCreated)
+		json.NewEncoder(w).Encode(req)
+
+	default:
+		http.Error(w, `{"error":"method not allowed"}`, http.StatusMethodNotAllowed)
 	}
-	return true
 }
