@@ -1,8 +1,10 @@
 package auth
 
 import (
+	"context"
 	"errors"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -10,10 +12,14 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+type contextKey string
+
+const claimsKey contextKey = "claims"
+
 var jwtSecret = []byte(envOr("JWT_SECRET", "change-me-in-production"))
 
 func envOr(k, d string) string {
-	if v := strings.TrimSpace(getenv(k)); v != "" {
+	if v := strings.TrimSpace(os.Getenv(k)); v != "" {
 		return v
 	}
 	return d
@@ -57,6 +63,17 @@ func ParseToken(tokenStr string) (*Claims, error) {
 		return nil, errors.New("invalid token")
 	}
 	return t.Claims.(*Claims), nil
+}
+
+// withClaims context را با اطلاعات احراز هویت مقداردهی می‌کند
+func withClaims(r *http.Request, c *Claims) context.Context {
+	return context.WithValue(r.Context(), claimsKey, c)
+}
+
+// FromContext اطلاعات کاربر را از context دریافت می‌کند (استفاده شده در kyc_handlers)
+func FromContext(ctx context.Context) (*Claims, bool) {
+	c, ok := ctx.Value(claimsKey).(*Claims)
+	return c, ok
 }
 
 // RequireAdmin middleware: فقط ادمین‌ها عبور می‌کنند.
