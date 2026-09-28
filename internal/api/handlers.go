@@ -2,13 +2,27 @@ package api
 
 import (
 	"database/sql"
+	"embed"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"net/http"
 	"time"
 
 	"bricspay/internal/ledger"
 )
+
+//go:embed static/*
+var staticFS embed.FS
+
+// StaticFS دسترسی به پوشه فایل‌های استاتیک برای وب‌سرور
+func StaticFS() http.FileSystem {
+	sub, err := fs.Sub(staticFS, "static")
+	if err != nil {
+		panic(err)
+	}
+	return http.FS(sub)
+}
 
 // Server ساختار سرور API با اتصال دیتابیس
 type Server struct {
@@ -22,7 +36,7 @@ func NewServer(db *sql.DB) *Server {
 	}
 }
 
-// HandleRoot صفحه اصلی و سلامت سرویس
+// HandleRoot صفحه اصلی و روت
 func (s *Server) HandleRoot(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/" {
 		http.NotFound(w, r)
@@ -137,7 +151,7 @@ func (s *Server) HandleTransactions(w http.ResponseWriter, r *http.Request) {
 			req.Description = fmt.Sprintf("Transfer of %.2f %s", req.Amount, req.Currency)
 		}
 
-		// دفترکل دوبل: کسر از فرستنده و افزودن به گیرنده
+		// ثبت دفترکل دوبل
 		txReq := &ledger.TransactionRequest{
 			IdempotencyKey: req.IdempotencyKey,
 			Description:    req.Description,
@@ -165,7 +179,7 @@ func (s *Server) HandleTransactions(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// HandleBanks فهرست بانک‌های تسویه‌کننده در شبکه
+// HandleBanks فهرست بانک‌های شبکه تسویه
 func (s *Server) HandleBanks(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
