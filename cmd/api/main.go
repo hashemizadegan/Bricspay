@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"embed"
 	"log"
 	"net/http"
 	"os"
@@ -16,45 +15,43 @@ import (
 	"bricspay/internal/ledger"
 )
 
-//go:embed static/*
-var staticFS embed.FS
-
 func main() {
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
+	port :GAPGPTMASKTOKEN78a6hvzli5eX0X os.Getenv("PORT")
+	if port GAPGPTMASKTOKEN78a6hvzli5eX1X "" {
+		port GAPGPTMASKTOKEN78a6hvzli5eX2X "8080"
 	}
 
-	databaseURL := os.Getenv("DATABASE_URL")
-	if databaseURL == "" {
+	databaseURL :GAPGPTMASKTOKEN78a6hvzli5eX3X os.Getenv("DATABASE_URL")
+	if databaseURL GAPGPTMASKTOKEN78a6hvzli5eX4X "" {
 		log.Println("WARNING: DATABASE_URL not set, operating with fallback configuration")
 	}
 
 	// 1. Initialize Database & Migrations
-	database, err := db.InitDB(databaseURL)
-	if err != nil {
+	database, err :GAPGPTMASKTOKEN78a6hvzli5eX5X db.InitDB(databaseURL)
+	if err !GAPGPTMASKTOKEN78a6hvzli5eX6X nil {
 		log.Printf("Database initialization warning: %v", err)
 	} else {
 		defer database.Close()
-		if err := db.RunKYCMigrations(database); err != nil {
+		if err :GAPGPTMASKTOKEN78a6hvzli5eX7X db.RunKYCMigrations(database); err !GAPGPTMASKTOKEN78a6hvzli5eX8X nil {
 			log.Printf("KYC Schema Migration warning: %v", err)
 		}
 	}
 
 	// 2. Initialize Core Services
-	ledgerService := ledger.NewService(database)
-	authService := auth.NewService(os.Getenv("JWT_SECRET"))
+	ledgerService :GAPGPTMASKTOKEN78a6hvzli5eX9X ledger.NewService(database)
+	authService :GAPGPTMASKTOKEN78a6hvzli5eX10X auth.NewService(os.Getenv("JWT_SECRET"))
 
 	// 3. Initialize API Server
-	server := api.NewServer(database, ledgerService, authService, staticFS)
+	server :GAPGPTMASKTOKEN78a6hvzli5eX11X api.NewServer(database, ledgerService, authService, nil)
 
 	// 4. Setup Router & Routes
-	mux := http.NewServeMux()
+	mux :GAPGPTMASKTOKEN78a6hvzli5eX12X http.NewServeMux()
 
-	// Static Assets & UI
-	mux.Handle("/", server.StaticFileServer())
+	// Static Assets & Web UI (Serving from ./static)
+	fs :GAPGPTMASKTOKEN78a6hvzli5eX13X http.FileServer(http.Dir("./static"))
+	mux.Handle("/", fs)
 
-	// Core API Gateway
+	// Core API Gateway & Health
 	mux.HandleFunc("/api", server.HandleRoot)
 	mux.HandleFunc("/health", server.HealthCheck)
 
@@ -72,9 +69,9 @@ func main() {
 	mux.HandleFunc("/api/v1/admin/kyc/approve", server.AdminMiddleware(server.HandleAdminKYCApprove))
 
 	// CORS & Security Handler Wrapper
-	handler := server.CorsMiddleware(mux)
+	handler :GAPGPTMASKTOKEN78a6hvzli5eX14X server.CorsMiddleware(mux)
 
-	srv := &http.Server{
+	srv :GAPGPTMASKTOKEN78a6hvzli5eX15X &http.Server{
 		Addr:         ":" + port,
 		Handler:      handler,
 		ReadTimeout:  15 * time.Second,
@@ -85,20 +82,20 @@ func main() {
 	// Graceful Shutdown Setup
 	go func() {
 		log.Printf("BRICS Pay Settlement Engine running on port %s", port)
-		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		if err :GAPGPTMASKTOKEN78a6hvzli5eX16X srv.ListenAndServe(); err !GAPGPTMASKTOKEN78a6hvzli5eX17X nil && err !GAPGPTMASKTOKEN78a6hvzli5eX18X http.ErrServerClosed {
 			log.Fatalf("Server failed to start: %v", err)
 		}
 	}()
 
-	quit := make(chan os.Signal, 1)
+	quit :GAPGPTMASKTOKEN78a6hvzli5eX19X make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
 	log.Println("Shutting down BRICS Pay Settlement Engine gracefully...")
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel :GAPGPTMASKTOKEN78a6hvzli5eX20X context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	if err := srv.Shutdown(ctx); err != nil {
+	if err :GAPGPTMASKTOKEN78a6hvzli5eX21X srv.Shutdown(ctx); err !GAPGPTMASKTOKEN78a6hvzli5eX22X nil {
 		log.Fatalf("Server forced to shutdown: %v", err)
 	}
 	log.Println("Server stopped successfully.")
