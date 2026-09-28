@@ -1,32 +1,28 @@
-# -------------------------------------------------------------
-# Stage 1: Build the Go binary
-# -------------------------------------------------------------
-FROM golang:1.23-alpine AS builder
+# مرحله اول: بیلد با Go
+FROM golang:1.22-alpine AS builder
 
 WORKDIR /app
 
-RUN apk add --no-cache git ca-certificates
+# مدیریت کش پیش‌نیازها
+COPY go.mod go.sum ./
+RUN go mod download
 
+# کپی سورس‌کد
 COPY . .
 
-RUN go mod tidy
+# کامپایل باینری به صورت استاتیک
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o bricspay-api ./cmd/api
 
-RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-w -s" -o bricspay-api ./cmd/api
+# مرحله دوم: ایمیج نهایی بسیار سبک
+FROM alpine:3.19
 
-# -------------------------------------------------------------
-# Stage 2: Final minimal runtime image
-# -------------------------------------------------------------
-FROM alpine:3.20
+RUN apk --no-cache add ca-certificates tzdata
 
 WORKDIR /app
 
-RUN apk add --no-cache ca-certificates tzdata
-
-RUN mkdir -p /data/uploads && chmod 700 /data/uploads
-
+# کپی باینری و پوشه استاتیک از مرحله قبل
 COPY --from=builder /app/bricspay-api .
-
-COPY --from=builder /app/internal/api/static ./static
+COPY --from=builder /app/static ./static
 
 EXPOSE 8080
 
