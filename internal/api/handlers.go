@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"io/fs"
 	"net/http"
+	"strings"
 
 	"bricspay/internal/ledger"
 )
@@ -13,7 +14,18 @@ import (
 //go:embed static/*
 var staticFS embed.FS
 
-// StaticFS فایل‌های استاتیک را در اختیار FileServer قرار می‌دهد
+// Server ساختار اصلی سرور API است
+type Server struct {
+	DB     *sql.DB
+	Router http.Handler
+}
+
+// ServeHTTP به ساختار Server اجازه می‌دهد مستقیماً به عنوان http.Handler عمل کند
+func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	s.Router.ServeHTTP(w, r)
+}
+
+// StaticFS سیستم فایل استاتیک تعبیه شده را برمی‌گرداند
 func StaticFS() http.FileSystem {
 	sub, err := fs.Sub(staticFS, "static")
 	if err != nil {
@@ -22,99 +34,150 @@ func StaticFS() http.FileSystem {
 	return http.FS(sub)
 }
 
-type Server struct {
-	ledger *ledger.Ledger
-	db     *sql.DB
-}
-
-func NewServer(database *sql.DB) *Server {
-	return &Server{
-		ledger: ledger.NewLedger(database),
-		db:     database,
+// NewServer نمونه جدید سرور به همراه کلیه مسیرها (Routes) را مقداردهی می‌کند
+func NewServer(db *sql.DB) *Server {
+	s := &Server{
+		DB: db,
 	}
+
+	mux := http.NewServeMux()
+
+	// 1. Health Checks
+	mux.HandleFunc("/healthz", s.handleHealth)
+	mux.HandleFunc("/api/health", s.handleHealth)
+
+	// 2. Ledger Endpoints
+	mux.HandleFunc("/api/v1/accounts", s.handleAccounts)
+	mux.HandleFunc("/api/v1/transactions", s.handleTransactions)
+
+	// 3. Auth Endpoints (پیاده‌سازی شده در kyc_handlers.go)
+	mux.HandleFunc("/api/auth/register", s.HandleRegister)
+	mux.HandleFunc("/api/auth/login", s.HandleLogin)
+
+	// 4. KYC Endpoints (پیاده‌سازی شده در kyc_handlers.go)
+	mux.HandleFunc("/api/kyc/upload", s.HandleKYCUpload)
+
+	// 5. Admin Endpoints (پیاده‌سازی شده در kyc_handlers.go)
+	mux.HandleFunc("/api/admin/profiles", s.HandleAdminProfiles)
+	mux.HandleFunc("/api/admin/decision", s.HandleAdminDecision)
+	mux.HandleFunc("/api/admin/audit", s.HandleAdminAudit)
+
+	// 6. Static Web UI Files
+	fileServer := http.FileServer(StaticFS())
+	mux.Handle("/static/", http.StripPrefix("/static/", fileServer))
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/" && !strings.HasPrefix(r.URL.Path, "/static/") {
+			// اگر مسیر API نباشد، کاربر به صفحه اصلی هدایت می‌شود
+			fileServer.ServeHTTP(w, r)
+			return
+		}
+		fileServer.ServeHTTP(w, r)
+	})
+
+	s.Router = mux
+	return s
 }
 
-func (s *Server) HandleRoot(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path != "/" {
-		http.NotFound(w, r)
+// handleHealth وضعیت سلامت سرویس را بررسی می‌کند
+func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	data, err := staticFS.ReadFile("static/index.html")
-	if err != nil {
-		http.Error(w, "Index file not found", http.StatusInternalServerError)
-		return
+	dbStatus := "connected"
+	if s.DB != nil {
+		if err := s.DB.PingContext(r.Context()); err != nil {
+			dbStatus = "error: " + err.Error()
+		}
+	} else {
+		dbStatus = "database not initialized"
 	}
 
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
-	w.Write(data)
-}
-
-func (s *Server) HealthCheck(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{
-		"status": "operational",
-		"system": "BRICS Pay Core Settlement",
+	json.NewEncoder(w).Encode(map[string]any{
+		"status":   "operational",
+		"service":  "bricspay-ledger",
+		"database": dbStatus,
 	})
 }
 
-func (s *Server) HandleAccounts(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
+// handleAccounts مدیریت ایجاد و دریافت لیست حساب‌های لجر
+func (s *Server) handleAccounts(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
-		accounts, err := s.ledger.GetAccounts()
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		json.NewEncoder(w).Encode(accounts)
+		s.handleListAccounts(w, r)
 	case http.MethodPost:
-		var acc ledger.Account
-		if err := json.NewDecoder(r.Body).Decode(&acc); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-		if err := s.ledger.CreateAccount(&acc); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		w.WriteHeader(http.StatusCreated)
-		json.NewEncoder(w).Encode(acc)
+		s.handleCreateAccount(w, r)
 	default:
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 	}
 }
 
-func (s *Server) HandleTransactions(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
+// handleCreateAccount حساب جدید در لجر ثبت می‌کند
+func (s *Server) handleCreateAccount(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Code     string `json:"code"`
+		Type     string `json:"type"`
+		Currency string `json:"currency"`
 	}
 
-	var req ledger.TransactionRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
 
-	res, err := s.ledger.ProcessTransaction(&req)
+	if req.Code == "" || req.Type == "" || req.Currency == "" {
+		http.Error(w, "code, type, and currency are required", http.StatusBadRequest)
+		return
+	}
+
+	acc, err := ledger.CreateAccount(r.Context(), s.DB, req.Code, req.Type, req.Currency)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(acc)
+}
+
+// handleListAccounts فهرست کلیه حساب‌ها را بازمی‌گرداند
+func (s *Server) handleListAccounts(w http.ResponseWriter, r *http.Request) {
+	accounts, err := ledger.ListAccounts(r.Context(), s.DB)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if accounts == nil {
+		accounts = []ledger.Account{}
+	}
+	json.NewEncoder(w).Encode(accounts)
+}
+
+// handleTransactions ثبت تراکنش جدید در سیستم دفتر کل
+func (s *Server) handleTransactions(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var txReq ledger.TransactionRequest
+	if err := json.NewDecoder(r.Body).Decode(&txReq); err != nil {
+		http.Error(w, "invalid transaction payload", http.StatusBadRequest)
+		return
+	}
+
+	res, err := ledger.RecordTransaction(r.Context(), s.DB, &txReq)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	json.NewEncoder(w).Encode(res)
-}
-
-func (s *Server) HandleBanks(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	banks := []map[string]string{
-		{"code": "VTB", "name": "VTB Bank (Russia)", "status": "Connected"},
-		{"code": "CBI", "name": "Central Bank of Iran", "status": "Connected"},
-		{"code": "BOC", "name": "Bank of China", "status": "Pending"},
-		{"code": "NDB", "name": "New Development Bank", "status": "Integrated"},
-	}
-	json.NewEncoder(w).Encode(banks)
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(res)
 }
