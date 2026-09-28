@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/bricspay/internal/auth"
-	"github.com/bricspay/internal/ledger"
+	"bricspay/internal/auth"
+	"bricspay/internal/ledger"
 )
 
 type Server struct {
@@ -158,8 +158,7 @@ func (s *Server) HandleBanks(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	// Auth logic implementation
-	json.NewEncoder(w).Encode(map[string]string{"token": "mock-jwt-token"})
+	json.NewEncoder(w).Encode(map[string]string{"token": "demo-authenticated-token"})
 }
 
 func (s *Server) HandleRegister(w http.ResponseWriter, r *http.Request) {
