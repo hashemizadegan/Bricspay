@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>BRICS Pay | Interbank Settlement Gateway</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;700;800;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    body { font-family: 'Vazirmatn', sans-serif; }
+    body { font-family: 'Vazirmatn', 'Inter', sans-serif; }
     .glass { background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(12px); }
   </style>
 </head>
@@ -22,239 +22,123 @@
         </div>
         <div>
           <h1 class="text-base font-extrabold text-white tracking-wide">BRICS PAY <span class="text-xs font-semibold text-indigo-400 bg-indigo-950/80 px-2 py-0.5 rounded-full border border-indigo-800/50">Core Ledger</span></h1>
-          <p class="text-[10px] text-slate-400">شبکه باز تسویه چندارزی و بین‌بانکی اوراسیا</p>
+          <p class="text-[10px] text-slate-400" data-i18n="tagline">شبکه باز تسویه چندارزی و بین‌بانکی اوراسیا</p>
         </div>
       </div>
 
+      <!-- Navigation Tabs -->
       <nav class="flex items-center gap-1.5 bg-slate-900/90 p-1 rounded-xl border border-slate-800 text-xs">
-        <button onclick="showTab('tab-workflow')" id="btn-tab-workflow" class="nav-btn px-3 py-1.5 rounded-lg font-bold text-white bg-indigo-600 shadow transition">فرآیند ۹ مرحله‌ای تجارت</button>
-        <button onclick="showTab('tab-onboarding')" id="btn-tab-onboarding" class="nav-btn px-3 py-1.5 rounded-lg text-slate-400 hover:text-white transition">الحاق بانک‌ها (Onboarding)</button>
-        <button onclick="showTab('tab-accounts')" id="btn-tab-accounts" class="nav-btn px-3 py-1.5 rounded-lg text-slate-400 hover:text-white transition">حساب‌های لجر</button>
+        <button onclick="showTab('tab-workflow')" id="btn-tab-workflow" class="nav-btn px-3 py-1.5 rounded-lg font-bold text-white bg-indigo-600 shadow transition" data-i18n="nav_workflow">فرآیند ۹ مرحله‌ای تجارت</button>
+        <button onclick="showTab('tab-onboarding')" id="btn-tab-onboarding" class="nav-btn px-3 py-1.5 rounded-lg text-slate-400 hover:text-white transition" data-i18n="nav_onboarding">الحاق بانک‌ها</button>
+        <button onclick="showTab('tab-accounts')" id="btn-tab-accounts" class="nav-btn px-3 py-1.5 rounded-lg text-slate-400 hover:text-white transition" data-i18n="nav_accounts">حساب‌های لجر</button>
       </nav>
 
-      <div class="flex items-center gap-2">
-        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-          سیستم فعال
-        </span>
+      <!-- Language Selector & Status -->
+      <div class="flex items-center gap-3">
+        <!-- Language Switcher -->
+        <div class="flex items-center bg-slate-900 border border-slate-800 rounded-lg p-0.5 text-xs font-mono">
+          <button onclick border border-slate-800 text-xs">
+        <button onclick="showTab('tab-workflow')" id="btn-tab-workflow" class="nav-btn px-3 py-1.5 rounded-lg font-bold text-white bg-indigo-600 shadow transition" data-i18n="nav_workflow">فرآیند ۹ مرحله‌ای تجارت</button>
+        <button onclick="showTab('tab-onboarding')" id="btn-tab-onboarding" class="nav-btn px-3 py-1.5 rounded-lg text-slate-400 hover:text-white transition" data-i18n="nav_onboarding">الحاق بانک‌ها</button>
+        <button onclick="showTab('tab-accounts')" id="btn-tab-accounts" class="nav-btn px-3 py-1.5 rounded-lg text-slate-400 hover:text-white transition" data-i18n="nav_accounts">حساب‌های لجر</button>
+      </nav>
+
+      <!-- Language Selector & Status -->
+      <div class="flex items-center gap-3">
+        <!-- Language Switcher -->
+        <div class="flex items-center bg-slate-900 border border-slate-800 rounded-lg p-0.5 text-xs font-mono">
+          <button onclick="setLanguage('fa')" id="lang-fa" class="px-2 py-1 rounded bg-indigo-600 text-white font-bold transition">FA</button>
+          <button onclick="setLanguage('ru')" id="lang-ru" class="px-2 py-1 rounded text-slate-400 hover:text-white transition">RU</button>
+          <button onclick="setLanguage('en')" id="lang-en" class="px-2 py-1 rounded text-slate-400 hover:text-white transition">EN</button>
+        </div>
+
+        <span class="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-emerald-500/1اری (Bank-Agnostic)</h2>
+        <p class="text-xs text-slate-400 mt-1 max-w-3xl leading-relaxed" data-i18n="wf_banner_desc">
+          مدیریت تعهدات پرداخت و تسویه چندارزی میان هر یک از بانک‌های ایران، روسیه و شرکای بریکس بر بستر لجر بدون وابستگی به یک مؤسسه مالی انحصاری.
+        </p>
       </div>
-    </div>
-  </header>
 
-  <!-- Main Container -->
-  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full">
-
-    <!-- TAB 1: 9-STEP WORKFLOW (Agnostic Multi-Bank) -->
-    <section id="tab-workflow" class="tab-content space-y-6">
-      <div class="bg-gradient-to-r from-slate-900 via-indigo-950/40 to-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div>
-            <span class="text-xs font-bold text-indigo-400 tracking-wider uppercase">Multi-Bank Settlement Model</span>
-            <h2 class="text-xl font-black text-white mt-1">مدل خنثی تسویه و تأمین مالی تجاری (Bank-Agnostic Workflow)</h2>
-            <p class="text-xs text-slate-400 mt-1 max-w-3xl leading-relaxed">
-              این الگو گردش اسناد مالی و فیزیکی را میان بانک‌های گشایش‌کننده تعهد در ایران و بانک‌های کارگزار تأییدکننده در روسیه، چین و کشورهای عضو بریکس به‌صورت کاملاً نامحدود و مستقل از یک بانک خاص مدیریت می‌کند.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <!-- 9 Steps Grid -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <!-- 1 -->
-        <div class="bg-slate-900 p-4 rounded-xl border border-slate-800 flex flex-col justify-between">
-          <div>
-            <div class="flex items-center justify-between mb-2">
-              <span class="text-xs font-bold text-indigo-400 bg-indigo-950 px-2 py-0.5 rounded border border-indigo-800/40">گام ۱</span>
-              <span class="text-[11px] text-slate-400">قرارداد اولیه</span>
-            </div>
-            <h3 class="text-sm font-bold text-white mb-1">عقد قرارداد تجاری</h3>
-            <p class="text-xs text-slate-400 leading-relaxed">انعقاد قرارداد فروش کالا میان صادرکننده خارجی و واردکننده ایرانی با شرط پرداخت اعتباری یا برات متعهدشده.</p>
-          </div>
-          <div class="mt-3 pt-2 border-t border-slate-800/80 text-[11px] text-slate-400 font-mono">طرفین: صادرکننده / واردکننده</div>
-        </div>
-
-        <!-- 2 -->
-        <div class="bg-slate-900 p-4 rounded-xl border border-slate-800 flex flex-col justify-between">
-          <div>
-            <div class="flex items-center justify-between mb-2">
-              <span class="text-xs font-bold text-indigo-400 bg-indigo-950 px-2 py-0.5 rounded border border-indigo-800/40">گام ۲</span>
-              <span class="text-[11px] text-slate-400">تقاضای واردکننده</span>
-            </div>
-            <h3 class="text-sm font-bold text-white mb-1">درخواست گشایش سند تعهد</h3>
-            <p class="text-xs text-slate-400 leading-relaxed">واردکننده ایرانی به بانک گشایش‌کننده منتخب خود (Issuing Bank) مراجعه و وثایق لازم را تودیع می‌کند.</p>
-          </div>
-          <div class="mt-3 pt-2 border-t border-slate-800/80 text-[11px] text-slate-400 font-mono">بانک مبدأ: هر بانک ایرانی عضو</div>
-        </div>
-
-        <!-- 3 -->
-        <div class="bg-slate-900 p-4 rounded-xl border border-slate-800 flex flex-col justify-between">
-          <div>
-            <div class="flex items-center justify-between mb-2">
-              <span class="text-xs font-bold text-indigo-400 bg-indigo-950 px-2 py-0.5 rounded border border-indigo-800/40">گام ۳</span>
-              <span class="text-[11px] text-slate-400">صدور ضمانت‌نامه/برات</span>
-            </div>
-            <h3 class="text-sm font-bold text-white mb-1">صدور ابزار پرداخت در لجر</h3>
-            <p class="text-xs text-slate-400 leading-relaxed">بانک عامل ایرانی سند تعهد غیرقابل‌برگشت را در پروتکل لجر BRICS Pay به نفع بانک کارگزار ثبت می‌کند.</p>
-          </div>
-          <div class="mt-3 pt-2 border-t border-slate-800/80 text-[11px] text-indigo-400 font-mono">شبکه: BRICS Pay Ledger</div>
-        </div>
-
-        <!-- 4 -->
-        <div class="bg-slate-900 p-4 rounded-xl border border-slate-800 flex flex-col justify-between">
-          <div>
-            <div class="flex items-center justify-between mb-2">
-              <span class="text-xs font-bold text-indigo-400 bg-indigo-950 px-2 py-0.5 rounded border border-indigo-800/40">گام ۴</span>
-              <span class="text-[11px] text-slate-400">اعتبارسنجی کارگزار</span>
-            </div>
-            <h3 class="text-sm font-bold text-white mb-1">ابلاغ تعهد به صادرکننده</h3>
-            <p class="text-xs text-slate-400 leading-relaxed">بانک کارگزار منتخب (Advising/Confirming Bank نظیر اسبر، گازپروم، VTB و...) تعهد را به صادرکننده ابلاغ می‌کند.</p>
-          </div>
-          <div class="mt-3 pt-2 border-t border-slate-800/80 text-[11px] text-slate-400 font-mono">بانک مقصد: کارگزار بین‌المللی</div>
-        </div>
-
-        <!-- 5 -->
-        <div class="bg-slate-900 p-4 rounded-xl border border-slate-800 flex flex-col justify-between">
-          <div>
-            <div class="flex items-center justify-between mb-2">
-              <span class="text-xs font-bold text-indigo-400 bg-indigo-950 px-2 py-0.5 rounded border border-indigo-800/40">گام ۵</span>
-              <span class="text-[11px] text-slate-400">حمل محموله</span>
-            </div>
-            <h3 class="text-sm font-bold text-white mb-1">بارگیری و ارسال کالا</h3>
-            <p class="text-xs text-slate-400 leading-relaxed">صادرکننده کالا را حمل کرده و اسناد معتبر تجاری و حمل (بارنامه، گواهی مبدأ و بازرسی) را آماده می‌نماید.</p>
-          </div>
-          <div class="mt-3 pt-2 border-t border-slate-800/80 text-[11px] text-slate-400 font-mono">طرفین: صادرکننده / ترانزیت</div>
-        </div>
-
-        <!-- 6 -->
-        <div class="bg-slate-900 p-4 rounded-xl border border-slate-800 flex flex-col justify-between">
-          <div>
-            <div class="flex items-center justify-between mb-2">
-              <span class="text-xs font-bold text-indigo-400 bg-indigo-950 px-2 py-0.5 rounded border border-indigo-800/40">گام ۶</span>
-              <span class="text-[11px] text-slate-400">تسلیم اسناد</span>
-            </div>
-            <h3 class="text-sm font-bold text-white mb-1">ارائه اسناد به بانک کارگزار</h3>
-            <p class="text-xs text-slate-400 leading-relaxed">صادرکننده اسناد حمل را تحویل بانک کارگزار خود می‌دهد و تقاضای پرداخت یا تنزیل خط اعتباری را ثبت می‌کند.</p>
-          </div>
-          <div class="mt-3 pt-2 border-t border-slate-800/80 text-[11px] text-slate-400 font-mono">محل: باجه اسنادی بانک کارگزار</div>
-        </div>
-
-        <!-- 7 -->
-        <div class="bg-slate-900 p-4 rounded-xl border border-slate-800 flex flex-col justify-between">
-          <div>
-            <div class="flex items-center justify-between mb-2">
-              <span class="text-xs font-bold text-indigo-400 bg-indigo-950 px-2 py-0.5 rounded border border-indigo-800/40">گام ۷</span>
-              <span class="text-[11px] text-slate-400">تطبیق دیجیتال</span>
-            </div>
-            <h3 class="text-sm font-bold text-white mb-1">ارسال و تأیید اسناد در شبکه</h3>
-            <p class="text-xs text-slate-400 leading-relaxed">اسناد اعتبارسنجی شده و برای بانک گشایش‌کننده ارسال می‌شود. خریدار اسناد را جهت ترخیص کالا دریافت می‌کند.</p>
-          </div>
-          <div class="mt-3 pt-2 border-t border-slate-800/80 text-[11px] text-slate-400 font-mono">شبکه: تبادل امن پیام مالی</div>
-        </div>
-
-        <!-- 8 -->
-        <div class="bg-slate-900 p-4 rounded-xl border border-slate-800 flex flex-col justify-between">
-          <div>
-            <div class="flex items-center justify-between mb-2">
-              <span class="text-xs font-bold text-indigo-400 bg-indigo-950 px-2 py-0.5 rounded border border-indigo-800/40">گام ۸</span>
-              <span class="text-[11px] text-slate-400">تسویه بین‌بانکی</span>
-            </div>
-            <h3 class="text-sm font-bold text-white mb-1">تسویه ارزی چندجانبه</h3>
-            <p class="text-xs text-slate-400 leading-relaxed">بانک گشایش‌کننده معادل روبل، یوآن یا ریال را از طریق حساب‌های کارگزاری لجر پایاپای و تسویه می‌نماید.</p>
-          </div>
-          <div class="mt-3 pt-2 border-t border-slate-800/80 text-[11px] text-emerald-400 font-mono">تسویه: نهایی در BRICS Core</div>
-        </div>
-
-        <!-- 9 -->
-        <div class="bg-slate-900 p-4 rounded-xl border border-slate-800 flex flex-col justify-between">
-          <div>
-            <div class="flex items-center justify-between mb-2">
-              <span class="text-xs font-bold text-emerald-400 bg-emerald-950 px-2 py-0.5 rounded border border-emerald-800/40">گام ۹</span>
-              <span class="text-[11px] text-emerald-400">واریز نهایی</span>
-            </div>
-            <h3 class="text-sm font-bold text-white mb-1">پرداخت وجه به صادرکننده</h3>
-            <p class="text-xs text-slate-400 leading-relaxed">بانک کارگزار وجه معامله را به ارز محلی به حساب صادرکننده واریز کرده و پرونده تراکنش بسته می‌شود.</p>
-          </div>
-          <div class="mt-3 pt-2 border-t border-slate-800/80 text-[11px] text-emerald-400 font-mono">وضعیت: خاتمه موفق تراکنش</div>
-        </div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4" id="workflowGrid">
+        <!-- گام‌ها از طریق آبجکت چندزبانه به‌صورت داینامیک رندر می‌شوند -->
       </div>
     </section>
 
-    <!-- TAB 2: BANK ONBOARDING PORTAL -->
+    <!-- TAB 2: BANK ONBOARDING -->
     <section id="tab-onboarding" class="tab-content hidden space-y-6">
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <!-- فرم الحاق -->
+        <!-- Form -->
         <div class="lg:col-span-2 bg-slate-900 p-6 rounded-2xl border border-slate-800">
           <div class="flex items-center gap-2 mb-4">
             <span class="text-lg">🏛️</span>
             <div>
-              <h3 class="text-base font-bold text-white">ثبت درخواست اتصال بانک به شبکه BRICS Pay</h3>
-              <p class="text-xs text-slate-400">پیوستن بانک‌های ایرانی یا بین‌المللی جهت صدور و ابلاغ تعهدات تجاری</p>
+              <h3 class="text-base font-bold text-white" data-i18n="ob_title">ثبت درخواست اتصال بانک به شبکه BRICS Pay</h3>
+              <p class="text-xs text-slate-400" data-i18n="ob_subtitle">پیوستن بانک‌های ایرانی یا بین‌المللی جهت صدور و ابلاغ تعهدات تجاری</p>
             </div>
           </div>
 
           <form id="bankForm" onsubmit="registerBank(event)" class="space-y-4">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label class="block text-xs font-medium text-slate-300 mb-1">نام رسمی بانک</label>
-                <input type="text" id="bName" required placeholder="مثال: Tejarat Bank یا Gazprombank" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+                <label class="block text-xs font-medium text-slate-300 mb-1" data-i18n="ob_lbl_name">نام رسمی بانک</label>
+                <input type="text" id="bName" required placeholder="Tejarat, Sberbank, Gazprombank..." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
               </div>
               <div>
-                <label class="block text-xs font-medium text-slate-300 mb-1">کشور / حوزه قضایی</label>
+                <label class="block text-xs font-medium text-slate-300 mb-1" data-i18n="ob_lbl_country">کشور / حوزه قضایی</label>
                 <select id="bCountry" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
-                  <option value="IR">ایران (IR - SEPAM)</option>
-                  <option value="RU">روسیه (RU - SPFS)</option>
-                  <option value="CN">چین (CN - CIPS)</option>
-                  <option value="AE">امارات متحده (AE)</option>
-                  <option value="IN">هند (IN)</option>
+                  <option value="IR">Iran (IR)</option>
+                  <option value="RU">Russia (RU)</option>
+                  <option value="CN">China (CN)</option>
+                  <option value="AE">UAE (AE)</option>
+                  <option value="IN">India (IN)</option>
                 </select>
               </div>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label class="block text-xs font-medium text-slate-300 mb-1">کد بین‌المللی BIC / شناسه اختصاصی</label>
-                <input type="text" id="bBIC" required placeholder="مثال: TEJIRTH یا SABBRUMM" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white uppercase focus:outline-none focus:border-indigo-500">
+                <label class="block text-xs font-medium text-slate-300 mb-1" data-i18n="ob_lbl_bic">کد بین‌المللی BIC / شناسه اختصاصی</label>
+                <input type="text" id="bBIC" required placeholder="TEJIRTH, SABBRUMM..." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white uppercase focus:outline-none focus:border-indigo-500">
               </div>
               <div>
-                <label class="block text-xs font-medium text-slate-300 mb-1">نقش در زنجیره تجاری</label>
+                <label class="block text-xs font-medium text-slate-300 mb-1" data-i18n="ob_lbl_role">نقش در زنجیره تجاری</label>
                 <select id="bRole" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
-                  <option value="ISSUING">بانک گشایش‌کننده تعهد (Issuing Bank)</option>
-                  <option value="ADVISING">بانک کارگزار و ابلاغ‌کننده (Advising Bank)</option>
-                  <option value="CONFIRMING">بانک صحه‌گذار و ضامن (Confirming Bank)</option>
-                  <option value="SETTLEMENT">بانک عامل تسویه مستقیم (Settlement Bank)</option>
+                  <option value="ISSUING" data-i18n="role_issuing">بانک گشایش‌کننده تعهد (Issuing Bank)</option>
+                  <option value="ADVISING" data-i18n="role_advising">بانک کارگزار و ابلاغ‌کننده (Advising Bank)</option>
+                  <option value="CONFIRMING" data-i18n="role_confirming">بانک صحه‌گذار و ضامن (Confirming Bank)</option>
+                  <option value="SETTLEMENT" data-i18n="role_settlement">بانک عامل تسویه مستقیم (Settlement Bank)</option>
                 </select>
               </div>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label class="block text-xs font-medium text-slate-300 mb-1">پروتکل ارتباطی مورد نظر</label>
+                <label class="block text-xs font-medium text-slate-300 mb-1" data-i18n="ob_lbl_proto">پروتکل ارتباطی</label>
                 <select id="bProto" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
                   <option value="REST_API / Webhook">REST API / Webhook</option>
-                  <option value="ISO20022 پیام‌رسان">ISO 20022 Financial Messaging</option>
-                  <option value="وب‌کنسول اپراتور">Web Operator Console</option>
+                  <option value="ISO 20022 Financial Messaging">ISO 20022 Financial Messaging</option>
+                  <option value="Web Operator Console">Web Operator Console</option>
                 </select>
               </div>
               <div>
-                <label class="block text-xs font-medium text-slate-300 mb-1">ایمیل اداره بین‌الملل</label>
-                <input type="email" id="bEmail" required placeholder="fx@bank-domain.com" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+                <label class="block text-xs font-medium text-slate-300 mb-1" data-i18n="ob_lbl_email">ایمیل اداره بین‌الملل</label>
+                <input type="email" id="bEmail" required placeholder="trade-desk@bank.com" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
               </div>
             </div>
 
-            <button type="submit" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-indigo-600/20 transition">
+            <button type="submit" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-indigo-600/20 transition" data-i18n="ob_btn_submit">
               ثبت مشخصات بانک و فعال‌سازی خط ارتباطی
             </button>
           </form>
         </div>
 
-        <!-- فهرست بانک‌های متصل -->
+        <!-- Banks List -->
         <div class="bg-slate-900 p-6 rounded-2xl border border-slate-800 flex flex-col">
           <div class="flex items-center justify-between mb-4">
-            <h3 class="text-sm font-bold text-white">بانک‌های فعال شبکه</h3>
-            <button onclick="fetchBanks()" class="text-[11px] text-indigo-400 hover:underline">به‌روزرسانی</button>
+            <h3 class="text-sm font-bold text-white" data-i18n="ob_list_title">بانک‌های متصل به شبکه</h3>
+            <button onclick="fetchBanks()" class="text-[11px] text-indigo-400 hover:underline" data-i18n="refresh">به‌روزرسانی</button>
           </div>
           <div id="banksList" class="space-y-3 flex-1 overflow-y-auto max-h-[360px] pr-1">
-            <div class="text-center py-8 text-xs text-slate-500">در حال بارگذاری اطلاعات بانک‌ها...</div>
+            <div class="text-center py-8 text-xs text-slate-500" data-i18n="loading">در حال بارگذاری...</div>
           </div>
         </div>
       </div>
@@ -264,22 +148,22 @@
     <section id="tab-accounts" class="tab-content hidden space-y-6">
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div class="bg-slate-900 p-6 rounded-2xl border border-slate-800">
-          <h3 class="text-sm font-bold text-white mb-3">افتتاح حساب دفتری جدید</h3>
+          <h3 class="text-sm font-bold text-white mb-3" data-i18n="acc_create_title">افتتاح حساب دفتری جدید</h3>
           <form id="accForm" onsubmit="createAccount(event)" class="space-y-3">
             <div>
-              <label class="block text-xs text-slate-300 mb-1">کد حساب (Account Code)</label>
-              <input type="text" id="accCode" required placeholder="مثال: RUB-TRADE-FINANCE" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white">
+              <label class="block text-xs text-slate-300 mb-1" data-i18n="acc_lbl_code">کد حساب (Account Code)</label>
+              <input type="text" id="accCode" required placeholder="RUB-TRADE-FINANCE" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white">
             </div>
             <div>
-              <label class="block text-xs text-slate-300 mb-1">ارز پایه</label>
+              <label class="block text-xs text-slate-300 mb-1" data-i18n="acc_lbl_curr">ارز پایه</label>
               <select id="accCurr" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white">
-                <option value="RUB">روبل روسیه (RUB)</option>
-                <option value="IRR">ریال ایران (IRR)</option>
-                <option value="CNY">یوآن چین (CNY)</option>
-                <option value="AED">درهم امارات (AED)</option>
+                <option value="RUB">RUB (Russian Ruble)</option>
+                <option value="IRR">IRR (Iranian Rial)</option>
+                <option value="CNY">CNY (Chinese Yuan)</option>
+                <option value="AED">AED (UAE Dirham)</option>
               </select>
             </div>
-            <button type="submit" class="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl transition">
+            <button type="submit" class="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl transition" data-i18n="acc_btn_create">
               افتتاح حساب
             </button>
           </form>
@@ -287,21 +171,21 @@
 
         <div class="lg:col-span-2 bg-slate-900 p-6 rounded-2xl border border-slate-800">
           <div class="flex items-center justify-between mb-4">
-            <h3 class="text-sm font-bold text-white">تراز حساب‌های فعال در لجر</h3>
-            <button onclick="fetchAccounts()" class="text-[11px] text-indigo-400 hover:underline">به‌روزرسانی</button>
+            <h3 class="text-sm font-bold text-white" data-i18n="acc_list_title">تراز حساب‌های فعال در لجر</h3>
+            <button onclick="fetchAccounts()" class="text-[11px] text-indigo-400 hover:underline" data-i18n="refresh">به‌روزرسانی</button>
           </div>
           <div class="overflow-x-auto">
-            <table class="w-full text-right text-xs">
+            <table class="w-full text-right text-xs" id="accountsTable">
               <thead class="text-slate-400 border-b border-slate-800">
                 <tr>
-                  <th class="py-2">کد حساب</th>
-                  <th class="py-2">ارز</th>
-                  <th class="py-2">موجودی</th>
-                  <th class="py-2">شناسه</th>
+                  <th class="py-2" data-i18n="th_code">کد حساب</th>
+                  <th class="py-2" data-i18n="th_curr">ارز</th>
+                  <th class="py-2" data-i18n="th_balance">موجودی</th>
+                  <th class="py-2" data-i18n="th_id">شناسه</th>
                 </tr>
               </thead>
               <tbody id="accountsTableBody" class="divide-y divide-slate-800/60">
-                <tr><td colspan="4" class="py-4 text-center text-slate-500">در حال دریافت حساب‌ها...</td></tr>
+                <tr><td colspan="4" class="py-4 text-center text-slate-500" data-i18n="loading">در حال بارگذاری...</td></tr>
               </tbody>
             </table>
           </div>
@@ -311,8 +195,195 @@
 
   </main>
 
-  <!-- Script logic -->
   <script>
+    // I18N DICTIONARY
+    const dict = {
+      fa: {
+        tagline: "شبکه باز تسویه چندارزی و بین‌بانکی اوراسیا",
+        nav_workflow: "فرآیند ۹ مرحله‌ای تجارت",
+        nav_onboarding: "الحاق بانک‌ها",
+        nav_accounts: "حساب‌های لجر",
+        status_active: "سیستم فعال",
+        wf_banner_badge: "Multi-Bank Settlement Model",
+        wf_banner_title: "مدل خنثی تسویه و تأمین مالی تجاری (Bank-Agnostic)",
+        wf_banner_desc: "مدیریت تعهدات پرداخت و تسویه چندارزی میان هر یک از بانک‌های ایران، روسیه و شرکای بریکس بر بستر لجر بدون وابستگی به یک مؤسسه مالی انحصاری.",
+        ob_title: "ثبت درخواست اتصال بانک به شبکه BRICS Pay",
+        ob_subtitle: "پیوستن بانک‌های ایرانی یا بین‌المللی جهت صدور و ابلاغ تعهدات تجاری",
+        ob_lbl_name: "نام رسمی بانک",
+        ob_lbl_country: "کشور / حوزه قضایی",
+        ob_lbl_bic: "کد بین‌المللی BIC / شناسه اختصاصی",
+        ob_lbl_role: "نقش در زنجیره تجاری",
+        role_issuing: "بانک گشایش‌کننده تعهد (Issuing Bank)",
+        role_advising: "بانک کارگزار و ابلاغ‌کننده (Advising Bank)",
+        role_confirming: "بانک صحه‌گذار و ضامن (Confirming Bank)",
+        role_settlement: "بانک عامل تسویه مستقیم (Settlement Bank)",
+        ob_lbl_proto: "پروتکل ارتباطی",
+        ob_lbl_email: "ایمیل اداره بین‌الملل",
+        ob_btn_submit: "ثبت مشخصات بانک و فعال‌سازی خط ارتباطی",
+        ob_list_title: "بانک‌های متصل به شبکه",
+        refresh: "به‌روزرسانی",
+        loading: "در حال بارگذاری...",
+        acc_create_title: "افتتاح حساب دفتری جدید",
+        acc_lbl_code: "کد حساب (Account Code)",
+        acc_lbl_curr: "ارز پایه",
+        acc_btn_create: "افتتاح حساب",
+        acc_list_title: "تراز حساب‌های فعال در لجر",
+        th_code: "کد حساب",
+        th_curr: "ارز",
+        th_balance: "موجودی",
+        th_id: "شناسه",
+        steps: [
+          { s: "گام ۱", sub: "قرارداد اولیه", t: "عقد قرارداد تجاری", d: "انعقاد قرارداد فروش کالا میان صادرکننده خارجی و واردکننده ایرانی با شرط پرداخت اعتباری.", m: "طرفین: صادرکننده / واردکننده" },
+          { s: "گام ۲", sub: "تقاضای واردکننده", t: "درخواست گشایش سند تعهد", d: "واردکننده ایرانی به بانک گشایش‌کننده منتخب خود مراجعه و وثایق لازم را تودیع می‌کند.", m: "بانک مبدأ: هر بانک ایرانی عضو" },
+          { s: "گام ۳", sub: "صدور ضمانت‌نامه", t: "صدور ابزار پرداخت در لجر", d: "بانک عامل ایرانی سند تعهد غیرقابل‌برگشت را در پروتکل BRICS Pay ثبت می‌کند.", m: "شبکه: BRICS Pay Core Ledger" },
+          { s: "گام ۴", sub: "اعتبارسنجی کارگزار", t: "ابلاغ تعهد به صادرکننده", d: "بانک کارگزار منتخب (Advising Bank) تعهد را به صادرکننده ابلاغ می‌کند.", m: "بانک مقصد: کارگزار بین‌المللی" },
+          { s: "گام ۵", sub: "حمل محموله", t: "بارگیری و ارسال کالا", d: "صادرکننده کالا را حمل کرده و اسناد معتبر تجاری و ترانزیت را آماده می‌نماید.", m: "طرفین: صادرکننده / ترانزیت" },
+          { s: "گام ۶", sub: "تسلیم اسناد", t: "ارائه اسناد به کارگزار", d: "صادرکننده اسناد حمل را تحویل بانک کارگزار خود داده و تقاضای پرداخت می‌کند.", m: "محل: باجه اسنادی بانک کارگزار" },
+          { s: "گام ۷", sub: "تطبیق دیجیتال", t: "ارسال و تأیید اسناد در شبکه", d: "اسناد تطبیق داده شده و جهت ترخیص کالا برای بانک گشایش‌کننده ارسال می‌شود.", m: "شبکه: تبادل امن پیام مالی" },
+          { s: "گام ۸", sub: "تسویه ارزی", t: "تسویه بین‌بانکی چندجانبه", d: "بانک گشایش‌کننده معادل روبل، یوآن یا ریال را از طریق حساب‌های لجر تسویه می‌نماید.", m: "تسویه: نهایی در BRICS Core" },
+          { s: "گام ۹", sub: "واریز نهایی", t: "پرداخت وجه به صادرکننده", d: "بانک کارگزار وجه معامله را به صادرکننده پرداخت کرده و پرونده بسته می‌شود.", m: "وضعیت: خاتمه موفق تراکنش" }
+        ]
+      },
+      ru: {
+        tagline: "Открытая межбанковская многовалютная сеть расчетов БРИКС",
+        nav_workflow: "9-шаговый торговый процесс",
+        nav_onboarding: "Подключение банков",
+        nav_accounts: "Счета реестра",
+        status_active: "Система активна",
+        wf_banner_badge: "Банк-агностическая модель расчетов",
+        wf_banner_title: "Нейтральная межбанковская платформа торгового финансирования",
+        wf_banner_desc: "Управление платежными обязательствами и расчетами между банками Ирана, РФ и стран БРИКС без привязки к единственной банковской структуре.",
+        ob_title: "Заявка на подключение банка к BRICS Pay",
+        ob_subtitle: "Интеграция банков для выпуска и подтверждения торговых аккредитивов и гарантий",
+        ob_lbl_name: "Официальное наименование банка",
+        ob_lbl_country: "Юрисдикция / Страна",
+        ob_lbl_bic: "Международный БИК / SWIFT / ID",
+        ob_lbl_role: "Роль в цепочке расчетов",
+        role_issuing: "Банк-эмитент обязательства (Issuing Bank)",
+        role_advising: "Авизующий банк-корреспондент (Advising Bank)",
+        role_confirming: "Подтверждающий банк (Confirming Bank)",
+        role_settlement: "Расчетный банк прямого клиринга (Settlement Bank)",
+        ob_lbl_proto: "Протокол подключения",
+        ob_lbl_email: "Email управления международных расчетов",
+        ob_btn_submit: "Зарегистрировать банк и активировать шлюз",
+        ob_list_title: "Подключенные банки сети",
+        refresh: "Обновить",
+        loading: "Загрузка...",
+        acc_create_title: "Открытие нового счета реестра",
+        acc_lbl_code: "Код счета (Account Code)",
+        acc_lbl_curr: "Базовая валюта",
+        acc_btn_create: "Открыть счет",
+        acc_list_title: "Балансы активных счетов",
+        th_code: "Код счета",
+        th_curr: "Валюта",
+        th_balance: "Баланс",
+        th_id: "ID счета",
+        steps: [
+          { s: "Шаг 1", sub: "Контракт", t: "Торговый контракт", d: "Заключение контракта купли-продажи между экспортером РФ и импортером Ирана с отсрочкой платежа.", m: "Стороны: Экспортер / Импортер" },
+          { s: "Шаг 2", sub: "Заявка", t: "Запрос на открытие обязательства", d: "Импортер обращается в выбранный банк-эмитент в Иране и размещает необходимое обеспечение.", m: "Банк-эмитент: Любой банк ИРИ" },
+          { s: "Шаг 3", sub: "Эмиссия", t: "Регистрация инструмента в реестре", d: "Банк Ирана выпускает безотзывное обязательство в реестре BRICS Pay в пользу банка-корреспондента.", m: "Сеть: BRICS Pay Core Ledger" },
+          { s: "Шаг 4", sub: "Авизование", t: "Уведомление экспортера", d: "Банк-корреспондент (Сбер, Газпромбанк и др.) авизует и подтверждает гарантию экспортеру.", m: "Корреспондент: Банк РФ/БРИКС" },
+          { s: "Шаг 5", sub: "Логистика", t: "Отгрузка продукции", d: "Экспортер производит отгрузку товара и формирует транспортно-коммерческие документы.", m: "Участники: Экспортер / Логистика" },
+          { s: "Шаг 6", sub: "Документы", t: "Предоставление документов", d: "Экспортер передает полный комплект документов в свой банк для верификации и раскрытия платежа.", m: "Локация: Офис банка-корреспондента" },
+          { s: "Шаг 7", sub: "Верификация", t: "Цифровая проверка документов", d: "Проверенные документы акцептуются через безопасный шлюз и направляются покупателю для таможни.", m: "Шлюз: Защищенный обмен сообщениями" },
+          { s: "Шаг 8", sub: "Клиринг", t: "Межбанковский расчет (RUB/IRR/CNY)", d: "Банк-эмитент списывает покрытие и проводит клиринг по ностро/лоро счетам в реестре.", m: "Расчет: Финализация в ядре" },
+          { s: "Шаг 9", sub: "Выплата", t: "Зачисление выручки экспортеру", d: "Банк-корреспондент зачисляет средства экспортеру в рублях. Торговая сделка успешно завершена.", m: "Статус: Сделка исполнена" }
+        ]
+      },
+      en: {
+        tagline: "Open Interbank Multi-Currency Eurasian Settlement Network",
+        nav_workflow: "9-Step Trade Workflow",
+        nav_onboarding: "Bank Onboarding",
+        nav_accounts: "Ledger Accounts",
+        status_active: "System Online",
+        wf_banner_badge: "Multi-Bank Settlement Model",
+        wf_banner_title: "Bank-Agnostic Trade Finance & Settlement Platform",
+        wf_banner_desc: "Managing payment commitments and cross-border multi-currency settlement across Iranian, Russian, and BRICS partner banks without lock-in.",
+        ob_title: "Bank Onboarding & Gateway Integration",
+        ob_subtitle: "Register financial institutions to issue, advise, and settle trade commitments",
+        ob_lbl_name: "Official Bank Name",
+        ob_lbl_country: "Country / Jurisdiction",
+        ob_lbl_bic: "Bank Identifier Code (BIC / SWIFT)",
+        ob_lbl_role: "Role in Trade Chain",
+        role_issuing: "Issuing Bank (Obligation Originator)",
+        role_advising: "Advising Bank (Notification Partner)",
+        role_confirming: "Confirming Bank (Guarantee Provider)",
+        role_settlement: "Direct Settlement Bank",
+        ob_lbl_proto: "Integration Protocol",
+        ob_lbl_email: "International Trade Desk Email",
+        ob_btn_submit: "Register Bank & Activate Interbank Gateway",
+        ob_list_title: "Active Network Banks",
+        refresh: "Refresh",
+        loading: "Loading...",
+        acc_create_title: "Open New Ledger Account",
+        acc_lbl_code: "Account Code",
+        acc_lbl_curr: "Base Currency",
+        acc_btn_create: "Open Account",
+        acc_list_title: "Active Ledger Balances",
+        th_code: "Account Code",
+        th_curr: "Currency",
+        th_balance: "Balance",
+        th_id: "Account ID",
+        steps: [
+          { s: "Step 1", sub: "Commercial Contract", t: "Trade Contract Execution", d: "Sales contract signed between foreign exporter and Iranian importer under deferred payment terms.", m: "Parties: Exporter / Importer" },
+          { s: "Step 2", sub: "Importer Request", t: "Commitment Instrument Issuance", d: "Importer applies to designated domestic Issuing Bank and posts required collateral.", m: "Origin: Any Member Iranian Bank" },
+          { s: "Step 3", sub: "Ledger Registration", t: "Payment Obligation Record", d: "Issuing bank registers an irrevocable payment obligation on BRICS Pay Core Ledger.", m: "Network: BRICS Pay Core Ledger" },
+          { s: "Step 4", sub: "Advising Notification", t: "Obligation Advice to Exporter", d: "Designated Advising/Confirming Bank notifies and verifies payment commitment to exporter.", m: "Destination: International Partner" },
+          { s: "Step 5", sub: "Shipment", t: "Cargo Dispatch & Customs", d: "Exporter dispatches goods and prepares standard shipping and inspection documents.", m: "Parties: Exporter / Logistics" },
+          { s: "Step 6", sub: "Doc Presentation", t: "Shipping Document Presentation", d: "Exporter submits shipping documents to Advising Bank for verification and discounting.", m: "Counter: Advising Bank Trade Desk" },
+          { s: "Step 7", sub: "Digital Verification", t: "Document Acceptance in Network", d: "Verified documents are cleared and released to the buyer for customs clearance.", m: "Network: Secure Financial Messaging" },
+          { s: "Step 8", sub: "Interbank Settlement", t: "Multi-Currency Interbank Clearing", d: "Issuing Bank clears RUB/CNY/IRR equivalent via Nostro/Vostro ledger accounts.", m: "Settlement: Finalized in Core" },
+          { s: "Step 9", sub: "Disbursement", t: "Funds Credited to Exporter", d: "Advising bank credits local currency directly to exporter's account. Deal concluded.", m: "Status: Successfully Settled" }
+        ]
+      }
+    };
+
+    let currentLang = 'fa';
+
+    function setLanguage(lang) {
+      currentLang = lang;
+      const html = document.documentElement;
+
+      if (lang === 'fa') {
+        html.setAttribute('dir', 'rtl');
+        html. and verifies payment commitment to exporter.", m: "Destination: International Partner" },
+          { s: "Step 5", sub: "Shipment", t: "Cargo Dispatch & Customs", d: "Exporter dispatches goods and prepares standard shipping and inspection documents.", m: "Parties: Exporter / Logistics" },
+          { s: "Step 6", sub: "Doc Presentation", t: "Shipping Document Presentation", d: "Exporter submits shipping documents to Advising Bank for verification and discounting.", m: "Counter: Advising Bank Trade Desk" },
+          { s: "Step 7", sub: "Digital Verification", t: "Document Acceptance in Network", d: "Verified documents are cleared and released to the buyer for customs clearance.", m: "Network: Secure Financial Messaging" },
+          { s: "Step 8", sub: "Interbank Settlement", t: "Multi-Currency Interbank Clearing", d: "Issuing Bank clears RUB/CNY/IRR equivalent via Nostro/Vostro ledger accounts.", m: "Settlement: Finalized in Core" },
+          { s: "Step 9", sub: "Disbursement", t: "Funds Credited to Exporter", d: "Advising bank credits local currency directly to exporter's account. Deal concluded.", m: "Status: Successfully Settled" }
+        ]
+      }
+    };
+
+    let currentLang = 'fa';
+
+    function setLanguage(lang) {
+      currentLang = lang;
+      const html = document.documentElement;
+
+      if (lang === 'fa') {
+        html.setAttribute('dir', 'rtl');
+        html.setAttribute('lang', 'fa');
+        document.body.style.fontFamily = "'Vazirmatn', sans-serif";
+      } else {
+        html.setAttribute('dir', 'ltr');
+        html.setAttribute('lang', lang);
+        document.body.style.fontFamily = "'Inter', sans-serif";
+      }
+
+      ['fa', 'ru', 'en'].forEach(l => {
+        const btn = document.getElementById('lang-' + l);
+        if (l === lang) {
+          btn.className = "px-2 py-1 rounded bg-indigo-600 text-white font-bold transition";
+        } else {
+          btn.className = "px-2">${st.d}</p>
+          </div>
+          <div class="mt-3 pt-2 border-t border-slate-800/80 text-[11px] text-indigo-300 font-mono">${st.m}</div>
+        </div>
+      `).join('');
+    }
+
     function showTab(tabId) {
       document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
       document.querySelectorAll('.nav-btn').forEach(btn => {
@@ -334,17 +405,17 @@
       const container = document.getElementById('banksList');
       try {
         const res = await fetch('/api/v1/banks');
-        if (!res.ok) throw new Error('fetch error');
+        if (!res.ok) throw new Error();
         const banks = await res.json();
         if (!banks || banks.length === 0) {
-          container.innerHTML = '<div class="text-center py-6 text-xs text-slate-500">هیچ بانکی ثبت نشده است.</div>';
+          container.innerHTML = '<div class="text-center py-6 text-xs text-slate-500">No banks registered.</div>';
           return;
         }
         container.innerHTML = banks.map(b => `
           <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 flex justify-between items-center">
             <div>
               <div class="text-xs font-bold text-white">${b.name}</div>
-              <div class="text-[10px] text-slate-400">${b.bic} • ${b.role}</div>
+              <div class="text-[10px] text-slate-400">${b.bic} • ${b.role} (${b.country})</div>
               <div class="text-[9px] text-slate-500 font-mono mt-0.5">${b.protocol || 'REST_API'}</div>
             </div>
             <span class="text-[10px] px-2 py-0.5 rounded font-mono ${b.status === 'ACTIVE' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-400'}">
@@ -353,7 +424,7 @@
           </div>
         `).join('');
       } catch (e) {
-        container.innerHTML = '<div class="text-center py-6 text-xs text-red-400">خطا در بارگذاری اطلاعات بانک‌ها</div>';
+        container.innerHTML = '<div class="text-center py-6 text-xs text-red-400">Failed to load banks</div>';
       }
     }
 
@@ -378,10 +449,10 @@
           document.getElementById('bankForm').reset();
           fetchBanks();
         } else {
-          alert('خطا در ثبت اطلاعات بانک.');
+          alert('Failed to register bank.');
         }
       } catch (err) {
-        alert('خطای ارتباط با سرور.');
+        alert('Connection error.');
       }
     }
 
@@ -392,7 +463,7 @@
         if (!res.ok) throw new Error();
         const accs = await res.json();
         if (!accs || accs.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="4" class="py-4 text-center text-slate-500">حسابی یافت نشد.</td></tr>';
+          tbody.innerHTML = '<tr><td colspan="4" class="py-4 text-center text-slate-500">No accounts found.</td></tr>';
           return;
         }
         tbody.innerHTML = accs.map(a => `
@@ -404,7 +475,7 @@
           </tr>
         `).join('');
       } catch (e) {
-        tbody.innerHTML = '<tr><td colspan="4" class="py-4 text-center text-red-400">خطا در بارگذاری حساب‌ها</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="4" class="py-4 text-center text-red-400">Error loading accounts</td></tr>';
       }
     }
 
@@ -424,14 +495,15 @@
           document.getElementById('accForm').reset();
           fetchAccounts();
         } else {
-          alert('خطا در افتتاح حساب.');
+          alert('Failed to create account.');
         }
       } catch (err) {
-        alert('خطای اتصال.');
+        alert('Network error.');
       }
     }
 
     document.addEventListener('DOMContentLoaded', () => {
+      setLanguage('fa');
       fetchBanks();
       fetchAccounts();
     });
