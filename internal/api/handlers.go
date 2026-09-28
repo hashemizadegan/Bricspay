@@ -3,165 +3,195 @@ package api
 import (
 	"database/sql"
 	"encoding/json"
-	"io/fs"
+	"errors"
+	"io"
 	"net/http"
 	"strings"
+	"unicode"
 
-	"bricspay/internal/auth"
 	"bricspay/internal/ledger"
 )
 
 type Server struct {
-	DB            *sql.DB
-	LedgerService *ledger.Service
-	AuthService   *auth.Service
-	StaticFS      fs.FS
+	DB *sql.DB
 }
 
-func NewServer(db *sql.DB, ls *ledger.Service, as *auth.Service, staticFS fs.FS) *Server {
-	sub, _ := fs.Sub(staticFS, "static")
-	return &Server{
-		DB:            db,
-		LedgerService: ls,
-		AuthService:   as,
-		StaticFS:      sub,
-	}
-}
-
-func (s *Server) StaticFileServer() http.Handler {
-	if s.StaticFS == nil {
-		return http.NotFoundHandler()
-	}
-	return http.FileServer(http.FS(s.StaticFS))
-}
-
-func (s *Server) CorsMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
-		if r.Method == "OPTIONS" {
-			w.WriteHeader(http.StatusOK)
-			return
-		}
-		next.ServeHTTP(w, r)
-	})
-}
-
-func (s *Server) AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		authHeader := r.Header.Get("Authorization")
-		if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
-			http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
-			return
-		}
-		tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
-		claims, err := s.AuthService.ValidateToken(tokenStr)
-		if err != nil {
-			http.Error(w, `{"error":"invalid token"}`, http.StatusUnauthorized)
-			return
-		}
-		r = r.WithContext(auth.ContextWithUser(r.Context(), claims))
-		next.ServeHTTP(w, r)
-	}
-}
-
-func (s *Server) AdminMiddleware(next http.HandlerFunc) http.HandlerFunc {
-	return s.AuthMiddleware(func(w http.ResponseWriter, r *http.Request) {
-		claims := auth.UserFromContext(r.Context())
-		if claims == nil || claims.Role != "admin" {
-			http.Error(w, `{"error":"forbidden: admin access required"}`, http.StatusForbidden)
-			return
-		}
-		next.ServeHTTP(w, r)
-	})
+func NewServer(db *sql.DB) *Server {
+	return &Server{DB: db}
 }
 
 func (s *Server) HandleRoot(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{
-		"message": "BRICS Pay Settlement API Gateway",
-		"status":  "online",
-		"version": "1.0.0",
-	})
+	if r.URL.Path != "/" {
+		http.NotFound(w, r)
+		return
+	}
+	if r.Method != http.MethodGet {
+		w.Header().Set("Allow", http.MethodGet)
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	http.ServeFile(w, r, "./static/index.html")
 }
 
 func (s *Server) HealthCheck(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	dbStatus := "connected"
-	if s.DB == nil || s.DB.Ping() != nil {
-		dbStatus = "disconnected/degraded"
+	if r.Method != http.MethodGet {
+		w.Header().Set("Allow", http.MethodGet)
+		WriteError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
 	}
-	json.NewEncoder(w).Encode(map[string]string{
-		"status":   "healthy",
-		"database": dbStatus,
+	WriteJSON(w, http.StatusOK, map[string]string{
+		"status":  "online",
+		"service": "BRICS Pay Settlement Gateway",
 	})
 }
 
 func (s *Server) HandleAccounts(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
 	switch r.Method {
 	case http.MethodGet:
-		accounts, err := s.LedgerService.ListAccounts(r.Context())
+		accounts, err := ledger.ListAccounts(r.Context(), s.DB)
 		if err != nil {
-			http.Error(w, `{"error":"failed to list accounts"}`, http.StatusInternalServerError)
+			WriteError(w, http.StatusInternalServerError, "could not list accounts")
 			return
 		}
-		json.NewEncoder(w).Encode(accounts)
+		WriteJSON(w, http.StatusOK, accounts)
+
 	case http.MethodPost:
-		var req ledger.Account
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, `{"error":"invalid request payload"}`, http.StatusBadRequest)
+		var req struct {
+			Code     string `json:"code"`
+			Type     string `json:"type"`
+			Currency string `json:"currency"`
+		}
+		if err := DecodeJSON(w, r, &req); err != nil {
+			WriteError(w, http.StatusBadRequest, err.Error())
 			return
 		}
-		acc, err := s.LedgerService.CreateAccount(r.Context(), req.Name, req.Type, req.Currency)
+
+		req.Code = strings.TrimSpace(req.Code)
+		req.Type = strings.TrimSpace(req.Type)
+		req.Currency = strings.ToUpper(strings.TrimSpace(req.Currency))
+		if req.Code == "" || req.Type == "" || req.Currency == "" {
+			WriteError(w, http.StatusBadRequest, "code, type, and currency are required")
+			return
+		}
+		if len(req.Code) > 50 || len(req.Type) > 20 || len(req.Currency) > 10 {
+			WriteError(w, http.StatusBadRequest, "code, type, or currency exceeds the allowed length")
+			return
+		}
+		if !isASCIIAlphaNumeric(req.Currency) {
+			WriteError(w, http.StatusBadRequest, "currency must contain only ASCII letters or digits")
+			return
+		}
+
+		account, err := ledger.CreateAccount(r.Context(), s.DB, req.Code, req.Type, req.Currency)
 		if err != nil {
-			http.Error(w, `{"error":"failed to create account"}`, http.StatusInternalServerError)
+			WriteError(w, http.StatusInternalServerError, "could not create account; code may already exist")
 			return
 		}
-		w.WriteHeader(http.StatusCreated)
-		json.NewEncoder(w).Encode(acc)
+		WriteJSON(w, http.StatusCreated, account)
+
 	default:
-		http.Error(w, `{"error":"method not allowed"}`, http.StatusMethodNotAllowed)
+		w.Header().Set("Allow", "GET, POST")
+		WriteError(w, http.StatusMethodNotAllowed, "method not allowed")
 	}
 }
 
 func (s *Server) HandleTransactions(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
 	if r.Method != http.MethodPost {
-		http.Error(w, `{"error":"method not allowed"}`, http.StatusMethodNotAllowed)
+		w.Header().Set("Allow", http.MethodPost)
+		WriteError(w, http.StatusMethodNotAllowed, "method not allowed")
 		return
 	}
+
 	var req ledger.TransactionRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, `{"error":"invalid transaction payload"}`, http.StatusBadRequest)
+	if err := DecodeJSON(w, r, &req); err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	tx, err := s.LedgerService.RecordTransaction(r.Context(), req)
+	req.IdempotencyKey = strings.TrimSpace(req.IdempotencyKey)
+	req.Description = strings.TrimSpace(req.Description)
+	if req.IdempotencyKey == "" {
+		WriteError(w, http.StatusBadRequest, "idempotency_key is required")
+		return
+	}
+	if len(req.IdempotencyKey) > 100 {
+		WriteError(w, http.StatusBadRequest, "idempotency_key must be at most 100 characters")
+		return
+	}
+	if len(req.Postings) < 2 {
+		WriteError(w, http.StatusBadRequest, "at least two postings are required")
+		return
+	}
+	for _, posting := range req.Postings {
+		if strings.TrimSpace(posting.AccountID) == "" {
+			WriteError(w, http.StatusBadRequest, "every posting must have an account_id")
+			return
+		}
+		if posting.Amount == 0 {
+			WriteError(w, http.StatusBadRequest, "posting amounts must not be zero")
+			return
+		}
+	}
+
+	result, err := ledger.RecordTransaction(r.Context(), s.DB, req)
 	if err != nil {
-		http.Error(w, `{"error":"`+err.Error()+`"}`, http.StatusBadRequest)
+		WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(tx)
+	WriteJSON(w, http.StatusCreated, result)
 }
 
 func (s *Server) HandleBanks(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	banks := []map[string]string{
-		{"id": "BANK-RU-01", "name": "VTB Bank", "country": "RU", "bic": "VTBRRU22"},
-		{"id": "BANK-IR-01", "name": "Mir Business Bank", "country": "IR", "bic": "MIRBIRT1"},
-		{"id": "BANK-CN-01", "name": "Bank of China", "country": "CN", "bic": "BKCHCNBJ"},
+	if r.Method != http.MethodGet {
+		w.Header().Set("Allow", http.MethodGet)
+		WriteError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
 	}
-	json.NewEncoder(w).Encode(banks)
+	banks := []map[string]string{
+		{"id": "vtb", "name": "VTB Bank (PJSC)", "country": "RU", "bic": "044525187"},
+		{"id": "sber", "name": "Sberbank", "country": "RU", "bic": "044525225"},
+		{"id": "bmi", "name": "Bank Melli Iran", "country": "IR", "bic": "MELIIRTH"},
+	}
+	WriteJSON(w, http.StatusOK, banks)
 }
 
-func (s *Server) HandleLogin(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"token": "demo-authenticated-token"})
+func DecodeJSON(w http.ResponseWriter, r *http.Request, dst any) error {
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+
+	if err := decoder.Decode(dst); err != nil {
+		var maxBytesErr *http.MaxBytesError
+		if errors.As(err, &maxBytesErr) {
+			return errors.New("request body must be at most 1 MB")
+		}
+		return errors.New("invalid JSON body")
+	}
+
+	var extra any
+	if err := decoder.Decode(&extra); !errors.Is(err, io.EOF) {
+		return errors.New("request body must contain exactly one JSON value")
+	}
+	return nil
 }
 
-func (s *Server) HandleRegister(w http.ResponseWriter, r *http.Request) {
+func WriteJSON(w http.ResponseWriter, status int, value any) {
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"message": "user registered successfully"})
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(value)
+}
+
+func WriteError(w http.ResponseWriter, status int, message string) {
+	WriteJSON(w, status, map[string]string{"error": message})
+}
+
+func isASCIIAlphaNumeric(value string) bool {
+	if value == "" {
+		return false
+	}
+	for _, r := range value {
+		if r > unicode.MaxASCII || (!(r >= 'A' && r <= 'Z') && !(r >= '0' && r <= '9')) {
+			return false
+		}
+	}
+	return true
 }
