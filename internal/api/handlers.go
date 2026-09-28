@@ -2,7 +2,7 @@ package api
 
 import (
 	"database/sql"
-	_ "embed"
+	"embed"
 	"encoding/json"
 	"net/http"
 	"strings"
