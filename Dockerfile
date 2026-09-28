@@ -1,23 +1,42 @@
-# Stage 1: Build
-FROM golang:1.22-alpine AS builder
+# -------------------------------------------------------------
+# Stage 1: Build the Go binary
+# -------------------------------------------------------------
+FROM golang:1.23-alpine AS builder
 
 WORKDIR /app
 
-# کپی کل پروژه
+# نصب ابزارهای مورد نیاز برای وابستگی‌های پایه
+RUN apk add --no-cache git ca-certificates
+
+# کپی فایل‌های مدیریت وابستگی
+COPY go.mod go.sum* ./
+
+# دانلود وابستگی‌ها و اطمینان از صحت ماژول‌ها
+RUN go mod download
+
+# کپی کل کدهای پروژه
 COPY . .
 
-# دانلود و ساخت وابستگی‌ها بدون سخت‌گیری روی go.sum
-RUN go mod tidy
-RUN CGO_ENABLED=0 GOOS=linux go build -o bricspay-api ./cmd/api
+# کامپایل مستقل و استاتیک باینری
+RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-w -s" -o bricspay-api ./cmd/api
 
-# Stage 2: Run
-FROM alpine:3.19
+# -------------------------------------------------------------
+# Stage 2: Final minimal runtime image
+# -------------------------------------------------------------
+FROM alpine:3.20
 
 WORKDIR /app
 
-RUN apk --no-cache add ca-certificates
+RUN apk add --no-cache ca-certificates tzdata
 
+# ساخت دایرکتوری ذخیره‌سازی مدارک KYC
+RUN mkdir -p /data/uploads && chmod 700 /data/uploads
+
+# کپی باینری کامپایل‌شده از مرحله بیلد
 COPY --from=builder /app/bricspay-api .
+
+# کپی فایل‌های فرانت‌اند و استاتیک (در صورت وجود)
+COPY --from=builder /app/static ./static
 
 EXPOSE 8080
 
