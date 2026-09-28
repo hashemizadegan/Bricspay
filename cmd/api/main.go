@@ -1,7 +1,11 @@
 package main
 
+package main
+
 import (
 	"context"
+	"embed"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -9,9 +13,14 @@ import (
 	"syscall"
 	"time"
 
-	"bricspay/internal/api"
-	"bricspay/internal/db"
+	"github.com/bricspay/internal/api"
+	"github.com/bricspay/internal/auth"
+	"github.com/bricspay/internal/db"
+	"github.com/bricspay/internal/ledger"
 )
+
+//go:embed static/*
+var staticFS embed.FS
 
 func main() {
 	port := os.Getenv("PORT")
@@ -20,45 +29,67 @@ func main() {
 	}
 
 	databaseURL := os.Getenv("DATABASE_URL")
-	database, err := db.InitDB(databaseURL)
-	if err != nil {
-		log.Printf("Warning: Failed to connect to database: %v. Running in in-memory mode.", err)
+	if databaseURL == "" {
+		log.Println("WARNING: DATABASE_URL not set, operating with fallback configuration")
 	}
 
-	server := api.NewServer(database)
+	// 1. Initialize Database & Migrations
+	database, err := db.InitDB(databaseURL)
+	if err != nil {
+		log.Printf("Database initialization warning: %v", err)
+	} else {
+		defer database.Close()
+		if err := db.RunKYCMigrations(database); err != nil {
+			log.Printf("KYC Schema Migration warning: %v", err)
+		}
+	}
 
+	// 2. Initialize Core Services
+	ledgerService := ledger.NewService(database)
+	authService := auth.NewService(os.Getenv("JWT_SECRET"))
+
+	// 3. Initialize API Server
+	server := api.NewServer(database, ledgerService, authService, staticFS)
+
+	// 4. Setup Router & Routes
 	mux := http.NewServeMux()
 
-	// سرو کردن فایل‌های CSS و JS استاتیک
-	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(api.StaticFS())))
+	// Static Assets & UI
+	mux.Handle("/", server.StaticFileServer())
 
-	// روت‌های اصلی برنامه
-	mux.HandleFunc("/", server.HandleRoot)
+	// Core API Gateway
+	mux.HandleFunc("/api", server.HandleRoot)
 	mux.HandleFunc("/health", server.HealthCheck)
+
+	// Ledger API Routes
 	mux.HandleFunc("/api/v1/accounts", server.HandleAccounts)
 	mux.HandleFunc("/api/v1/transactions", server.HandleTransactions)
 	mux.HandleFunc("/api/v1/banks", server.HandleBanks)
 
-	// روت‌های احراز هویت و KYC
-	mux.HandleFunc("/api/v1/auth/register", server.HandleRegister)
+	// Auth & KYC API Routes
 	mux.HandleFunc("/api/v1/auth/login", server.HandleLogin)
-	mux.HandleFunc("/api/v1/kyc/upload", server.HandleKYCUpload)
-	mux.HandleFunc("/api/v1/admin/profiles", server.HandleAdminProfiles)
-	mux.HandleFunc("/api/v1/admin/decision", server.HandleAdminDecision)
-	mux.HandleFunc("/api/v1/admin/audit", server.HandleAdminAudit)
+	mux.HandleFunc("/api/v1/auth/register", server.HandleRegister)
+	mux.HandleFunc("/api/v1/kyc/submit", server.AuthMiddleware(server.HandleKYCSubmit))
+	mux.HandleFunc("/api/v1/kyc/status", server.AuthMiddleware(server.HandleKYCStatus))
+	mux.HandleFunc("/api/v1/admin/kyc/requests", server.AdminMiddleware(server.HandleAdminKYCList))
+	mux.HandleFunc("/api/v1/admin/kyc/approve", server.AdminMiddleware(server.HandleAdminKYCApprove))
 
-	httpServer := &http.Server{
+	// CORS & Security Handler Wrapper
+	handler := server.CorsMiddleware(mux)
+
+	srv := &http.Server{
 		Addr:         ":" + port,
-		Handler:      mux,
+		Handler:      handler,
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 15 * time.Second,
 		IdleTimeout:  60 * time.Second,
 	}
 
+	// Graceful Shutdown Setup
 	go func() {
-		log.Printf("BRICS Pay Server starting on port %s...", port)
-		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("Server error: %v", err)
+		log.Printf("BRICS Pay Settlement Engine running on port %s", port)
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("Server failed to start: %v", err)
 		}
 	}()
 
@@ -66,11 +97,11 @@ func main() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	log.Println("Shutting down server gracefully...")
+	log.Println("Shutting down BRICS Pay Settlement Engine gracefully...")
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	if err := httpServer.Shutdown(ctx); err != nil {
+	if err := srv.Shutdown(ctx); err != nil {
 		log.Fatalf("Server forced to shutdown: %v", err)
 	}
 	log.Println("Server stopped successfully.")
