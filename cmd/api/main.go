@@ -1,16 +1,11 @@
 package main
 
 import (
-	"context"
 	"log"
 	"net/http"
 	"os"
-	"os/signal"
-	"syscall"
-	"time"
 
 	"bricspay/internal/api"
-	"bricspay/internal/db"
 )
 
 func main() {
@@ -19,51 +14,24 @@ func main() {
 		port = "8080"
 	}
 
-	databaseURL := os.Getenv("DATABASE_URL")
-	database, err := db.InitDB(databaseURL)
-	if err != nil {
-		log.Printf("Warning: Failed to connect to database: %v. Running in in-memory mode.", err)
-	}
-
-	server := api.NewServer(database)
-
 	mux := http.NewServeMux()
 
-	// سرو فایل‌های استاتیک فرانت‌اند و وب‌سایت
+	// سرو فایل‌های استاتیک داشبورد
 	fs := http.FileServer(http.Dir("./static"))
 	mux.Handle("/static/", http.StripPrefix("/static/", fs))
-	mux.HandleFunc("/", server.HandleRoot)
+	mux.Handle("/", fs)
 
-	// روت‌های سلامت سیستم و دفترکل (Ledger API)
-	mux.HandleFunc("/health", server.HealthCheck)
-	mux.HandleFunc("/api/v1/accounts", server.HandleAccounts)
-	mux.HandleFunc("/api/v1/transactions", server.HandleTransactions)
+	// روت‌های API
+	mux.HandleFunc("/api/v1/transactions", api.TransactionHandler)
 
-	httpServer := &http.Server{
-		Addr:         ":" + port,
-		Handler:      mux,
-		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 15 * time.Second,
-		IdleTimeout:  60 * time.Second,
+	// Healthcheck برای اطمینان Railway از سلامت سرویس
+	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("OK"))
+	})
+
+	log.Printf("Server listening on port %s...", port)
+	if err := http.ListenAndServe(":"+port, mux); err != nil {
+		log.Fatalf("Server startup failed: %v", err)
 	}
-
-	go func() {
-		log.Printf("BRICS Pay Settlement Server starting on port %s...", port)
-		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("Server error: %v", err)
-		}
-	}()
-
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
-
-	log.Println("Shutting down server gracefully...")
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	if err := httpServer.Shutdown(ctx); err != nil {
-		log.Fatalf("Server forced to shutdown: %v", err)
-	}
-	log.Println("Server stopped successfully.")
 }
