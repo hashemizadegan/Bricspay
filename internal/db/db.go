@@ -22,8 +22,14 @@ func InitDB(connStr string) (*sql.DB, error) {
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 
+	// ساخت دیتابیس اولیه
 	if err := createSchema(db); err != nil {
 		return nil, fmt.Errorf("failed to create schema: %w", err)
+	}
+
+	// فراخوانی جدید برای ساخت جداول KYC و Users
+	if err := MigrateKYC(db); err != nil {
+		return nil, fmt.Errorf("failed to MigrateKYC: %w", err)
 	}
 
 	return db, nil
