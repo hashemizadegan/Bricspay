@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"bricspayir/internal/ledger"
+	"bricspay/internal/ledger"
 )
 
 type Server struct {
