@@ -3,13 +3,13 @@ FROM golang:1.23-alpine AS builder
 
 WORKDIR /app
 
-# ابتدا تمام سورس کد را کپی می‌کنیم
+# کپی سورس کد
 COPY . .
 
-# با توجه به سورس کدها، go.sum را به صورت خودکار و دقیق تولید می‌کنیم
-RUN go mod tidy
+# حذف go.sum قدیمی و ساخت مجدد و معتبر آن بر اساس کدهای موجود
+RUN rm -f go.sum && go mod tidy
 
-# کامپایل برنامه
+# کامپایل پروژه
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o bricspay-api ./cmd/api
 
 # Run stage
