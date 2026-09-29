@@ -56,15 +56,15 @@ func main() {
 	mux.HandleFunc("/api/v1/auth/register", server.HandleRegister)
 	mux.HandleFunc("/api/v1/auth/login", server.HandleLogin)
 
-	// روت‌های احراز هویت شرکتی و بارگذاری مدارک (KYC)
+	// روت بارگذاری مدارک KYC
 	mux.HandleFunc("/api/v1/kyc/upload", server.HandleKYCUpload)
 
-	// روت‌های مدیریت و نظارت (Admin)
-	mux.HandleFunc("/api/v1/admin/kyc/list", server.HandleAdminKYCList)
-	mux.HandleFunc("/api/v1/admin/kyc/decision", server.HandleAdminKYCDecision)
-	mux.HandleFunc("/api/v1/admin/audit", server.HandleAdminAuditLogs)
+	// روت‌های ادمین و نظارت (منطبق با متدهای پیاده‌شده در kyc_handlers.go)
+	mux.HandleFunc("/api/v1/admin/kyc/list", server.HandleAdminProfiles)
+	mux.HandleFunc("/api/v1/admin/kyc/decision", server.HandleAdminDecision)
+	mux.HandleFunc("/api/v1/admin/audit", server.HandleAdminAudit)
 
-	// فایل‌های استاتیک و رابط کاربری
+	// فایل‌های استاتیک فرانت‌اند
 	fs := http.FileServer(http.Dir("internal/api/static"))
 	mux.Handle("/static/", http.StripPrefix("/static/", fs))
 
