@@ -1,2 +1,6 @@
-github.com/lib/pq v1.12.3 h1:GAPGPTMASKTOKENgvykj3wq8waX0X
-github.com/lib/pq v1.12.3/go.mod h1:GAPGPTMASKTOKENgvykj3wq8waX1X
+github.com/golang-jwt/jwt/v5 v5.2.1 h1:OuVbLrluB070ZMXMCB+GVf0fV5B2iDshF6OnrtST98A=
+github.com/golang-jwt/jwt/v5 v5.2.1/go.mod h1:pX9D39x6377S76MHQ55siAVfzPpqh6uxzeO7vF9v+9M=
+github.com/lib/pq v1.10.9 h1:YXG7RBQUWvjEc/SYnJypoOt6DSuLzsy0G1pXm8D8asw=
+github.com/lib/pq v1.10.9/go.mod h1:8TK9EsH8fPstHqfWn6CygIthtKAbfK7Eis93W1atqT8=
+golang.org/x/crypto v0.31.0 h1:6E1U3UKYfOpx38D0rY7TEnAnz2isR673MCHhK45r69Y=
+golang.org/x/crypto v0.31.0/go.mod h1:p6rG8Z70jH3FubUAs86p8UBe94o3A0y96XzP5H2rT0w=
