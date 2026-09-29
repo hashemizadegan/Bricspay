@@ -1,30 +1,25 @@
-# مرحله اول: بیلد پروژه با Go 1.23
+# Build stage
 FROM golang:1.23-alpine AS builder
 
 WORKDIR /app
 
-# کپی فایلهای وابستگی و دانلود آنها
-COPY go.mod go.sum ./
-RUN go mod tidy
-RUN go mod download
-
-# کپی کل سورس کد
+# ابتدا تمام سورس کد را کپی می‌کنیم
 COPY . .
 
-# کامپایل باینری Go
+# با توجه به سورس کدها، go.sum را به صورت خودکار و دقیق تولید می‌کنیم
+RUN go mod tidy
+
+# کامپایل برنامه
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o bricspay-api ./cmd/api
 
-# مرحله دوم: ایمیج نهایی و سبک زمان اجرا
+# Run stage
 FROM alpine:3.20
 
 RUN apk --no-cache add ca-certificates tzdata
 
 WORKDIR /app
 
-# کپی باینری کامپایل‌شده
 COPY --from=builder /app/bricspay-api .
-
-# کپی فایل‌های استاتیک فرانت‌اند بر اساس ساختار پروژه
 COPY --from=builder /app/internal/api/static ./internal/api/static
 
 EXPOSE 8080
