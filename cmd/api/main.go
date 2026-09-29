@@ -18,37 +18,54 @@ func main() {
 	}
 
 	connStr := os.Getenv("DATABASE_URL")
-	
-	// تعریف متغیر پایگاه داده به صورت *sql.DB
+
 	var database *sql.DB
 	var err error
-	
-	// استفاده از تابع InitDB به جای db.DB
+
 	if connStr != "" {
-		database, err = db.InitDB(connStr) 
+		database, err = db.InitDB(connStr)
 		if err != nil {
-			log.Printf("Database connection failed: %v", err)
+			log.Printf("Database connection warning: %v", err)
 		} else {
 			defer database.Close()
 		}
 	}
 
-	// ایجاد سرور
+	// ایجاد نمونه سرور با دیتابیس
 	srv := api.NewServer(database)
 
 	mux := http.NewServeMux()
+
+	// ۱. سرو کردن فایل‌های CSS و JS از مسیر واقعی پروژه
+	// نکته کلیدی: مسیر روی سرور ./internal/api/static است
+	staticDir := "./internal/api/static"
+	if _, err := os.Stat(staticDir); os.IsNotExist(err) {
+		// حالت فال‌بک در صورتی که دایرکتوری در روت کپی شده باشد
+		staticDir = "./static"
+	}
+	fs := http.FileServer(http.Dir(staticDir))
+	mux.Handle("/static/", http.StripPrefix("/static/", fs))
+
+	// ۲. روت‌های API و احراز هویت
+	mux.HandleFunc("/api/v1/accounts", srv.HandleAccounts)
 	mux.HandleFunc("/api/v1/transactions", srv.HandleTransactions)
+	mux.HandleFunc("/api/v1/kyc", srv.HandleKYCSubmission)
+	mux.HandleFunc("/api/v1/admin/kyc", srv.HandleKYCList)
+	mux.HandleFunc("/api/v1/auth/login", srv.HandleLogin)
+	mux.HandleFunc("/api/v1/auth/register", srv.HandleRegister)
+
+	// ۳. روت سلامت سرویس
+	mux.HandleFunc("/health", srv.HealthCheck)
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("OK"))
 	})
 
-	// سرویس‌دهی فایل‌های استاتیک
-	fs := http.FileServer(http.Dir("./internal/api/static"))
-	mux.Handle("/", fs)
+	// ۴. ریشه سایت (داشبورد اصلی)
+	mux.HandleFunc("/", srv.HandleRoot)
 
-	log.Printf("Server starting on port %s", port)
+	log.Printf("BRICS Pay Settlement Server running on port %s", port)
 	if err := http.ListenAndServe(":"+port, mux); err != nil {
-		log.Fatalf("Server failed: %v", err)
+		log.Fatalf("Server startup failed: %v", err)
 	}
 }
