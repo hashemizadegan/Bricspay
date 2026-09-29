@@ -47,22 +47,25 @@ func main() {
 	mux.Handle("/static/", http.StripPrefix("/static/", fs))
 
 	// ۲. روت‌های API و احراز هویت
-	mux.HandleFunc("/api/v1/accounts", srv.HandleAccounts)
-	mux.HandleFunc("/api/v1/transactions", srv.HandleTransactions)
-	mux.HandleFunc("/api/v1/kyc", srv.HandleKYCSubmission)
-	mux.HandleFunc("/api/v1/admin/kyc", srv.HandleKYCList)
-	mux.HandleFunc("/api/v1/auth/login", srv.HandleLogin)
-	mux.HandleFunc("/api/v1/auth/register", srv.HandleRegister)
+// فایل‌های استاتیک
+fs := http.FileServer(http.Dir("./internal/api/static"))
+mux.Handle("/static/", http.StripPrefix("/static/", fs))
 
-	// ۳. روت سلامت سرویس
-	mux.HandleFunc("/health", srv.HealthCheck)
-	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("OK"))
-	})
+// روت‌های اصلی و سلامت سرویس
+mux.HandleFunc("/", srv.HandleRoot)
+mux.HandleFunc("/healthz", srv.HealthCheck)
 
-	// ۴. ریشه سایت (داشبورد اصلی)
-	mux.HandleFunc("/", srv.HandleRoot)
+// مدیریت حساب‌ها و تراکنش‌ها
+mux.HandleFunc("/api/accounts", srv.HandleAccounts)
+mux.HandleFunc("/api/transactions", srv.HandleTransactions)
+
+// مسیرهای احراز هویت و KYC (اصلاح نام متدها)
+mux.HandleFunc("/api/auth/register", srv.HandleRegister)
+mux.HandleFunc("/api/auth/login", srv.HandleLogin)
+mux.HandleFunc("/api/kyc/upload", srv.HandleKYCUpload)           // جایگزین HandleKYCSubmission
+mux.HandleFunc("/api/admin/profiles", srv.HandleAdminProfiles)  // جایگزین HandleKYCList
+mux.HandleFunc("/api/admin/decision", srv.HandleAdminDecision)
+mux.HandleFunc("/api/admin/audit", srv.HandleAdminAudit)
 
 	log.Printf("BRICS Pay Settlement Server running on port %s", port)
 	if err := http.ListenAndServe(":"+port, mux); err != nil {
