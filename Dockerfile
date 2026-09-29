@@ -5,6 +5,7 @@ WORKDIR /app
 
 # کپی فایلهای وابستگی و دانلود آنها
 COPY go.mod go.sum ./
+RUN go mod tidy
 RUN go mod download
 
 # کپی کل سورس کد
