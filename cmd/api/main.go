@@ -7,8 +7,9 @@ import (
 	"net/http"
 	"os"
 
-	_ "github.com/lib/pq"
 	"bricspay/internal/api"
+
+	_ "github.com/lib/pq"
 )
 
 func main() {
@@ -24,36 +25,52 @@ func main() {
 	if dbURL != "" {
 		db, err = sql.Open("postgres", dbURL)
 		if err != nil {
-			log.Printf("Warning: Database connection failed: %v", err)
+			log.Printf("هشدار: اتصال به پایگاه داده با خطا مواجه شد: %v", err)
 		} else {
-			defer db.Close()
 			if err = db.Ping(); err != nil {
-				log.Printf("Warning: Database ping failed: %v", err)
+				log.Printf("هشدار: ارتباط مستقیم با پایگاه داده برقرار نشد: %v", err)
 			} else {
-				log.Println("Connected to PostgreSQL successfully.")
+				log.Println("ارتباط با دیتابیس Postgres با موفقیت برقرار شد.")
 			}
 		}
 	} else {
-		log.Println("DATABASE_URL not set; running without database.")
+		log.Println("DATABASE_URL تنظیم نشده است؛ در حال اجرا در حالت بدون دیتابیس.")
 	}
 
 	server := api.NewServer(db)
+
 	mux := http.NewServeMux()
 
-	// روت‌های اصلی
+	// روت‌های اصلی و سلامت سیستم
 	mux.HandleFunc("/", server.HandleRoot)
 	mux.HandleFunc("/health", server.HealthCheck)
+	mux.HandleFunc("/healthz", server.HealthCheck)
+
+	// روت‌های لجر و حساب‌ها
 	mux.HandleFunc("/accounts", server.HandleAccounts)
 	mux.HandleFunc("/transactions", server.HandleTransactions)
+	mux.HandleFunc("/api/v1/accounts", server.HandleAccounts)
+	mux.HandleFunc("/api/v1/transactions", server.HandleTransactions)
 
-	// سرو کردن فایل‌های استاتیک
-	fs := http.FileServer(http.Dir("./internal/api/static"))
+	// روت‌های احراز هویت (Auth)
+	mux.HandleFunc("/api/v1/auth/register", server.HandleRegister)
+	mux.HandleFunc("/api/v1/auth/login", server.HandleLogin)
+
+	// روت‌های احراز هویت شرکتی و بارگذاری مدارک (KYC)
+	mux.HandleFunc("/api/v1/kyc/upload", server.HandleKYCUpload)
+
+	// روت‌های مدیریت و نظارت (Admin)
+	mux.HandleFunc("/api/v1/admin/kyc/list", server.HandleAdminKYCList)
+	mux.HandleFunc("/api/v1/admin/kyc/decision", server.HandleAdminKYCDecision)
+	mux.HandleFunc("/api/v1/admin/audit", server.HandleAdminAuditLogs)
+
+	// فایل‌های استاتیک و رابط کاربری
+	fs := http.FileServer(http.Dir("internal/api/static"))
 	mux.Handle("/static/", http.StripPrefix("/static/", fs))
 
-	fmt.Printf("Server listening on port %s...\n", port)
-	
-	// اینجا فقط از = استفاده شده تا خطای no new variables رخ ندهد
-	if err = http.ListenAndServe(":"+port, mux); err != nil {
-		log.Fatalf("Server failed: %v", err)
+	addr := fmt.Sprintf(":%s", port)
+	log.Printf("سرور BRICS Pay با موفقیت روی پورت %s آماده دریافت درخواست‌ها است...", port)
+	if err := http.ListenAndServe(addr, mux); err != nil {
+		log.Fatalf("خطا در اجرای سرور: %v", err)
 	}
 }
