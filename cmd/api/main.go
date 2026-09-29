@@ -59,7 +59,7 @@ func main() {
 	// روت بارگذاری مدارک KYC
 	mux.HandleFunc("/api/v1/kyc/upload", server.HandleKYCUpload)
 
-	// روت‌های ادمین و نظارت (منطبق با متدهای پیاده‌شده در kyc_handlers.go)
+	// روت‌های ادمین و نظارت (مطابق با متدهای پیاده‌شده در kyc_handlers.go)
 	mux.HandleFunc("/api/v1/admin/kyc/list", server.HandleAdminProfiles)
 	mux.HandleFunc("/api/v1/admin/kyc/decision", server.HandleAdminDecision)
 	mux.HandleFunc("/api/v1/admin/audit", server.HandleAdminAudit)
