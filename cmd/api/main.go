@@ -3,80 +3,79 @@ package main
 import (
 	"context"
 	"errors"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
-	"bricspay/internal/api"
-	dbpkg "bricspay/internal/db"
+	"github.com/yourusername/bricspay/internal/api"
+	"github.com/yourusername/bricspay/internal/auth"
+	"github.com/yourusername/bricspay/internal/db"
+	"github.com/yourusername/bricspay/internal/ledger"
 )
 
 func main() {
-	dbURL := os.Getenv("DATABASE_URL")
-	if dbURL == "" {
-		log.Fatal("DATABASE_URL environment variable is required")
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelInfo,
+	}))
+	slog.SetDefault(logger)
+
+	// Fail fast: require all critical env vars before starting
+	requiredEnv := []string{"JWT_SECRET", "DATABASE_URL"}
+	for _, key := range requiredEnv {
+		if os.Getenv(key) == "" {
+			slog.Error("missing required environment variable", "key", key)
+			os.Exit(1)
+		}
 	}
 
-	database, err := dbpkg.InitDB(dbURL)
+	database, err := db.New(os.Getenv("DATABASE_URL"))
 	if err != nil {
-		log.Fatalf("failed to initialize database: %v", err)
+		slog.Error("failed to connect to database", "error", err)
+		os.Exit(1)
 	}
 	defer database.Close()
 
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
+	if err := database.Migrate(); err != nil {
+		slog.Error("failed to run migrations", "error", err)
+		os.Exit(1)
 	}
 
-	srv := api.NewServer(database)
-	mux := http.NewServeMux()
+	authSvc := auth.New(os.Getenv("JWT_SECRET"))
+	ledgerSvc := ledger.New(database)
+	router := api.NewRouter(database, authSvc, ledgerSvc, logger)
 
-	// Static files
-	fs := http.FileServer(http.Dir("internal/api/static"))
-	mux.Handle("/", fs)
-
-	// Health
-	mux.HandleFunc("/api/v1/health", srv.HealthCheck)
-
-	// Auth
-	mux.HandleFunc("/api/v1/auth/register", srv.HandleRegister)
-	mux.HandleFunc("/api/v1/auth/login", srv.HandleLogin)
-
-	// KYC (authenticated)
-	mux.Handle("/api/v1/kyc/profile", srv.AuthMiddleware(http.HandlerFunc(srv.HandleKYCProfile)))
-	mux.Handle("/api/v1/kyc/documents", srv.AuthMiddleware(http.HandlerFunc(srv.HandleKYCUpload)))
-
-	// Admin (authenticated + admin role)
-	mux.Handle("/api/v1/admin/kyc/list", srv.AdminMiddleware(http.HandlerFunc(srv.HandleAdminProfiles)))
-	mux.Handle("/api/v1/admin/kyc/evaluate", srv.AdminMiddleware(http.HandlerFunc(srv.HandleAdminDecision)))
-
-	// Accounts & Transactions (authenticated)
-	mux.Handle("/api/v1/accounts",.HandlerFunc(srv.HandleAdminDecision)))
-
-	// Accounts & Transactions (authenticated)
-	mux.Handle("/api/v1/accounts", srv.AuthMiddleware(http.HandlerFunc(srv.HandleAccounts)))
-	mux.Handle("/api/v1/transactions", srv.AuthMiddleware(http.HandlerFunc(srv.HandleTransactions)))
-
-	httpServer := &http.Server{IdleTimeout:  60 * time.Second,
+	addr := os.Getenv("LISTEN_ADDR")
+	if addr == "" {
+		addr = ":8080"
 	}
 
-	// Graceful shutdown
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)WriteTimeout: 30 * time.Second,
+	srv := &http.Server{
+		Addr:         addr,
+		Handler:      router,
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 30 * time.Second,
 		IdleTimeout:  60 * time.Second,
 	}
 
-	// Graceful shutdown
+	go func() {
+		slog.Info("server starting", "addr", addr)
+		if err := srv.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
+			slog.Error("server error", "error", err)
+			os.Exit(1)
+		}
+	}()
+
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
 
-	go func() {
-		log.Printf("server listening on :%s", port)
-		if err := httpServer.ListenAndServe(); err != nil && !errors.Is(err, http. httpServer.Shutdown(ctx); err != nil {
-		log.Fatalf("forced shutdown: %v", err)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	if err := srv.Shutdown(ctx); err != nil {
+		slog.Error("graceful shutdown failed", "error", err)
 	}
-	log.Println("server stopped")
+	slog.Info("server stopped")
 }
