@@ -148,12 +148,13 @@ const App = {
       targetSection.classList.add('active');
     }
 
-    if (tabName === 'kyc' && window.Kyc) {
-      Kyc.loadHistory();
-    }
-    if (tabName === 'admin' && window.Admin) {
-      Admin.loadAll();
-    }
+      if (tabName === 'kyc' && window.Kyc) {
+    Kyc.loadHistory(); // ماژول Kyc و تابع loadHistory اصلاً وجود نداشتند!
+  }
+  if (tabName === 'admin' && window.Admin) {
+    Admin.loadAll(); // ماژول Admin و تابع loadAll اصلاً وجود نداشتند!
+  }
+
   },
 
   updateAuthUI() {
