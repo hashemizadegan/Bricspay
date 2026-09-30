@@ -9,6 +9,15 @@ document.addEventListener("DOMContentLoaded", () => {
     })
     .then((html) => {
       container.innerHTML = html;
+      fetch("/static/bric-pay-content.html")
+  .then((res) => res.text())
+  .then((html) => {
+    container.innerHTML = html;
+    if (window.App && typeof App.applyLanguage === 'function') {
+      App.applyLanguage(App.state.lang);
+    }
+  });
+
     })
     .catch((err) => {
       console.warn("Could not load external BRICS Pay content:", err);
