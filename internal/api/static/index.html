@@ -21,6 +21,15 @@
       <div id="userNavInfo" style="display: none; align-items: center; gap: 0.5rem;">
         <span id="navUserEmail" style="font-size: 0.85rem; color: var(--accent-cyan);"></span>
         <button class="btn btn-outline" style="padding: 0.3rem 0.6rem;" onclick="AuthModule.logout()">خروج</button>
+           <div class="brand">
+     <h1 data-i18n="brand_title">BRICS Pay Core Settlement</h1>
+   </div>
+   ...
+   <button id="authActionBtn" class="btn" data-i18n="nav_login">ورود / ثبت‌نام</button>
+           <div class="tabs">
+     <button class="tab-btn active" data-tab="workflow" data-i18n="tab_workflow">معماری تسویه (Workflow)</button>
+     <button class="tab-btn" data-tab="kyc" data-i18n="tab_kyc">پرونده تجاری و مدارک (KYC)</button>
+     <button class="tab-btn" data-tab="admin" style="display: none;" data-i18n="tab_admin">پنل نظارتی ادمین (Audit)</button>
       </div>
     </div>
   </header>
@@ -30,6 +39,8 @@
     <button class="tab-btn active" data-tab="workflow">معماری تسویه (Workflow)</button>
     <button class="tab-btn" data-tab="kyc">پرونده تجاری و مدارک (KYC)</button>
     <button class="tab-btn" data-tab="admin" style="display: none;">پنل نظارتی ادمین (Audit)</button>
+       <h2 data-i18n="workflow_heading">مدل تسویه دوجانبه ایران - روسیه (VTB / میر-شتاب)</h2>
+   <p data-i18n="workflow_desc">این سیستم تراکنش‌های مالی و اعتباری بین‌المللی را از طریق پیام‌رسان‌های مالی غیرسوئیفتی و تسویه مستقیم ارزهای ملی (روبل / ریال) بدون وابستگی به دلار مدیریت می‌کند.</p>
   </nav>
 
   <main class="container">
@@ -47,6 +58,17 @@
     <!-- تب ۲: بارگذاری اسناد و KYC -->
     <section id="tab-kyc" class="tab-content">
       <div id="kycGuestNotice" class="card" style="text-align: center;">
+           <h2 data-i18n="kyc_title">بارگذاری اسناد تجاری و احراز هویت (KYC)</h2>
+   ...
+   <label for="docType" data-i18n="kyc_doc_type">نوع سند:</label>
+   <select id="docType" class="form-control" required>
+     <option value="company_registration" data-i18n="kyc_company_reg">روزنامه رسمی / ثبت شرکت</option>
+     <option value="trade_license" data-i18n="kyc_license">کارت بازرگانی / مجوز فعالیت</option>
+     <option value="contract" data-i18n="kyc_contract">قرارداد تجاری / پروفورما</option>
+   </select>
+   ...
+   <button type="submit" class="btn" style="margin-top: 15px;" data-i18n="kyc_btn_upload">ارسال سند جهت اعتبارسنجی</button>
+
         <h3>برای ثبت مدارک شرکت یا بانک، ابتدا وارد حساب کاربری شوید.</h3>
         <button class="btn btn-primary" style="margin-top: 1rem;" onclick="AuthModule.openModal('login')">ورود به حساب</button>
       </div>
