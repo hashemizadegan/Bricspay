@@ -1,4 +1,4 @@
-module github.com/hashemizadegan/bricspay
+module github.com/yourusername/bricspay
 
 go 1.23
 
