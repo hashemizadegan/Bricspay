@@ -210,3 +210,29 @@ const App = {
 document.addEventListener('DOMContentLoaded', () => {
   App.init();
 });
+// مدیریت و آپدیت خودکار نوار اخبار BRICS
+const NewsTickerModule = {
+  feed: [
+    "BRICS Pay Cross-Border Settlement pilot reaches phase 2.",
+    "MIR and Shetab payment gateways successfully interconnected.",
+    "Multi-currency settlement liquidity pool updated with RUB/IRR parity.",
+    "SPFS financial messaging integration completed for interbank settlement.",
+    "Commercial escrow contract framework v2.1 ratified by member banks."
+  ],
+  init() {
+    const track = document.querySelector('.ticker-track');
+    if (!track) return;
+    this.render();
+    
+    // شبیه‌سازی دریافت اخبار جدید در بازه‌های زمانی
+    setInterval(() => {
+      this.feed.push(this.feed.shift()); // چرخش اخبار
+      this.render();
+    }, 45000);
+  },
+  render() {
+    const track = document.querySelector('.ticker-track');
+    if (!track) return;
+    track.innerHTML = this.feed.map(item => `<span class="ticker-item">${item}</span>`).join('');
+  }
+};
