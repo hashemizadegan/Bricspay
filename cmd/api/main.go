@@ -1,66 +1,82 @@
 package main
 
 import (
-	"database/sql"
+	"context"
+	"errors"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"bricspay/internal/api"
 	dbpkg "bricspay/internal/db"
-
-	_ "github.com/lib/pq"
 )
 
 func main() {
+	dbURL := os.Getenv("DATABASE_URL")
+	if dbURL == "" {
+		log.Fatal("DATABASE_URL environment variable is required")
+	}
+
+	database, err := dbpkg.InitDB(dbURL)
+	if err != nil {
+		log.Fatalf("failed to initialize database: %v", err)
+	}
+	defer database.Close()
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
 
-	dbURL := os.Getenv("DATABASE_URL")
-	var database *sql.DB
-	var err error
-
-	if dbURL != "" {
-		// فراخوانی InitDB که جداول accounts، users و kyc_profiles را خودکار می‌سازد
-		database, err = dbpkg.InitDB(dbURL)
-		if err != nil {
-			log.Printf("خطا در راه‌اندازی و مایگریشن دیتابیس: %v", err)
-		} else {
-			log.Println("ارتباط با دیتابیس Postgres برقرار و تمام جداول (users, kyc) ساخته شدند.")
-			defer database.Close()
-		}
-	} else {
-		log.Println("هشدار: DATABASE_URL تنظیم نشده است؛ در حال اجرا در حالت بدون دیتابیس.")
-	}
-
-	server := api.NewServer(database)
-
+	srv := api.NewServer(database)
 	mux := http.NewServeMux()
 
-	// سرو فایل‌های استاتیک UI
+	// Static files
 	fs := http.FileServer(http.Dir("internal/api/static"))
 	mux.Handle("/", fs)
 
-	// روت‌های احراز هویت و KYC
-	mux.HandleFunc("/api/v1/auth/register", server.HandleRegister)
-	mux.HandleFunc("/api/v1/auth/login", server.HandleLogin)
-	mux.HandleFunc("/api/v1/kyc/profile", server.HandleKYCProfile)
-	mux.HandleFunc("/api/v1/kyc/documents", server.HandleKYCDocuments)
-	mux.HandleFunc("/api/v1/admin/kyc/list", server.HandleAdminKYCList)
-	mux.HandleFunc("/api/v1/admin/kyc/evaluate", server.HandleAdminKYCEvaluate)
+	// Health
+	mux.HandleFunc("/api/v1/health", srv.HealthCheck)
 
-	// روت‌های پایه Ledger
-	mux.HandleFunc("/api/v1/accounts", server.HandleAccounts)
-	mux.HandleFunc("/api/v1/transactions", server.HandleTransactions)
-	mux.HandleFunc("/api/v1/health", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{"status":"online","service":"BRICS Pay Settlement API Gateway"}`))
-	})
+	// Auth
+	mux.HandleFunc("/api/v1/auth/register", srv.HandleRegister)
+	mux.HandleFunc("/api/v1/auth/login", srv.HandleLogin)
 
-	log.Printf("سرور BRICS Pay روی پورت %s آغاز به کار کرد...", port)
-	if err := http.ListenAndServe(":"+port, mux); err != nil {
-		log.Fatalf("خطای اجرای سرور: %v", err)
+	// KYC (authenticated)
+	mux.Handle("/api/v1/kyc/profile", srv.AuthMiddleware(http.HandlerFunc(srv.HandleKYCProfile)))
+	mux.Handle("/api/v1/kyc/documents", srv.AuthMiddleware(http.HandlerFunc(srv.HandleKYCUpload)))
+
+	// Admin (authenticated + admin role)
+	mux.Handle("/api/v1/admin/kyc/list", srv.AdminMiddleware(http.HandlerFunc(srv.HandleAdminProfiles)))
+	mux.Handle("/api/v1/admin/kyc/evaluate", srv.AdminMiddleware(http.HandlerFunc(srv.HandleAdminDecision)))
+
+	// Accounts & Transactions (authenticated)
+	mux.Handle("/api/v1/accounts",.HandlerFunc(srv.HandleAdminDecision)))
+
+	// Accounts & Transactions (authenticated)
+	mux.Handle("/api/v1/accounts", srv.AuthMiddleware(http.HandlerFunc(srv.HandleAccounts)))
+	mux.Handle("/api/v1/transactions", srv.AuthMiddleware(http.HandlerFunc(srv.HandleTransactions)))
+
+	httpServer := &http.Server{IdleTimeout:  60 * time.Second,
 	}
+
+	// Graceful shutdown
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)WriteTimeout: 30 * time.Second,
+		IdleTimeout:  60 * time.Second,
+	}
+
+	// Graceful shutdown
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		log.Printf("server listening on :%s", port)
+		if err := httpServer.ListenAndServe(); err != nil && !errors.Is(err, http. httpServer.Shutdown(ctx); err != nil {
+		log.Fatalf("forced shutdown: %v", err)
+	}
+	log.Println("server stopped")
 }
