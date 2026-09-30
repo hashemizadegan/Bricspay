@@ -242,27 +242,28 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 // مدیریت و آپدیت خودکار نوار اخبار BRICS
 const NewsTickerModule = {
-  feed: [
-    "BRICS Pay Cross-Border Settlement pilot reaches phase 2.",
-    "MIR and Shetab payment gateways successfully interconnected.",
-    "Multi-currency settlement liquidity pool updated with RUB/IRR parity.",
-    "SPFS financial messaging integration completed for interbank settlement.",
-    "Commercial escrow contract framework v2.1 ratified by member banks."
-  ],
-  init() {
-    const track = document.querySelector('.ticker-track');
-    if (!track) return;
-    this.render();
-    
-    // شبیه‌سازی دریافت اخبار جدید در بازه‌های زمانی
-    setInterval(() => {
-      this.feed.push(this.feed.shift()); // چرخش اخبار
-      this.render();
-    }, 45000);
+  feeds: {
+    fa: [
+      "فاز دوم پایلوت تسویه فرامرزی BRICS Pay فعال شد.",
+      "اتصال مستقیم شبکه‌های شتاب و میر روسیه با موفقیت برقرار گردید.",
+      "تأمین نقدینگی و برابری ریال-روبل در پلتفرم تسویه به‌روزرسانی شد."
+    ],
+    en: [
+      "BRICS Pay Cross-Border Settlement pilot reaches phase 2.",
+      "MIR and Shetab payment networks successfully interconnected.",
+      "Liquidity pool updated with direct RUB/IRR cross-rate parity."
+    ],
+    ru: [
+      "Пилотный проект трансграничных расчетов BRICS Pay перешел во вторую фазу.",
+      "Успешно завершена интеграция платежных систем МИР и Шетаб.",
+      "Обновлен пул ликвидности для прямых клиринговых расчетов в паре RUB/IRR."
+    ]
   },
-  render() {
-    const track = document.querySelector('.ticker-track');
+  render(lang = 'fa') {
+    const track = document.getElementById('tickerTrack') || document.querySelector('.ticker-track');
     if (!track) return;
-    track.innerHTML = this.feed.map(item => `<span class="ticker-item">${item}</span>`).join('');
+    const items = this.feeds[lang] || this.feeds.en;
+    track.innerHTML = items.map(t => `<span class="ticker-item">${t}</span>`).join('');
   }
 };
+
