@@ -25,6 +25,16 @@ const I18N = {
     auth_btn_register: "ثبت‌نام شرکت جدید",
     auth_switch_to_reg: "حساب ندارید؟ ثبت‌نام شرکت جدید",
     auth_switch_to_login: "قبلاً ثبت‌نام کرده‌اید؟ ورود به حساب"
+    brand_title: "تسویه مرکزی بریکس پی",
+    nav_login: "ورود / ثبت‌نام",
+    nav_logout: "خروج",
+    tab_workflow: "معماری تسویه (Workflow)",
+    tab_kyc: "پرونده تجاری و KYC",
+    tab_admin: "پنل مدیریت (Admin)",
+    workflow_title: "مدل تسویه دوجانبه ایران - روسیه (میر / VTB - شتاب)",
+    workflow_desc: "این سیستم تراکنش‌های مالی و اعتباری بین‌المللی را بدون وابستگی به دلار مدیریت می‌کند.",
+    diagram_heading: "فرایند ۹ مرحله‌ای تسویه و اعتبارات اسنادی (VTB Trade Finance)",
+    ticker_label: "اخبار بریکس"
   },
   en: {
     brand_title: "BRICS Pay Core Settlement Platform",
@@ -52,6 +62,16 @@ const I18N = {
     auth_btn_register: "Register New Entity",
     auth_switch_to_reg: "No account? Register corporate entity",
     auth_switch_to_login: "Already registered? Sign in"
+    brand_title: "BRICS Pay Core Settlement",
+    nav_login: "Login / Register",
+    nav_logout: "Logout",
+    tab_workflow: "Settlement Workflow",
+    tab_kyc: "Commercial KYC",
+    tab_admin: "Admin Console",
+    workflow_title: "Iran-Russia Bilateral Settlement Flow (MIR / VTB - Shetab)",
+    workflow_desc: "Non-SWIFT international financial messaging and bilateral settlement platform.",
+    diagram_heading: "9-Step Trade Finance & Settlement Workflow (VTB Platform)",
+    ticker_label: "BRICS NEWS"
   },
   ru: {
     brand_title: "Платформа трансграничных расчетов BRICS Pay",
@@ -79,6 +99,16 @@ const I18N = {
     auth_btn_register: "Зарегистрировать компанию",
     auth_switch_to_reg: "Нет аккаунта? Регистрация",
     auth_switch_to_login: "Уже зарегистрированы? Войти"
+    brand_title: "Клиринговый Центр BRICS Pay",
+    nav_login: "Вход / Регистрация",
+    nav_logout: "Выход",
+    tab_workflow: "Архитектура расчетов",
+    tab_kyc: "Торговое досье (KYC)",
+    tab_admin: "Панель администратора",
+    workflow_title: "Двусторонняя модель расчетов Иран – Россия (МИР / ВТБ – Шетаб)",
+    workflow_desc: "Система международных финансовых расчетов без использования SWIFT и доллара.",
+    diagram_heading: "9-этапный процесс торгового финансирования и расчетов (ВТБ)",
+    ticker_label: "НОВОСТИ БРИКС"
   }
 };
 
