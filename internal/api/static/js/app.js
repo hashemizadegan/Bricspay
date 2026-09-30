@@ -24,7 +24,7 @@ const I18N = {
     auth_btn_login: "ورود",
     auth_btn_register: "ثبت‌نام شرکت جدید",
     auth_switch_to_reg: "حساب ندارید؟ ثبت‌نام شرکت جدید",
-    auth_switch_to_login: "قبلاً ثبت‌نام کرده‌اید؟ ورود به حساب"
+    auth_switch_to_login: "قبلاً ثبت‌نام کرده‌اید؟ ورود به حساب",
     brand_title: "تسویه مرکزی بریکس پی",
     nav_login: "ورود / ثبت‌نام",
     nav_logout: "خروج",
@@ -61,7 +61,7 @@ const I18N = {
     auth_btn_login: "Sign In",
     auth_btn_register: "Register New Entity",
     auth_switch_to_reg: "No account? Register corporate entity",
-    auth_switch_to_login: "Already registered? Sign in"
+    auth_switch_to_login: "Already registered? Sign in",
     brand_title: "BRICS Pay Core Settlement",
     nav_login: "Login / Register",
     nav_logout: "Logout",
@@ -98,7 +98,7 @@ const I18N = {
     auth_btn_login: "Войти",
     auth_btn_register: "Зарегистрировать компанию",
     auth_switch_to_reg: "Нет аккаунта? Регистрация",
-    auth_switch_to_login: "Уже зарегистрированы? Войти"
+    auth_switch_to_login: "Уже зарегистрированы? Войти",
     brand_title: "Клиринговый Центр BRICS Pay",
     nav_login: "Вход / Регистрация",
     nav_logout: "Выход",
