@@ -1,58 +1,63 @@
 package auth
 
 import (
-	"context"
 	"errors"
-	"log"
-	"net/http"
-	"os"
-	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 )
 
-const bcryptCost = 12
+const (
+	tokenTTL     = 24 * time.Hour
+	bcryptCost   = 12
+)
 
-type contextKey string
+// Role represents a user's permission level.
+type Role string
 
-const claimsKey contextKey = "claims"
+const (
+	RoleUser  Role = "user"
+	RoleAdmin Role = "admin"
+)
 
-// Claims holds JWT payload.
+// Claims holds the JWT payload.
 type Claims struct {
-	UserID string `json:"user_id"`
+	UserID int64  `json:"uid"`
 	Email  string `json:"email"`
-	Role   string `json:"role"`
+	Role   Role   `json:"role"`
 	jwt.RegisteredClaims
 }
 
-var jwtSecret []byte
+// Service handles token creation, validation, and password hashing.
+type Service struct {
+	secret []byte
+}
 
-func init() {
-	secret := os.Getenv("JWT_SECRET")
+// New creates an auth Service. Panics if secret is empty (caught at startup).
+func New(secret string) *Service {
 	if secret == "" {
-		log.Fatal("JWT_SECRET environment variable is required — refusing to start with an insecure default")
+		panic("auth: JWT_SECRET must not be empty")
 	}
-	jwtSecret = []byte(secret)
+	return &Service{secret: []byte(secret)}
 }
 
-// HashPassword hashes a plaintext password using bcrypt.
-func HashPassword(password string) (string, error) {
-	b, err := bcrypt.GenerateFromPassword([]byte(password), bcryptCost)
-	if err != nil {
-		return "", err
+// HashPassword returns a bcrypt hash of the plain-text password.
+func (s *Service) HashPassword(plain string) (string, error) {
+	if len(plain) < 8 {
+		return "", errors.New("password must be at least 8 characters")
 	}
-	return string(b), nil
+	b, err := bcrypt.GenerateFromPassword([]byte(plain), bcryptCost)
+	return string(b), err
 }
 
-// CheckPassword compares a plaintext password against a bcrypt hash.
-func CheckPassword(password, hash string) error {
-	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+// CheckPassword reports whether plain matches the stored hash.
+func (s *Service) CheckPassword(hash, plain string) bool {
+	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(plain)) == nil
 }
 
 // IssueToken creates a signed JWT for the given user.
-func IssueToken(userID, email, role string) (string, error) {
+func (s *Service) IssueToken(userID int64, email string, role Role) (string, error) {
 	now := time.Now()
 	claims := Claims{
 		UserID: userID,
@@ -60,21 +65,20 @@ func IssueToken(userID, email, role string) (string, error) {
 		Role:   role,
 		RegisteredClaims: jwt.RegisteredClaims{
 			IssuedAt:  jwt.NewNumericDate(now),
-			ExpiresAt: jwt.NewNumericDate(now.Add(24 * time.Hour)),
-			Issuer:    "bricspay",
+			ExpiresAt: jwt.NewNumericDate(now.Add(tokenTTL)),
 		},
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString(jwtSecret)
+	return token.SignedString(s.secret)
 }
 
-// ParseToken validates a JWT string and returns its claims.
-func ParseToken(tokenStr string) (*Claims, error) {
+// ValidateToken parses and validates a JWT, returning its claims.
+func (s *Service) ValidateToken(tokenStr string) (*Claims, error) {
 	token, err := jwt.ParseWithClaims(tokenStr, &Claims{}, func(t *jwt.Token) (any, error) {
 		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, errors.New("unexpected signing method")
 		}
-		return jwtSecret, nil
+		return s.secret, nil
 	})
 	if err != nil {
 		return nil, err
@@ -84,24 +88,4 @@ func ParseToken(tokenStr string) (*Claims, error) {
 		return nil, errors.New("invalid token")
 	}
 	return claims, nil
-}
-
-// WithContext stores claims in the request context.
-func WithContext(ctx context.Context, claims *Claims) context.Context {
-	return context.WithValue(ctx, claimsKey, claims)
-}
-
-// FromContext retrieves claims from the request context.
-func FromContext(ctx context.Context) (*Claims, bool) {
-	c, ok := ctx.Value(claimsKey).(*Claims)
-	return c, ok
-}
-
-// BearerToken extracts the Bearer token from the Authorization header.
-func BearerToken(r *http.Request) (string, bool) {
-	h := r.Header.Get("Authorization")
-	if !strings.HasPrefix(h, "Bearer ") {
-		return "", false
-	}
-	return strings.TrimPrefix(h, "Bearer "), true
 }
