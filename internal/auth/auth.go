@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"errors"
+	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -12,98 +13,95 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+const bcryptCost = 12
+
 type contextKey string
 
 const claimsKey contextKey = "claims"
 
-var jwtSecret = []byte(envOr("JWT_SECRET", "change-me-in-production"))
-
-func envOr(k, d string) string {
-	if v := strings.TrimSpace(os.Getenv(k)); v != "" {
-		return v
-	}
-	return d
-}
-
+// Claims holds JWT payload.
 type Claims struct {
-	UserID string `json:"uid"`
+	UserID string `json:"user_id"`
 	Email  string `json:"email"`
-	Role   string `json:"role"` // member | admin
+	Role   string `json:"role"`
 	jwt.RegisteredClaims
 }
 
-func HashPassword(pw string) (string, error) {
-	b, err := bcrypt.GenerateFromPassword([]byte(pw), bcrypt.DefaultCost)
-	return string(b), err
+var jwtSecret []byte
+
+func init() {
+	secret := os.Getenv("JWT_SECRET")
+	if secret == "" {
+		log.Fatal("JWT_SECRET environment variable is required — refusing to start with an insecure default")
+	}
+	jwtSecret = []byte(secret)
 }
 
-func CheckPassword(hash, pw string) bool {
-	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(pw)) == nil
+// HashPassword hashes a plaintext password using bcrypt.
+func HashPassword(password string) (string, error) {
+	b, err := bcrypt.GenerateFromPassword([]byte(password), bcryptCost)
+	if err != nil {
+		return "", err
+	}
+	return string(b), nil
 }
 
+// CheckPassword compares a plaintext password against a bcrypt hash.
+func CheckPassword(password, hash string) error {
+	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+}
+
+// IssueToken creates a signed JWT for the given user.
 func IssueToken(userID, email, role string) (string, error) {
-	c := Claims{
-		UserID: userID, Email: email, Role: role,
+	now := time.Now()
+	claims := Claims{
+		UserID: userID,
+		Email:  email,
+		Role:   role,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			IssuedAt:  jwt.NewNumericDate(now),
+			ExpiresAt: jwt.NewNumericDate(now.Add(24 * time.Hour)),
+			Issuer:    "bricspay",
 		},
 	}
-	return jwt.NewWithClaims(jwt.SigningMethodHS256, c).SignedString(jwtSecret)
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString(jwtSecret)
 }
 
+// ParseToken validates a JWT string and returns its claims.
 func ParseToken(tokenStr string) (*Claims, error) {
-	t, err := jwt.ParseWithClaims(tokenStr, &Claims{}, func(t *jwt.Token) (interface{}, error) {
+	token, err := jwt.ParseWithClaims(tokenStr, &Claims{}, func(t *jwt.Token) (any, error) {
 		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, errors.New("unexpected signing method")
 		}
 		return jwtSecret, nil
 	})
-	if err != nil || !t.Valid {
+	if err != nil {
+		return nil, err
+	}
+	claims, ok := token.Claims.(*Claims)
+	if !ok || !token.Valid {
 		return nil, errors.New("invalid token")
 	}
-	return t.Claims.(*Claims), nil
+	return claims, nil
 }
 
-// withClaims context را با اطلاعات احراز هویت مقداردهی می‌کند
-func withClaims(r *http.Request, c *Claims) context.Context {
-	return context.WithValue(r.Context(), claimsKey, c)
+// WithContext stores claims in the request context.
+func WithContext(ctx context.Context, claims *Claims) context.Context {
+	return context.WithValue(ctx, claimsKey, claims)
 }
 
-// FromContext اطلاعات کاربر را از context دریافت می‌کند (استفاده شده در kyc_handlers)
+// FromContext retrieves claims from the request context.
 func FromContext(ctx context.Context) (*Claims, bool) {
 	c, ok := ctx.Value(claimsKey).(*Claims)
 	return c, ok
 }
 
-// RequireAdmin middleware: فقط ادمین‌ها عبور می‌کنند.
-func RequireAdmin(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		c, err := claimsFromRequest(r)
-		if err != nil || c.Role != "admin" {
-			http.Error(w, `{"error":"forbidden: admin role required"}`, http.StatusForbidden)
-			return
-		}
-		next.ServeHTTP(w, r.WithContext(withClaims(r, c)))
-	})
-}
-
-// RequireAuth middleware: هر کاربر لاگین‌شده.
-func RequireAuth(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		c, err := claimsFromRequest(r)
-		if err != nil {
-			http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
-			return
-		}
-		next.ServeHTTP(w, r.WithContext(withClaims(r, c)))
-	})
-}
-
-func claimsFromRequest(r *http.Request) (*Claims, error) {
+// BearerToken extracts the Bearer token from the Authorization header.
+func BearerToken(r *http.Request) (string, bool) {
 	h := r.Header.Get("Authorization")
 	if !strings.HasPrefix(h, "Bearer ") {
-		return nil, errors.New("missing bearer token")
+		return "", false
 	}
-	return ParseToken(strings.TrimPrefix(h, "Bearer "))
+	return strings.TrimPrefix(h, "Bearer "), true
 }
