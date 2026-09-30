@@ -123,6 +123,20 @@ const App = {
 
   switchTab(tabName) {
     this.state.currentTab = tabName;
+    if (tabName === 'admin') {
+  const token = localStorage.getItem('brics_token');
+  const user = JSON.parse(localStorage.getItem('brics_user') || '{}');
+  
+  if (!token || user.role !== 'admin') {
+    alert("دسترسی غیرمجاز: ورود با نام کاربری و گذرواژه مدیر الزامی است.");
+    if (window.AuthModule) {
+      AuthModule.openModal('login');
+    }
+    // بازگرداندن تب به وضعیت پیش‌فرض
+    this.switchTab('workflow');
+    return;
+  }
+}
 
     // تنظیم وضعیت دکمه‌های ناوبری تب
     document.querySelectorAll('.tab-btn').forEach(btn => {
