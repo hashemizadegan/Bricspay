@@ -10,42 +10,48 @@
 
   <!-- هدر و نوبار اصلی -->
   <header class="navbar">
-    <div class="logo">BRICS Pay Core Settlement</div>
-    <div class="nav-actions">
-      <select id="langSelect" class="form-control" style="width: auto; padding: 0.3rem 0.6rem;">
-        <option value="fa">فارسی</option>
-        <option value="en">English</option>
-        <option value="ru">Русский</option>
-      </select>
-      <button id="authNavBtn" class="btn btn-primary" onclick="AuthModule.openModal('login')">ورود / ثبت نام</button>
-      <div id="userNavInfo" style="display: none; align-items: center; gap: 0.5rem;">
-        <span id="navUserEmail" style="font-size: 0.85rem; color: var(--accent-cyan);"></span>
-        <button class="btn btn-outline" style="padding: 0.3rem 0.6rem;" onclick="AuthModule.logout()">خروج</button>
-        <h1 class="brand-title" data-i18n="brand_title">BRICS Pay Core Settlement</h1>
-<button id="authNavBtn" class="btn" data-i18n="nav_login">ورود / ثبت‌نام</button>
- 
-  </header>
+  <div class="brand">
+    <h1 data-i18n="brand_title">BRICS Pay Core Settlement</h1>
+  </div>
+  <div class="nav-controls">
+    <select id="langSelect">
+      <option value="fa">فارسی</option>
+      <option value="en">English</option>
+      <option value="ru">Русский</option>
+    </select>
+    <button id="authNavBtn" class="btn" data-i18n="nav_login">ورود / ثبت‌نام</button>
+    <div id="userNavInfo" class="user-info hidden">
+      <span id="navUserEmail"></span>
+      <button id="logoutBtn" class="btn btn-secondary" data-i18n="nav_logout">خروج</button>
+    </div>
+  </div>
+</header>
 
-  <!-- تب‌های سامانه -->
-  <nav class="tabs">
-    <button class="tab-btn active" data-tab="workflow">معماری تسویه (Workflow)</button>
-    <button class="tab-btn" data-tab="kyc">پرونده تجاری و مدارک (KYC)</button>
-    <button class="tab-btn" data-tab="admin" style="display: none;">پنل نظارتی ادمین (Audit)</button>
-       <h2 data-i18n="workflow_heading">مدل تسویه دوجانبه ایران - روسیه (VTB / میر-شتاب)</h2>
-   <p data-i18n="workflow_desc">این سیستم تراکنش‌های مالی و اعتباری بین‌المللی را از طریق پیام‌رسان‌های مالی غیرسوئیفتی و تسویه مستقیم ارزهای ملی (روبل / ریال) بدون وابستگی به دلار مدیریت می‌کند.</p>
-  </nav>
+<nav class="tabs">
+  <button class="tab-btn active" data-tab="workflow" data-i18n="tab_workflow">معماری تسویه (Workflow)</button>
+  <button class="tab-btn" data-tab="kyc" data-i18n="tab_kyc">پرونده تجاری و KYC</button>
+  <button class="tab-btn" data-tab="admin" data-i18n="tab_admin">پنل مدیریت (Admin)</button>
+</nav>
 
   <main class="container">
-    <!-- تب ۱: فلو و معماری ۹ مرحله‌ای -->
-    <section id="tab-workflow" class="tab-content active">
-      <div class="card">
-        <h2>پروتکل تسویه ریال-روبل (Iran-Russia Cross-Border Flow)</h2>
-        <p style="color: var(--text-muted); margin-top: 0.5rem; line-height: 1.6;">
-          زیرساخت لجر توزیع‌شده با اتصال بانکی VTB / میر / شتاب، جهت انتقال مالی و انطباق اسناد بازرگانی بدون وابستگی به سوئیفت دلار.
-        </p>
-           <!-- نگهدارنده محتوای رسمی BRICS Pay -->
-   <div id="bric-pay-external-section"></div>
-    </section>
+    <!-- تب معماری تسویه و دیاگرام ۹ مرحله‌ای -->
+<section id="tab-workflow" class="tab-pane active">
+  <div class="card">
+    <div class="card-header">
+      <h2 data-i18n="workflow_title">مدل تسویه دوجانبه ایران - روسیه (میر / VTB - شتاب)</h2>
+      <p data-i18n="workflow_desc">این سیستم تراکنش‌های مالی و اعتباری بین‌المللی را از طریق پیام‌رسان‌های مالی غیرسوئیفتی مدیریت می‌کند.</p>
+    </div>
+
+    <!-- نمایش دیاگرام فرایند ۹ مرحله‌ای VTB -->
+    <div class="workflow-diagram-container" style="text-align: center; margin: 20px 0; background: #0b1120; padding: 15px; border-radius: 8px; border: 1px solid #1e293b;">
+      <h3 style="color: #38bdf8; margin-bottom: 12px;" data-i18n="diagram_heading">فرایند ۹ مرحله‌ای تسویه و اعتبارات اسنادی (VTB Trade Finance)</h3>
+      <img src="/static/vtb-workflow.jpg" alt="VTB Trade Finance Settlement Workflow" style="max-width: 100%; height: auto; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.5);">
+    </div>
+
+    <div id="bric-pay-external-section"></div>
+  </div>
+</section>
+
 
     <!-- تب ۲: بارگذاری اسناد و KYC -->
     <section id="tab-kyc" class="tab-content">
@@ -123,7 +129,6 @@
         </table>
       </div>
     </section>
-  </main>
   </main>
 
   <!-- BRICS Pay Live News Ticker -->
