@@ -2,12 +2,12 @@ package main
 
 import (
 	"database/sql"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
 
 	"bricspay/internal/api"
+	dbpkg "bricspay/internal/db"
 
 	_ "github.com/lib/pq"
 )
@@ -19,58 +19,48 @@ func main() {
 	}
 
 	dbURL := os.Getenv("DATABASE_URL")
-	var db *sql.DB
+	var database *sql.DB
 	var err error
 
 	if dbURL != "" {
-		db, err = sql.Open("postgres", dbURL)
+		// فراخوانی InitDB که جداول accounts، users و kyc_profiles را خودکار می‌سازد
+		database, err = dbpkg.InitDB(dbURL)
 		if err != nil {
-			log.Printf("هشدار: اتصال به پایگاه داده با خطا مواجه شد: %v", err)
+			log.Printf("خطا در راه‌اندازی و مایگریشن دیتابیس: %v", err)
 		} else {
-			if err = db.Ping(); err != nil {
-				log.Printf("هشدار: ارتباط مستقیم با پایگاه داده برقرار نشد: %v", err)
-			} else {
-				log.Println("ارتباط با دیتابیس Postgres با موفقیت برقرار شد.")
-			}
+			log.Println("ارتباط با دیتابیس Postgres برقرار و تمام جداول (users, kyc) ساخته شدند.")
+			defer database.Close()
 		}
 	} else {
-		log.Println("DATABASE_URL تنظیم نشده است؛ در حال اجرا در حالت بدون دیتابیس.")
+		log.Println("هشدار: DATABASE_URL تنظیم نشده است؛ در حال اجرا در حالت بدون دیتابیس.")
 	}
 
-	server := api.NewServer(db)
+	server := api.NewServer(database)
 
 	mux := http.NewServeMux()
 
-	// روت‌های اصلی و سلامت سیستم
-	mux.HandleFunc("/", server.HandleRoot)
-	mux.HandleFunc("/health", server.HealthCheck)
-	mux.HandleFunc("/healthz", server.HealthCheck)
+	// سرو فایل‌های استاتیک UI
+	fs := http.FileServer(http.Dir("internal/api/static"))
+	mux.Handle("/", fs)
 
-	// روت‌های لجر و حساب‌ها
-	mux.HandleFunc("/accounts", server.HandleAccounts)
-	mux.HandleFunc("/transactions", server.HandleTransactions)
-	mux.HandleFunc("/api/v1/accounts", server.HandleAccounts)
-	mux.HandleFunc("/api/v1/transactions", server.HandleTransactions)
-
-	// روت‌های احراز هویت (Auth)
+	// روت‌های احراز هویت و KYC
 	mux.HandleFunc("/api/v1/auth/register", server.HandleRegister)
 	mux.HandleFunc("/api/v1/auth/login", server.HandleLogin)
+	mux.HandleFunc("/api/v1/kyc/profile", server.HandleKYCProfile)
+	mux.HandleFunc("/api/v1/kyc/documents", server.HandleKYCDocuments)
+	mux.HandleFunc("/api/v1/admin/kyc/list", server.HandleAdminKYCList)
+	mux.HandleFunc("/api/v1/admin/kyc/evaluate", server.HandleAdminKYCEvaluate)
 
-	// روت بارگذاری مدارک KYC
-	mux.HandleFunc("/api/v1/kyc/upload", server.HandleKYCUpload)
+	// روت‌های پایه Ledger
+	mux.HandleFunc("/api/v1/accounts", server.HandleAccounts)
+	mux.HandleFunc("/api/v1/transactions", server.HandleTransactions)
+	mux.HandleFunc("/api/v1/health", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"status":"online","service":"BRICS Pay Settlement API Gateway"}`))
+	})
 
-	// روت‌های ادمین و نظارت (مطابق با متدهای پیاده‌شده در kyc_handlers.go)
-	mux.HandleFunc("/api/v1/admin/kyc/list", server.HandleAdminProfiles)
-	mux.HandleFunc("/api/v1/admin/kyc/decision", server.HandleAdminDecision)
-	mux.HandleFunc("/api/v1/admin/audit", server.HandleAdminAudit)
-
-	// فایل‌های استاتیک فرانت‌اند
-	fs := http.FileServer(http.Dir("internal/api/static"))
-	mux.Handle("/static/", http.StripPrefix("/static/", fs))
-
-	addr := fmt.Sprintf(":%s", port)
-	log.Printf("سرور BRICS Pay با موفقیت روی پورت %s آماده دریافت درخواست‌ها است...", port)
-	if err := http.ListenAndServe(addr, mux); err != nil {
-		log.Fatalf("خطا در اجرای سرور: %v", err)
+	log.Printf("سرور BRICS Pay روی پورت %s آغاز به کار کرد...", port)
+	if err := http.ListenAndServe(":"+port, mux); err != nil {
+		log.Fatalf("خطای اجرای سرور: %v", err)
 	}
 }
