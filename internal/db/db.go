@@ -77,4 +77,4 @@ CREATE TABLE IF NOT EXISTS transactions (
 
 CREATE INDEX IF NOT EXISTS idx_transactions_from ON transactions(from_wallet);
 CREATE INDEX IF NOT EXISTS idx_transactions_to   ON transactions(to_wallet);
-` + kycSchema
++ kycSchema
