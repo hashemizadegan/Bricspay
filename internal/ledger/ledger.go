@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/yourusername/bricspay/internal/db"
+	"bricspay/internal/db"
 )
 
 // ErrInsufficientFunds is returned when a wallet has an insufficient balance.
