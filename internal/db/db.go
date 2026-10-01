@@ -1,89 +1,88 @@
-const schema = `
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
+package db
 
-CREATE TABLE IF NOT EXISTS users (
-    id            BIGSERIAL PRIMARY KEY,
-    email         TEXT NOT NULL UNIQUE,
-    password_hash TEXT NOT NULL,
-    role          TEXT NOT NULL DEFAULT 'user',
-    entity_type   TEXT NOT NULL DEFAULT 'CORPORATE',
-    status        TEXT NOT NULL DEFAULT 'PENDING',
-    created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
+import (
+	"context"
+	"database/sql"
+	"fmt"
+	"time"
 
-CREATE TABLE IF NOT EXISTS wallets (
-    id         BIGSERIAL PRIMARY KEY,
-    user_id    BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    currency   TEXT NOT NULL DEFAULT 'USD',
-    balance    NUMERIC(20,8) NOT NULL DEFAULT 0 CHECK (balance >= 0),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    UNIQUE (user_id, currency)
-);
+	_ "github.com/lib/pq"
+)
 
-CREATE TABLE IF NOT EXISTS transactions (
-    id          BIGSERIAL PRIMARY KEY,
-    from_wallet BIGINT REFERENCES wallets(id),
-    to_wallet   BIGINT REFERENCES wallets(id),
-    amount      NUMERIC(20,8) NOT NULL CHECK (amount > 0),
-    currency    TEXT NOT NULL,
-    status      TEXT NOT NULL DEFAULT 'pending',
-    reference   TEXT NOT NULL UNIQUE,
-    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
+// DB wraps *sql.DB with project-specific helpers.
+type DB struct {
+	*sql.DB
+}
 
-CREATE INDEX IF NOT EXISTS idx_transactions_from
-    ON transactions(from_wallet);
+// New opens a PostgreSQL connection, verifies it, and configures the pool.
+func New(dsn string) (*DB, error) {
+	sqlDB, err := sql.Open("postgres", dsn)
+	if err != nil {
+		return nil, fmt.Errorf("db: open: %w", err)
+	}
 
-CREATE INDEX IF NOT EXISTS idx_transactions_to
-    ON transactions(to_wallet);
+	sqlDB.SetMaxOpenConns(25)
+	sqlDB.SetMaxIdleConns(10)
+	sqlDB.SetConnMaxLifetime(5 * time.Minute)
+	sqlDB.SetConnMaxIdleTime(2 * time.Minute)
 
-CREATE TABLE IF NOT EXISTS kyc_profiles (
-    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id             BIGINT NOT NULL UNIQUE
-                        REFERENCES users(id) ON DELETE CASCADE,
-    legal_name          TEXT NOT NULL,
-    registration_number TEXT NOT NULL,
-    tax_id              TEXT NOT NULL,
-    jurisdiction        TEXT NOT NULL,
-    contact_phone       TEXT NOT NULL,
-    risk_tier           TEXT NOT NULL DEFAULT 'MEDIUM',
-    status              TEXT NOT NULL DEFAULT 'SUBMITTED',
-    reviewer_notes      TEXT,
-    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := sqlDB.PingContext(ctx); err != nil {
+		return nil, fmt.Errorf("db: ping: %w", err)
+	}
 
-CREATE TABLE IF NOT EXISTS kyc_documents (
-    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    profile_id      UUID NOT NULL
-                    REFERENCES kyc_profiles(id) ON DELETE CASCADE,
-    document_type   TEXT NOT NULL,
-    file_path       TEXT NOT NULL,
-    original_name   TEXT NOT NULL,
-    checksum_sha256 TEXT NOT NULL,
-    size_bytes      BIGINT NOT NULL CHECK (size_bytes >= 0),
-    status          TEXT NOT NULL DEFAULT 'PENDING',
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
+	return &DB{sqlDB}, nil
+}
 
-CREATE TABLE IF NOT EXISTS audit_logs (
-    id            BIGSERIAL PRIMARY KEY,
-    actor_id      BIGINT,
-    actor_email   TEXT NOT NULL,
-    action        TEXT NOT NULL,
-    target_entity TEXT NOT NULL,
-    target_id     TEXT,
-    ip_address    TEXT,
-    created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
+// InitSchema sets up all required database tables idempotently.
+func InitSchema(db *sql.DB) error {
+	if err := MigrateKYC(db); err != nil {
+		return err
+	}
+	return MigrateWalletAuth(db)
+}
 
-CREATE INDEX IF NOT EXISTS idx_kyc_profiles_user_id
-    ON kyc_profiles(user_id);
+// MigrateWalletAuth creates wallet auth and challenge tracking tables.
+func MigrateWalletAuth(db *sql.DB) error {
+	schema := `
+	CREATE TABLE IF NOT EXISTS wallet_accounts (
+		id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+		user_id        UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+		wallet_address TEXT NOT NULL UNIQUE,
+		chain_id       BIGINT NOT NULL DEFAULT 1,
+		is_primary     BOOLEAN NOT NULL DEFAULT TRUE,
+		created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+		updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+	);
 
-CREATE INDEX IF NOT EXISTS idx_kyc_documents_profile
-    ON kyc_documents(profile_id);
+	CREATE TABLE IF NOT EXISTS wallet_challenges (
+		id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+		wallet_address TEXT NOT NULL,
+		nonce          TEXT NOT NULL UNIQUE,
+		domain         TEXT NOT NULL,
+		message        TEXT NOT NULL,
+		expires_at     TIMESTAMPTZ NOT NULL,
+		consumed       BOOLEAN NOT NULL DEFAULT FALSE,
+		created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+	);
 
-CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at
-    ON audit_logs(created_at);
-`
+	CREATE TABLE IF NOT EXISTS audit_logs (
+		id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+		actor_id      TEXT,
+		actor_email   TEXT,
+		action        TEXT NOT NULL,
+		target_entity TEXT NOT NULL,
+		target_id     TEXT,
+		ip_address    TEXT,
+		metadata      JSONB,
+		created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_wallet_challenges_addr ON wallet_challenges(wallet_address);
+	CREATE INDEX IF NOT EXISTS idx_wallet_challenges_nonce ON wallet_challenges(nonce);
+	CREATE INDEX IF NOT EXISTS idx_wallet_accounts_addr ON wallet_accounts(wallet_address);
+	`
+	_, err := db.Exec(schema)
+	return err
+}
