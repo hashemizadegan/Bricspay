@@ -71,7 +71,8 @@ func (s *Service) Transfer(ctx context.Context, fromWalletID, toWalletID int64, 
 		return fmt.Errorf("ledger: fetch balance: %w", err)
 	}
 	if balance < amount {
-		return ErrInsufficientFunds
+		err = ErrInsufficientFunds
+		return err
 	}
 
 	// Debit source.
@@ -90,4 +91,26 @@ func (s *Service) Transfer(ctx context.Context, fromWalletID, toWalletID int64, 
 		return fmt.Errorf("ledger: credit: %w", err)
 	}
 
-	// 
+	if _, err = tx.ExecContext(ctx, `
+		INSERT INTO transactions (from_wallet, to_wallet, amount, currency, status, reference)
+		VALUES ($1, $2, $3, 'USD', 'completed', $4)
+	`, fromWalletID, toWalletID, amount, reference); err != nil {
+		return fmt.Errorf("ledger: insert transaction: %w", err)
+	}
+
+	if err = tx.Commit(); err != nil {
+		return fmt.Errorf("ledger: commit: %w", err)
+	}
+	return nil
+}
+
+func lockWallet(ctx context.Context, tx *sql.Tx, walletID int64) error {
+	var id int64
+	err := tx.QueryRowContext(ctx,
+		`SELECT id FROM wallets WHERE id = $1 FOR UPDATE`, walletID,
+	).Scan(&id)
+	if err != nil {
+		return fmt.Errorf("ledger: lock wallet %d: %w", walletID, err)
+	}
+	return nil
+}
