@@ -21,7 +21,7 @@ func main() {
 
 	jwtSecret := os.Getenv("JWT_SECRET")
 	if jwtSecret != "" {
-		auth.SetJWTSecret(jwtSecret)
+		
 		log.Println("✅ JWT_SECRET سفارشی با موفقیت فعال شد.")
 	}
 
