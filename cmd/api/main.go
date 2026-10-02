@@ -8,16 +8,12 @@ import (
 
 	"bricspay/internal/api"
 	_ "github.com/lib/pq"
-	"github.com/golang-jwt/jwt/v5"
 )
 
 func main() {
 	dsn := os.Getenv("DATABASE_URL")
 	if dsn == "" {
-		log.Fatal("DATABASE_URL is required")
-	}
-
-	sqlDB, err := sql.Open("postgres", dsn)
+		log.Fatal("DATABASE_URL is requireGAPGPTMASKTOKEN051tukh7evbnX0X	sqlDB, err := sql.Open("postgres", dsn)
 	if err != nil {
 		log.Fatalf("failed to connect to database: %v", err)
 	}
@@ -29,10 +25,6 @@ func main() {
 	mux.HandleFunc("/health", srv.HealthCheck)
 	mux.HandleFunc("/accounts", srv.HandleAccounts)
 	mux.HandleFunc("/transactions", srv.HandleTransactions)
-
-	// برای مسیرهای KYC و Wallet (اگر لازم باشد اضافه کنید)
-	// mux.HandleFunc("/kyc", srv.HandleKYC)
-	// mux.HandleFunc("/wallet", srv.HandleWallet)
 
 	port := os.Getenv("PORT")
 	if port == "" {
