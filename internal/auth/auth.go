@@ -1,7 +1,10 @@
 package auth
 
 import (
+	"context"
 	"errors"
+	"net/http"
+	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -9,11 +12,12 @@ import (
 )
 
 const (
-	tokenTTL     = 24 * time.Hour
-	bcryptCost   = 12
+	tokenTTL   = 24 * time.Hour
+	bcryptCost = 12
 )
 
-// Role represents a user's permission level.
+type ctxKey struct{}
+
 type Role string
 
 const (
@@ -21,71 +25,97 @@ const (
 	RoleAdmin Role = "admin"
 )
 
-// Claims holds the JWT payload.
 type Claims struct {
-	UserID int64  `json:"uid"`
+	UserID string `json:"uid"`
 	Email  string `json:"email"`
 	Role   Role   `json:"role"`
 	jwt.RegisteredClaims
 }
 
-// Service handles token creation, validation, and password hashing.
-type Service struct {
-	secret []byte
+func jwtSecret() ([]byte, error) {
+	s := strings.TrimSpace(getenv("JWT_SECRET"))
+	if s == "" {
+		return nil, errors.New("auth: JWT_SECRET must not be empty")
+	}
+	return []byte(s), nil
 }
 
-// New creates an auth Service. Panics if secret is empty (caught at startup).
-func New(secret string) *Service {
-	if secret == "" {
-		panic("auth: JWT_SECRET must not be empty")
-	}
-	return &Service{secret: []byte(secret)}
+func getenv(k string) string {
+	// local wrapper so this file stays independent of a Service type
+	return osGetenv(k)
 }
 
-// HashPassword returns a bcrypt hash of the plain-text password.
-func (s *Service) HashPassword(plain string) (string, error) {
-	if len(plain) < 8 {
-		return "", errors.New("password must be at least 8 characters")
-	}
+func HashPassword(plain string) (string, error) {
 	b, err := bcrypt.GenerateFromPassword([]byte(plain), bcryptCost)
-	return string(b), err
+	if err != nil {
+		return "", err
+	}
+	return string(b), nil
 }
 
-// CheckPassword reports whether plain matches the stored hash.
-func (s *Service) CheckPassword(hash, plain string) bool {
+func CheckPassword(hash, plain string) bool {
 	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(plain)) == nil
 }
 
-// IssueToken creates a signed JWT for the given user.
-func (s *Service) IssueToken(userID int64, email string, role Role) (string, error) {
+func IssueToken(userID, email, role string) (string, error) {
+	secret, err := jwtSecret()
+	if err != nil {
+		return "", err
+	}
 	now := time.Now()
 	claims := Claims{
 		UserID: userID,
 		Email:  email,
-		Role:   role,
+		Role:   Role(role),
 		RegisteredClaims: jwt.RegisteredClaims{
+			Subject:   userID,
 			IssuedAt:  jwt.NewNumericDate(now),
 			ExpiresAt: jwt.NewNumericDate(now.Add(tokenTTL)),
 		},
 	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString(s.secret)
+	t := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return t.SignedString(secret)
 }
 
-// ValidateToken parses and validates a JWT, returning its claims.
-func (s *Service) ValidateToken(tokenStr string) (*Claims, error) {
-	token, err := jwt.ParseWithClaims(tokenStr, &Claims{}, func(t *jwt.Token) (any, error) {
-		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, errors.New("unexpected signing method")
+func ParseToken(tokenStr string) (*Claims, error) {
+	secret, err := jwtSecret()
+	if err != nil {
+		return nil, err
+	}
+	tok, err := jwt.ParseWithClaims(tokenStr, &Claims{}, func(t *jwt.Token) (any, error) {
+		if t.Method != jwt.SigningMethodHS256 {
+			return nil, errors.New("auth: unexpected signing method")
 		}
-		return s.secret, nil
+		return secret, nil
 	})
 	if err != nil {
 		return nil, err
 	}
-	claims, ok := token.Claims.(*Claims)
-	if !ok || !token.Valid {
-		return nil, errors.New("invalid token")
+	claims, ok := tok.Claims.(*Claims)
+	if !ok || !tok.Valid {
+		return nil, errors.New("auth: invalid token")
 	}
 	return claims, nil
+}
+
+func FromContext(ctx context.Context) (*Claims, bool) {
+	c, ok := ctx.Value(ctxKey{}).(*Claims)
+	return c, ok
+}
+
+func Middleware(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		h := r.Header.Get("Authorization")
+		if !strings.HasPrefix(h, "Bearer ") {
+			http.Error(w, "missing bearer token", http.StatusUnauthorized)
+			return
+		}
+		claims, err := ParseToken(strings.TrimPrefix(h, "Bearer "))
+		if err != nil {
+			http.Error(w, "invalid token", http.StatusUnauthorized)
+			return
+		}
+		ctx := context.WithValue(r.Context(), ctxKey{}, claims)
+		next(w, r.WithContext(ctx))
+	}
 }
