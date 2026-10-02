@@ -125,7 +125,7 @@ func (s *Server) HandleTransactions(w http.ResponseWriter, r *http.Request) {
 	amount := getFloat64(req, "amount")
 	reference := getString(req, "reference")
 
-	l := ledger.New(s.DB)
+	l := ledger.New(&db.DB{DB: s.DB})
 	if err := l.Transfer(r.Context(), fromID, toID, amount, reference); err != nil {
 		log.Printf("HandleTransactions ledger error: %v", err)
 		http.Error(w, "transaction failed: "+err.Error(), http.StatusUnprocessableEntity)
