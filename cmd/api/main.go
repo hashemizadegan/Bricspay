@@ -8,12 +8,13 @@ import (
 
 	"bricspay/internal/api"
 	_ "github.com/lib/pq"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 func main() {
 	dsn := os.Getenv("DATABASE_URL")
 	if dsn == "" {
-		log.Fatal("DATABASE_URL is not set")
+		log.Fatal("DATABASE_URL is required")
 	}
 
 	sqlDB, err := sql.Open("postgres", dsn)
@@ -29,7 +30,9 @@ func main() {
 	mux.HandleFunc("/accounts", srv.HandleAccounts)
 	mux.HandleFunc("/transactions", srv.HandleTransactions)
 
-	// TODO: در صورت نیاز به مسیرهای KYC و Wallet، هندلرهای مربوطه را اینجا اضافه کنید
+	// برای مسیرهای KYC و Wallet (اگر لازم باشد اضافه کنید)
+	// mux.HandleFunc("/kyc", srv.HandleKYC)
+	// mux.HandleFunc("/wallet", srv.HandleWallet)
 
 	port := os.Getenv("PORT")
 	if port == "" {
