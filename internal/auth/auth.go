@@ -34,16 +34,11 @@ type Claims struct {
 }
 
 func jwtSecret() ([]byte, error) {
-	s := strings.TrimSpace(getenv("JWT_SECRET"))
+	s := strings.TrimSpace(os.Getenv("JWT_SECRET"))
 	if s == "" {
 		return nil, errors.New("auth: JWT_SECRET must not be empty")
 	}
 	return []byte(s), nil
-}
-
-func getenv(k string) string {
-	// local wrapper so this file stays independent of a Service type
-	return osGetenv(k)
 }
 
 func HashPassword(plain string) (string, error) {
