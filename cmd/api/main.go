@@ -13,7 +13,10 @@ import (
 func main() {
 	dsn := os.Getenv("DATABASE_URL")
 	if dsn == "" {
-		log.Fatal("DATABASE_URL is requireGAPGPTMASKTOKEN051tukh7evbnX0X	sqlDB, err := sql.Open("postgres", dsn)
+		log.Fatal("DATABASE_URL is not set")
+	}
+
+	sqlDB, err := sql.Open("postgres", dsn)
 	if err != nil {
 		log.Fatalf("failed to connect to database: %v", err)
 	}
