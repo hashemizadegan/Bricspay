@@ -1,16 +1,13 @@
 package main
 
 import (
-	"database/sql"
 	"log"
 	"net/http"
 	"os"
 
 	"bricspay/internal/api"
-	"bricspay/internal/auth"
-	dbpkg "bricspay/internal/db"
-
-	_ "github.com/lib/pq"
+	"bricspay/internal/db"
+	// "bricspay/internal/auth"   ← این خط را کامل حذف کنید
 )
 
 func main() {
