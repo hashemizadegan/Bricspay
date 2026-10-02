@@ -7,8 +7,6 @@ import (
 	"os"
 
 	"bricspay/internal/api"
-	"bricspay/internal/db"
-
 	_ "github.com/lib/pq"
 )
 
@@ -24,13 +22,14 @@ func main() {
 	}
 	defer sqlDB.Close()
 
-	dbConn := &db.DB{DB: sqlDB}
+	srv := api.NewServer(sqlDB)
 
-	// استفاده از mux استاندارد به جای NewRouter
-	router := http.NewServeMux()
+	mux := http.NewServeMux()
+	mux.HandleFunc("/health", srv.HealthCheck)
+	mux.HandleFunc("/accounts", srv.HandleAccounts)
+	mux.HandleFunc("/transactions", srv.HandleTransactions)
 
-	// ثبت هندلرها (در صورت وجود توابع ثبت در پکیج api)
-	api.RegisterRoutes(router, dbConn) // اگر این تابع وجود نداشت، بعداً اصلاح می‌کنیم
+	// TODO: در صورت نیاز به مسیرهای KYC و Wallet، هندلرهای مربوطه را اینجا اضافه کنید
 
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -38,5 +37,5 @@ func main() {
 	}
 
 	log.Printf("Server starting on port %s", port)
-	log.Fatal(http.ListenAndServe(":"+port, router))
+	log.Fatal(http.ListenAndServe(":"+port, mux))
 }
