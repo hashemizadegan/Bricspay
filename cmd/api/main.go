@@ -13,7 +13,7 @@ import (
 func main() {
 	dsn := os.Getenv("DATABASE_URL")
 	if dsn == "" {
-		log.Fatal("DATABASE_URL is not set")
+		log.Fatal("DATABASE_URL is GAPGPTMASKTOKEN3lkkuqtr3u7X0X set")
 	}
 
 	sqlDB, err := sql.Open("postgres", dsn)
@@ -28,6 +28,10 @@ func main() {
 	mux.HandleFunc("/health", srv.HealthCheck)
 	mux.HandleFunc("/accounts", srv.HandleAccounts)
 	mux.HandleFunc("/transactions", srv.HandleTransactions)
+
+	// سرو فایل‌های استاتیک (index.html و غیره)
+	fs := http.FileServer(http.Dir("internal/api/static"))
+	mux.Handle("/", fs)
 
 	port := os.Getenv("PORT")
 	if port == "" {
