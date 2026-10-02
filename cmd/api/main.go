@@ -26,7 +26,11 @@ func main() {
 
 	dbConn := &db.DB{DB: sqlDB}
 
-	router := api.NewRouter(dbConn)
+	// استفاده از mux استاندارد به جای NewRouter
+	router := http.NewServeMux()
+
+	// ثبت هندلرها (در صورت وجود توابع ثبت در پکیج api)
+	api.RegisterRoutes(router, dbConn) // اگر این تابع وجود نداشت، بعداً اصلاح می‌کنیم
 
 	port := os.Getenv("PORT")
 	if port == "" {
