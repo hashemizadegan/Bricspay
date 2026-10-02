@@ -113,14 +113,20 @@ func (s *Server) HandleTransactions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var req ledger.TransactionRequest
+	// JSON را به map تبدیل می‌کنیم (بدون نیاز به struct TransactionRequest)
+	var req map[string]interface{}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
 
+	fromID := getInt64(req, "from_wallet_id")
+	toID := getInt64(req, "to_wallet_id")
+	amount := getFloat64(req, "amount")
+	reference := getString(req, "reference")
+
 	l := ledger.New(s.DB)
-	if err := l.Transfer(r.Context(), req); err != nil {
+	if err := l.Transfer(r.Context(), fromID, toID, amount, reference); err != nil {
 		log.Printf("HandleTransactions ledger error: %v", err)
 		http.Error(w, "transaction failed: "+err.Error(), http.StatusUnprocessableEntity)
 		return
@@ -128,4 +134,26 @@ func (s *Server) HandleTransactions(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"status": "recorded"})
+}
+
+// helper functions برای تبدیل مقدار
+func getInt64(m map[string]interface{}, key string) int64 {
+	if v, ok := m[key].(float64); ok {
+		return int64(v)
+	}
+	return 0
+}
+
+func getFloat64(m map[string]interface{}, key string) float64 {
+	if v, ok := m[key].(float64); ok {
+		return v
+	}
+	return 0
+}
+
+func getString(m map[string]interface{}, key string) string {
+	if v, ok := m[key].(string); ok {
+		return v
+	}
+	return ""
 }
