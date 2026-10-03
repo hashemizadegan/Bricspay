@@ -1,4 +1,4 @@
-landing_js = '''(function () {
+(function () {
   'use strict';
 
   var translations = {
@@ -341,10 +341,3 @@ landing_js = '''(function () {
     }
   });
 })();
-'''
-import os
-os.makedirs('/mnt/data/work/Bricspay-main/internal/api/static/js', exist_ok=True)
-with open('/mnt/data/work/Bricspay-main/internal/api/static/js/landing.js', 'w', encoding='utf-8') as f:
-    f.write(landing_js.strip() + '
-')
-print('wrote landing.js size:', os.path.getsize('/mnt/data/work/Bricspay-main/internal/api/static/js/landing.js'))
