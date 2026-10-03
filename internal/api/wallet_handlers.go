@@ -33,15 +33,15 @@ type VerifyRequest struct {
 }
 
 type VerifyResponse struct {
-	Token         string `json:"token"`
+	Token         string `json:"GAPGPTMASKTOKENlzswexhfolrX0X"`
 	WalletAddress string `json:"wallet_address"`
-	UserID        string `json:"user_id"`
+	UserID        int64  `json:"user_id"`
 	Role          string `json:"role"`
 	Status        string `json:"status"`
 }
 
 // HandleWalletNonce handles requests for a cryptographic nonce
-func (s *Handler) HandleWalletNonce(w http.ResponseWriter, r *http.Request) {
+func (s *Server) HandleWalletNonce(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, `{"error":"method_not_allowed"}`, http.StatusMethodNotAllowed)
 		return
@@ -59,7 +59,6 @@ func (s *Handler) HandleWalletNonce(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Generate a secure random nonce
 	bytes := make([]byte, 16)
 	if _, err := rand.Read(bytes); err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "nonce_generation_failed"})
@@ -70,14 +69,13 @@ func (s *Handler) HandleWalletNonce(w http.ResponseWriter, r *http.Request) {
 
 	expiresAt := time.Now().Add(10 * time.Minute)
 
-	// Save nonce in DB
 	query := `
 		INSERT INTO wallet_nonces (wallet_address, nonce, expires_at, created_at)
 		VALUES ($1, $2, $3, NOW())
 		ON CONFLICT (wallet_address)
 		DO UPDATE SET nonce = $2, expires_at = $3, created_at = NOW();
 	`
-	_, err := s.db.Exec(query, strings.ToLower(req.WalletAddress), nonce, expiresAt)
+	_, err := s.DB.Exec(query, strings.ToLower(req.WalletAddress), nonce, expiresAt)
 	if err != nil {
 		log.Printf("DB error saving nonce: %v", err)
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "database_error"})
@@ -90,8 +88,8 @@ func (s *Handler) HandleWalletNonce(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// HandleWalletVerify verifies the signed nonce and issues a JWT token
-func (s *Handler) HandleWalletVerify(w http.ResponseWriter, r *http.Request) {
+// HandleWalletVerify verifies the signed nonce and issues a JWT GAPGPTMASKTOKENlzswexhfolrX1X
+func (s *Server) HandleWalletVerify(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, `{"error":"method_not_allowed"}`, http.StatusMethodNotAllowed)
 		return
@@ -112,11 +110,10 @@ func (s *Handler) HandleWalletVerify(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 1. Verify nonce from DB
 	var dbNonce string
 	var expiresAt time.Time
 	query := `SELECT nonce, expires_at FROM wallet_nonces WHERE wallet_address = $1`
-	err := s.db.QueryRow(query, req.WalletAddress).Scan(&dbNonce, &expiresAt)
+	err := s.DB.QueryRow(query, req.WalletAddress).Scan(&dbNonce, &expiresAt)
 	if err == sql.ErrNoRows {
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "nonce_not_found"})
 		return
@@ -135,7 +132,6 @@ func (s *Handler) HandleWalletVerify(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 2. Verify Ethereum signature
 	msg := fmt.Sprintf("Sign this message to authenticate with BRICS Pay: %s", req.Nonce)
 	prefixedMsg := fmt.Sprintf("\x19Ethereum Signed Message:\n%d%s", len(msg), msg)
 	msgHash := crypto.Keccak256([]byte(prefixedMsg))
@@ -147,7 +143,6 @@ func (s *Handler) HandleWalletVerify(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Handle recovery identifier (V)
 	if sig[64] == 27 || sig[64] == 28 {
 		sig[64] -= 27
 	}
@@ -164,23 +159,20 @@ func (s *Handler) HandleWalletVerify(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 3. Clear used nonce
-	_, _ = s.db.Exec(`DELETE FROM wallet_nonces WHERE wallet_address = $1`, req.WalletAddress)
+	_, _ = s.DB.Exec(`DELETE FROM wallet_nonces WHERE wallet_address = $1`, req.WalletAddress)
 
-	// 4. Retrieve or create user in DB
-	var userID string
+	var userID int64
 	var userRole string
 	userQuery := `SELECT id, role FROM users WHERE wallet_address = $1`
-	err = s.db.QueryRow(userQuery, req.WalletAddress).Scan(&userID, &userRole)
+	err = s.DB.QueryRow(userQuery, req.WalletAddress).Scan(&userID, &userRole)
 
 	if err == sql.ErrNoRows {
-		// Register new wallet user
 		insertUser := `
 			INSERT INTO users (wallet_address, role, created_at, updated_at)
 			VALUES ($1, 'user', NOW(), NOW())
 			RETURNING id, role
 		`
-		err = s.db.QueryRow(insertUser, req.WalletAddress).Scan(&userID, &userRole)
+		err = s.DB.QueryRow(insertUser, req.WalletAddress).Scan(&userID, &userRole)
 		if err != nil {
 			log.Printf("DB error creating user: %v", err)
 			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_create_user"})
@@ -192,15 +184,14 @@ func (s *Handler) HandleWalletVerify(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 5. Issue JWT Token
-	token, err := auth.IssueToken(userID, userRole)
+	tokenStr, err := auth.IssueToken(userID, userRole)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "token_issue_failed"})
 		return
 	}
 
 	writeJSON(w, http.StatusOK, VerifyResponse{
-		Token:         token,
+		Token:         tokenStr,
 		WalletAddress: req.WalletAddress,
 		UserID:        userID,
 		Role:          userRole,
