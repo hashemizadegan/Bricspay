@@ -68,7 +68,21 @@ func (s *Server) HandleWalletVerify(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	message := auth.BuildEIP191Message(req.Nonce)
+	domain := strings.TrimSpace(r.Host)
+if domain == "" {
+	domain = "bricspay.local"
+}
+
+issuedAt := time.Now().UTC()
+expiration := issuedAt.Add(5 * time.Minute)
+
+message := auth.BuildEIP191Message(
+	domain,
+	walletAddress,
+	req.Nonce,
+	issuedAt.Format(time.RFC3339),
+	expiration.Format(time.RFC3339),
+)
 
 	signer, err := auth.RecoverSigner(message, req.Signature)
 	if err != nil {
