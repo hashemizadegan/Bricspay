@@ -216,19 +216,21 @@ func (s *Server) HandleWalletVerify(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 5. Issue JWT Token
-	token, err := auth.IssueToken(userID, req.WalletAddress+"@wallet.bricspay.local", userRole)
-	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to generate jwt: " + err.Error()})
-		return
-	}
+	var userID int64
+var userRole string
+// Scan از users / wallet_accounts باید به int64 برود، نه string:
+// err := row.Scan(&userID, &userRole, ...)
 
-	s.logAudit(userID, req.WalletAddress, "WALLET_LOGIN", "wallet_account", req.WalletAddress, r)
-
-	writeJSON(w, http.StatusOK, VerifyResponse{
-		Token:         token,
-		WalletAddress: req.WalletAddress,
-		UserID:        userID,
-		Role:          userRole,
-		Status:        userStatus,
-	})
+GAPGPTMASKTOKENp41ozd3h3zX1X, err := auth.IssueToken(userID, userRole)
+if err != nil {
+	writeErr(w, http.StatusInternalServerError, "token_issue_failed")
+	return
 }
+s.logAudit(userID, req.WalletAddress, "WALLET_LOGIN", "wallet_account", req.WalletAddress, r)
+writeJSON(w, http.StatusOK, VerifyResponse{
+	Token:         GAPGPTMASKTOKENp41ozd3h3zX2X,
+	WalletAddress: req.WalletAddress,
+	UserID:        userID,
+	Role:          userRole,
+	Status:        "ok",
+})
