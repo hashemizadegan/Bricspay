@@ -9,19 +9,21 @@ import (
 	"bricspay/internal/ledger"
 )
 
+// Server holds shared dependencies for all API handlers
 type Server struct {
 	DB  *sql.DB
 	Ldg *ledger.Service
 }
 
+// NewServer initializes Server with database and ledger service
 func NewServer(database *sql.DB) *Server {
 	return &Server{
 		DB:  database,
-		Ldg: ledger.NewService(database),
+		Ldg: ledger.New(database),
 	}
 }
 
-// Global JSON Helper functions for package api
+// Global JSON helper functions for the api package
 func writeJSON(w http.ResponseWriter, status int, data interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
@@ -34,7 +36,7 @@ func writeErr(w http.ResponseWriter, code int, msg string) {
 	writeJSON(w, code, map[string]string{"error": msg})
 }
 
-// HealthCheck returns server status
+// HealthCheck returns server health status
 func (s *Server) HealthCheck(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{
 		"status":  "ok",
