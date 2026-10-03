@@ -6,112 +6,149 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"time"
+	"unicode/utf8"
 
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 )
 
-const (
-	tokenTTL   = 24 * time.Hour
-	bcryptCost = 12
+type contextKey string
+
+const userContextKey contextKey = "bricspay_user"
+
+var (
+	ErrEmptySecret    = errors.New("JWT_SECRET is empty")
+	ErrInvalidToken   = errors.New("invalid token")
+	ErrPasswordLength = errors.New("password must be 8-64 characters")
 )
 
-type ctxKey struct{}
-
-type Role string
-
-const (
-	RoleUser  Role = "user"
-	RoleAdmin Role = "admin"
-)
+type Principal struct {
+	UserID int64
+	Role   string
+}
 
 type Claims struct {
-	UserID string `json:"uid"`
-	Email  string `json:"email"`
-	Role   Role   `json:"role"`
+	UserID int64  `json:"user_id"`
+	Role   string `json:"role"`
 	jwt.RegisteredClaims
 }
 
-func jwtSecret() ([]byte, error) {
-	s := strings.TrimSpace(os.Getenv("JWT_SECRET"))
+var (
+	jwtMu     sync.RWMutex
+	jwtSecret []byte
+)
+
+func init() {
+	if s := strings.TrimSpace(os.Getenv("JWT_SECRET")); s != "" {
+		jwtSecret = []byte(s)
+	}
+}
+
+func SetJWTSecret(secret string) {
+	s := strings.TrimSpace(secret)
 	if s == "" {
-		return nil, errors.New("auth: JWT_SECRET must not be empty")
+		panic("auth.SetJWTSecret: empty secret")
 	}
-	return []byte(s), nil
+	jwtMu.Lock()
+	defer jwtMu.Unlock()
+	jwtSecret = []byte(s)
 }
 
-func HashPassword(plain string) (string, error) {
-	b, err := bcrypt.GenerateFromPassword([]byte(plain), bcryptCost)
+func currentSecret() ([]byte, error) {
+	jwtMu.RLock()
+	defer jwtMu.RUnlock()
+	if len(jwtSecret) == 0 {
+		return nil, ErrEmptySecret
+	}
+	return jwtSecret, nil
+}
+
+func HashPassword(password string) (string, error) {
+	n := utf8.RuneCountInString(password)
+	if n < 8 || n > 64 {
+		return "", ErrPasswordLength
+	}
+	b, err := bcrypt.GenerateFromPassword([]byte(password), 12)
+	return string(b), err
+}
+
+func CheckPassword(hash, password string) error {
+	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+}
+
+func IssueToken(userID int64, role string) (string, error) {
+	sec, err := currentSecret()
 	if err != nil {
 		return "", err
 	}
-	return string(b), nil
-}
-
-func CheckPassword(hash, plain string) bool {
-	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(plain)) == nil
-}
-
-func IssueToken(userID, email, role string) (string, error) {
-	secret, err := jwtSecret()
-	if err != nil {
-		return "", err
+	if role == "" {
+		role = "user"
 	}
 	now := time.Now()
-	claims := Claims{
+	t := jwt.NewWithClaims(jwt.SigningMethodHS256, Claims{
 		UserID: userID,
-		Email:  email,
-		Role:   Role(role),
+		Role:   role,
 		RegisteredClaims: jwt.RegisteredClaims{
-			Subject:   userID,
 			IssuedAt:  jwt.NewNumericDate(now),
-			ExpiresAt: jwt.NewNumericDate(now.Add(tokenTTL)),
+			ExpiresAt: jwt.NewNumericDate(now.Add(24 * time.Hour)),
+			Issuer:    "bricspay",
 		},
-	}
-	t := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return t.SignedString(secret)
-}
-
-func ParseToken(tokenStr string) (*Claims, error) {
-	secret, err := jwtSecret()
-	if err != nil {
-		return nil, err
-	}
-	tok, err := jwt.ParseWithClaims(tokenStr, &Claims{}, func(t *jwt.Token) (any, error) {
-		if t.Method != jwt.SigningMethodHS256 {
-			return nil, errors.New("auth: unexpected signing method")
-		}
-		return secret, nil
 	})
+	return t.SignedString(sec)
+}
+
+func ValidateToken(token string) (*Claims, error) {
+	sec, err := currentSecret()
 	if err != nil {
 		return nil, err
 	}
-	claims, ok := tok.Claims.(*Claims)
-	if !ok || !tok.Valid {
-		return nil, errors.New("auth: invalid token")
+	parsed, err := jwt.ParseWithClaims(token, &Claims{}, func(t *jwt.Token) (interface{}, error) {
+		if t.Method != jwt.SigningMethodHS256 {
+			return nil, ErrInvalidToken
+		}
+		return sec, nil
+	})
+	if err != nil || !parsed.Valid {
+		return nil, ErrInvalidToken
 	}
-	return claims, nil
+	c, ok := parsed.Claims.(*Claims)
+	if !ok {
+		return nil, ErrInvalidToken
+	}
+	return c, nil
 }
 
-func FromContext(ctx context.Context) (*Claims, bool) {
-	c, ok := ctx.Value(ctxKey{}).(*Claims)
-	return c, ok
-}
-
-func Middleware(next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+func Middleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		h := r.Header.Get("Authorization")
-		if !strings.HasPrefix(h, "Bearer ") {
-			http.Error(w, "missing bearer token", http.StatusUnauthorized)
+		if !strings.HasPrefix(strings.ToLower(h), "bearer ") {
+			http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
 			return
 		}
-		claims, err := ParseToken(strings.TrimPrefix(h, "Bearer "))
+		c, err := ValidateToken(strings.TrimSpace(h[7:]))
 		if err != nil {
-			http.Error(w, "invalid token", http.StatusUnauthorized)
+			http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
 			return
 		}
-		ctx := context.WithValue(r.Context(), ctxKey{}, claims)
-		next(w, r.WithContext(ctx))
-	}
+		ctx := context.WithValue(r.Context(), userContextKey, Principal{UserID: c.UserID, Role: c.Role})
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+func AdminOnly(next http.Handler) http.Handler {
+	return Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		p, ok := FromContext(r.Context())
+		if !ok || p.Role != "admin" {
+			http.Error(w, `{"error":"forbidden"}`, http.StatusForbidden)
+			return
+		}
+		next.ServeHTTP(w, r)
+	}))
+}
+
+func FromContext(ctx context.Context) (Principal, bool) {
+	p, ok := ctx.Value(userContextKey).(Principal)
+	return p, ok
 }
