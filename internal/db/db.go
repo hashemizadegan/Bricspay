@@ -1,73 +1,94 @@
 package db
 
 import (
-	"context"
 	"database/sql"
-	"fmt"
 	"time"
 
 	_ "github.com/lib/pq"
 )
 
-type DB struct {
-	*sql.DB
-}
-
-func New(dsn string) (*DB, error) {
-	sqlDB, err := sql.Open("postgres", dsn)
+func Open(dsn string) (*sql.DB, error) {
+	conn, err := sql.Open("postgres", dsn)
 	if err != nil {
-		return nil, fmt.Errorf("db: open: %w", err)
+		return nil, err
 	}
-
-	sqlDB.SetMaxOpenConns(25)
-	sqlDB.SetMaxIdleConns(10)
-	sqlDB.SetConnMaxLifetime(5 * time.Minute)
-	sqlDB.SetConnMaxIdleTime(2 * time.Minute)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	if err := sqlDB.PingContext(ctx); err != nil {
-		_ = sqlDB.Close()
-		return nil, fmt.Errorf("db: ping: %w", err)
+	conn.SetMaxOpenConns(20)
+	conn.SetMaxIdleConns(5)
+	conn.SetConnMaxLifetime(30 * time.Minute)
+	if err := conn.Ping(); err != nil {
+		_ = conn.Close()
+		return nil, err
 	}
-
-	return &DB{sqlDB}, nil
+	return conn, nil
 }
 
 func InitSchema(db *sql.DB) error {
+	if err := migrateCore(db); err != nil {
+		return err
+	}
 	if err := MigrateKYC(db); err != nil {
 		return err
 	}
-	return MigrateWalletAuth(db)
+	if err := MigrateWalletAuth(db); err != nil {
+		return err
+	}
+	return MigrateBankCards(db)
+}
+
+func migrateCore(db *sql.DB) error {
+	_, err := db.Exec(`
+CREATE TABLE IF NOT EXISTS users (
+  id BIGSERIAL PRIMARY KEY,
+  email TEXT UNIQUE,
+  phone TEXT UNIQUE,
+  password_hash TEXT,
+  role TEXT NOT NULL DEFAULT 'user',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS wallets (
+  id BIGSERIAL PRIMARY KEY,
+  user_id BIGINT REFERENCES users(id),
+  currency TEXT NOT NULL DEFAULT 'RUB',
+  balance NUMERIC(20,4) NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS transactions (
+  id BIGSERIAL PRIMARY KEY,
+  from_wallet_id BIGINT REFERENCES wallets(id),
+  to_wallet_id BIGINT REFERENCES wallets(id),
+  amount NUMERIC(20,4) NOT NULL,
+  reference TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_wallets_user ON wallets(user_id);
+`)
+	return err
 }
 
 func MigrateWalletAuth(db *sql.DB) error {
-	schema := `
-	CREATE TABLE IF NOT EXISTS wallet_accounts (
-		id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-		user_id        UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-		wallet_address TEXT NOT NULL UNIQUE,
-		chain_id       BIGINT NOT NULL DEFAULT 1,
-		is_primary     BOOLEAN NOT NULL DEFAULT TRUE,
-		created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-		updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
-	);
-
-	CREATE TABLE IF NOT EXISTS wallet_challenges (
-		id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-		wallet_address TEXT NOT NULL,
-		nonce          TEXT NOT NULL UNIQUE,
-		domain         TEXT NOT NULL,
-		message        TEXT NOT NULL,
-		expires_at     TIMESTAMPTZ NOT NULL,
-		consumed       BOOLEAN NOT NULL DEFAULT FALSE,
-		created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
-	);
-
-	CREATE INDEX IF NOT EXISTS idx_wallet_challenges_addr ON wallet_challenges(wallet_address);
-	CREATE INDEX IF NOT EXISTS idx_wallet_challenges_nonce ON wallet_challenges(nonce);
-	CREATE INDEX IF NOT EXISTS idx_wallet_accounts_addr ON wallet_accounts(wallet_address);
-	`
-	_, err := db.Exec(schema)
+	_, err := db.Exec(`
+CREATE TABLE IF NOT EXISTS wallet_accounts (
+  id BIGSERIAL PRIMARY KEY,
+  user_id BIGINT REFERENCES users(id),
+  address TEXT NOT NULL UNIQUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS wallet_challenges (
+  id BIGSERIAL PRIMARY KEY,
+  address TEXT NOT NULL,
+  nonce TEXT NOT NULL,
+  expires_at TIMESTAMPTZ NOT NULL,
+  consumed BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS audit_logs (
+  id BIGSERIAL PRIMARY KEY,
+  actor_id BIGINT,
+  action TEXT NOT NULL,
+  detail TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_wallet_challenges_addr ON wallet_challenges(address);
+`)
 	return err
 }
