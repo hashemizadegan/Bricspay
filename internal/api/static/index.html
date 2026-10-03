@@ -7,154 +7,195 @@
   <link rel="stylesheet" href="/static/css/styles.css">
 </head>
 <body>
-
-  <!-- Top Bar -->
   <header class="topbar">
     <div class="brand-section">
       <h1 class="brand-title">BRICS Pay Core Settlement</h1>
-      <span class="status-badge"><span class="status-dot"></span> System Live</span>
+      <span class="status-badge">
+        <span class="status-dot"></span>
+        <span data-i18n="nav_status">وضعیت شبکه: عملیاتی</span>
+      </span>
     </div>
+
     <div class="topbar-actions">
-      <select id="langSelect" class="form-control" style="width: auto; padding: 4px 8px;">
+      <select id="langSelect" class="form-control" aria-label="Language">
         <option value="fa">فارسی</option>
         <option value="en">English</option>
         <option value="ru">Русский</option>
       </select>
-      <button id="authOpenBtn" class="btn btn-primary" onclick="AuthModule.openModal()">Sign In / Register</button>
-      <button id="logoutBtn" class="btn btn-outline hidden" onclick="AuthModule.logout()">Sign Out</button>
+
+      <button id="authOpenBtn" type="button" class="btn btn-primary" data-i18n="auth_open">
+        ورود / ثبت‌نام
+      </button>
+
+      <button id="logoutBtn" type="button" class="btn btn-outline hidden" data-i18n="auth_logout">
+        خروج
+      </button>
     </div>
   </header>
 
-  <!-- News Ticker -->
   <div class="brics-news-ticker">
-    <span>🌐 Cross-Border Multi-Currency Settlement Engine • Active Corridor: RUB / CNY / AED / IRR • ISO 20022 Compliant</span>
+    <span id="tickerContent" data-i18n="ticker_banner">
+      سامانه تسویه چندارزی برون‌مرزی • کریدور فعال: RUB / CNY / AED / IRR • مطابق ISO 20022
+    </span>
   </div>
 
   <div class="app-shell">
-    <!-- Sidebar Navigation -->
-    <aside class="sidebar">
-      <button class="nav-btn active" onclick="switchTab('overview')">📊 Settlement Overview</button>
-      <button class="nav-btn" onclick="switchTab('workflow')">🔄 Trade Workflow</button>
-      <button class="nav-btn" onclick="switchTab('kyc')">📑 Corporate KYC</button>
-      <button class="nav-btn" onclick="switchTab('admin')">🛡️ Compliance / Admin</button>
+    <aside class="sidebar" role="tablist">
+      <button type="button" class="nav-btn active" data-tab="overview" role="tab" aria-selected="true">
+        <span data-i18n="tab_overview">نمای کلی تسویه</span>
+      </button>
+
+      <button type="button" class="nav-btn" data-tab="workflow" role="tab" aria-selected="false">
+        <span data-i18n="tab_workflow">گردش کار تجاری</span>
+      </button>
+
+      <button type="button" class="nav-btn" data-tab="kyc" role="tab" aria-selected="false">
+        <span data-i18n="tab_kyc">احراز هویت شرکتی</span>
+      </button>
+
+      <button type="button" class="nav-btn" data-tab="admin" role="tab" aria-selected="false">
+        <span data-i18n="tab_admin">انطباق / مدیریت</span>
+      </button>
     </aside>
 
-    <!-- Main Content Area -->
     <main class="main-content">
       <div class="container">
-        
-        <!-- Tab 1: Overview -->
-        <section id="tab-overview" class="tab-pane active">
+        <section id="tab-overview" class="tab-pane active" role="tabpanel">
           <div class="card">
-            <h2>Multi-Currency Settlement Gateway</h2>
-            <p style="color: var(--text-muted); margin-top: 6px;">Real-time settlement for bilateral cross-border trade transactions.</p>
+            <h2 data-i18n="overview_title">درگاه تسویه چندارزی</h2>
+            <p style="color: var(--text-muted); margin-top: 6px;" data-i18n="overview_desc">
+              تسویه برخط برای تراکنش‌های تجاری دوجانبه و برون‌مرزی.
+            </p>
           </div>
+
           <div id="bric-pay-external-section"></div>
         </section>
 
-        <!-- Tab 2: Workflow -->
-        <section id="tab-workflow" class="tab-pane">
+        <section id="tab-workflow" class="tab-pane" role="tabpanel" hidden>
           <div class="card">
-            <h2>VTB / BRICS Trade Finance Settlement</h2>
-            <p style="color: var(--text-muted); margin-top: 6px;">End-to-end clearing and escrow documentation pathway.</p>
-            <img src="/static/vtb-workflow.jpeg" alt="Settlement Workflow" class="workflow-img" onerror="this.style.display='none'">
+            <h2 data-i18n="workflow_title">تأمین مالی تجاری و تسویه</h2>
+            <p style="color: var(--text-muted); margin-top: 6px;" data-i18n="workflow_desc">
+              مسیر مستندسازی، تسویه و امانی برای تجارت برون‌مرزی.
+            </p>
+            <img
+              src="/static/vtb-workflow.jpeg"
+              alt="Settlement Workflow"
+              class="workflow-img"
+            >
           </div>
         </section>
 
-        <!-- Tab 3: KYC -->
-        <section id="tab-kyc" class="tab-pane">
+        <section id="tab-kyc" class="tab-pane" role="tabpanel" hidden>
           <div class="card">
-            <h2>Organization Onboarding & KYC</h2>
-            <div id="kycGuestNotice" style="margin-top: 10px; color: var(--warning);">
-              Please sign in to access secure document submission.
+            <h2 data-i18n="kyc_title">ثبت‌نام سازمان و احراز هویت</h2>
+
+            <div id="kycGuestNotice" style="margin-top: 10px; color: var(--warning);" data-i18n="kyc_guest">
+              برای بارگذاری امن مدارک، ابتدا وارد شوید.
             </div>
+
             <div id="kycFormContainer" class="hidden" style="margin-top: 15px;">
-              <form id="kycUploadForm" onsubmit="event.preventDefault(); KYCModule.uploadDocument();">
+              <form id="kycUploadForm">
                 <div class="form-group">
-                  <label>Document Category</label>
+                  <label for="docTypeSelect" data-i18n="kyc_doc_category">دسته‌بندی مدرک</label>
                   <select id="docTypeSelect" class="form-control">
-                    <option value="REGISTRATION_CERTIFICATE">Registration Certificate</option>
-                    <option value="TAX_CERTIFICATE">Tax Certificate / TIN</option>
-                    <option value="BANK_STATEMENT">Bank Statement</option>
+                    <option value="REGISTRATION_CERTIFICATE" data-i18n="kyc_registration">گواهی ثبت شرکت</option>
+                    <option value="TAX_CERTIFICATE" data-i18n="kyc_tax">گواهی مالیاتی / شناسه مالیاتی</option>
+                    <option value="BANK_STATEMENT" data-i18n="kyc_bank">صورت‌حساب بانکی</option>
                   </select>
                 </div>
+
                 <div class="form-group">
-                  <label>Upload File (PDF, PNG, JPG)</label>
-                  <input type="file" id="docFileInput" class="form-control" required>
+                  <label for="docFileInput" data-i18n="kyc_upload_label">بارگذاری فایل (PDF، PNG، JPG)</label>
+                  <input type="file" id="docFileInput" class="form-control" accept=".pdf,.png,.jpg,.jpeg" required>
                 </div>
-                <button type="submit" class="btn btn-gold">Upload Document</button>
+
+                <button type="submit" class="btn btn-gold" data-i18n="kyc_upload_button">
+                  بارگذاری مدرک
+                </button>
               </form>
             </div>
           </div>
         </section>
 
-        <!-- Tab 4: Admin -->
-        <section id="tab-admin" class="tab-pane">
+        <section id="tab-admin" class="tab-pane" role="tabpanel" hidden>
           <div class="card">
-            <h2>Compliance Review Panel</h2>
+            <h2 data-i18n="admin_title">پنل بررسی انطباق</h2>
+
             <div class="table-responsive" style="margin-top: 15px;">
               <table class="table">
                 <thead>
                   <tr>
-                    <th>Entity</th>
-                    <th>Jurisdiction</th>
-                    <th>Status</th>
-                    <th>Actions</th>
+                    <th data-i18n="admin_entity">شرکت</th>
+                    <th data-i18n="admin_jurisdiction">حوزه قضایی</th>
+                    <th data-i18n="admin_status">وضعیت</th>
+                    <th data-i18n="admin_actions">عملیات</th>
                   </tr>
                 </thead>
                 <tbody id="adminProfilesTableBody">
-                  <tr><td colspan="4" style="color: var(--text-muted); text-align: center;">No pending verifications</td></tr>
+                  <tr>
+                    <td colspan="4" style="color: var(--text-muted); text-align: center;" data-i18n="admin_empty">
+                      موردی برای بررسی وجود ندارد
+                    </td>
+                  </tr>
                 </tbody>
               </table>
             </div>
           </div>
         </section>
-
       </div>
     </main>
   </div>
 
-  <!-- Auth Modal -->
-  <div id="authModal" class="modal hidden">
-    <div class="modal-box">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-        <h3 id="authTitle">Sign In</h3>
-        <button onclick="AuthModule.closeModal()" style="background:none; border:none; color:var(--text-muted); font-size:1.2rem; cursor:pointer;">&times;</button>
+  <div id="authModal" class="modal hidden" aria-hidden="true">
+    <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="authTitle">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h3 id="authTitle" data-i18n="auth_title_login">ورود</h3>
+        <button
+          type="button"
+          data-auth-close
+          aria-label="Close"
+          style="background: none; border: none; color: var(--text-muted); font-size: 1.2rem; cursor: pointer;"
+        >&times;</button>
       </div>
 
-      <div id="authStatusMessage" style="font-size:0.85rem; margin-bottom:10px;"></div>
+      <div id="authStatusMessage" class="auth-status" role="status" aria-live="polite"></div>
 
-      <form id="authForm" onsubmit="event.preventDefault(); AuthModule.submitForm();">
+      <form id="authForm">
         <div class="form-group">
-          <label>Email Address</label>
-          <input type="email" id="authEmail" class="form-control" required>
+          <label for="authEmail" data-i18n="auth_email">نشانی ایمیل</label>
+          <input type="email" id="authEmail" class="form-control" autocomplete="email" required>
         </div>
+
         <div class="form-group">
-          <label>Password</label>
-          <input type="password" id="authPassword" class="form-control" required>
+          <label for="authPassword" data-i18n="auth_password">گذرواژه</label>
+          <input type="password" id="authPassword" class="form-control" autocomplete="current-password" required>
         </div>
 
         <div id="registerFields" class="hidden">
           <div class="form-group">
-            <label>Legal Entity Name</label>
-            <input type="text" id="authLegalName" class="form-control">
+            <label for="authLegalName" data-i18n="auth_legal_name">نام حقوقی شرکت</label>
+            <input type="text" id="authLegalName" class="form-control" autocomplete="organization">
           </div>
+
           <div class="form-group">
-            <label>Jurisdiction (e.g. RU, CN, AE, IR)</label>
+            <label for="authJurisdiction" data-i18n="auth_jurisdiction">حوزه قضایی (مانند IR، RU، CN، AE)</label>
             <input type="text" id="authJurisdiction" class="form-control">
           </div>
         </div>
 
-        <button type="submit" id="authSubmitBtn" class="btn btn-primary" style="width:100%; margin-top:10px;">Sign In</button>
+        <button type="submit" id="authSubmitBtn" class="btn btn-primary" style="width: 100%; margin-top: 10px;">
+          ورود
+        </button>
       </form>
 
-      <div style="text-align:center; margin-top:1rem;">
-        <a href="#" id="authSwitchText" onclick="event.preventDefault(); AuthModule.toggleMode();" style="color:var(--accent-gold); font-size:0.85rem;">Need an account? Register here</a>
-      </div>
+      <div id="authSwitchText" style="text-align: center; margin-top: 10px; font-size: 0.85rem;"></div>
+
+      <button type="button" id="metaMaskBtn" class="btn btn-outline" style="width: 100%; margin-top: 8px;">
+        🦊 <span data-i18n="auth_metamask">ورود با MetaMask</span>
+      </button>
     </div>
   </div>
 
-  <!-- Scripts -->
   <script src="/static/js/app.js"></script>
   <script src="/static/js/auth.js"></script>
   <script src="/static/js/kyc.js"></script>
