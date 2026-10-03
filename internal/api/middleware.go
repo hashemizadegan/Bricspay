@@ -2,10 +2,10 @@ package api
 
 import (
 	"embed"
+	"io/fs"
 	"log"
 	"net"
 	"net/http"
-	"strings"
 	"sync"
 	"time"
 )
@@ -13,6 +13,7 @@ import (
 //go:embed static
 var staticFS embed.FS
 
+// StaticHandler فایلهای استاتیک را از داخل باینری سرو میکند (نه از CWD).
 func StaticHandler() http.Handler {
 	sub, err := fs.Sub(staticFS, "static")
 	if err != nil {
@@ -37,7 +38,7 @@ func Recovery(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if rec := recover(); rec != nil {
-				log.Printf("panic recovered: %v", rec) // جزئیات فقط در لاگ سرور
+				log.Printf("panic recovered: %v", rec)
 				http.Error(w, "internal server error", http.StatusInternalServerError)
 			}
 		}()
@@ -45,7 +46,7 @@ func Recovery(next http.Handler) http.Handler {
 	})
 }
 
-// RateLimit یک محدودکننده‌ی ساده در حافظه است؛ در چند-اینستنس از Redis استفاده کن.
+// RateLimit محدودکنندهٔ سادهٔ درونحافظه است؛ برای چند-اینستنس از Redis استفاده کن.
 func RateLimit(next http.Handler) http.Handler {
 	type bucket struct {
 		count int
@@ -81,14 +82,8 @@ func RateLimit(next http.Handler) http.Handler {
 	})
 }
 
-func writeJSON(w http.ResponseWriter, code int, v any) {
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(code)
-	_ = json.NewEncoder(w).Encode(v)
-}
-
-func writeErr(w http.ResponseWriter, code int, msg string) {
+// writeJSONError از writeJSON موجود در kyc_handlers.go استفاده میکند.
+// نام یکتا انتخاب شد تا خطای "writeJSON redeclared" تکرار نشود.
+func writeJSONError(w http.ResponseWriter, code int, msg string) {
 	writeJSON(w, code, map[string]string{"error": msg})
 }
-
-var _ = strings.TrimSpace // حذف اگر استفاده نشد
