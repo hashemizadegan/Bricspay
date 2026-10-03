@@ -24,6 +24,7 @@ const I18N = {
     ticker_event3: 'تایید مدارک شرکت بازرگانی پتروشیمی اروند توسط واحد ارزیابی انطباق (KYC).',
     ticker_event4: 'کاهش نرخ کارمزد کارگزاری تسویه ارزی به ۰.۱۵٪ در معاملات کریدور شمال-جنوب.'
   },
+
   en: {
     nav_status: 'Network Status: Operational',
     nav_login: 'Login / Register',
@@ -49,6 +50,7 @@ const I18N = {
     ticker_event3: 'Arvand Petrochemical Trading corporate compliance verified and approved.',
     ticker_event4: 'Cross-border clearing fee reduced to 0.15% on North-South transport corridor accounts.'
   },
+
   ru: {
     nav_status: 'Статус сети: Работает',
     nav_login: 'Вход / Регистрация',
@@ -76,20 +78,66 @@ const I18N = {
   }
 };
 
+function getStoredValue(key) {
+  try {
+    return window.localStorage.getItem(key);
+  } catch (error) {
+    return null;
+  }
+}
+
+function setStoredValue(key, value) {
+  try {
+    window.localStorage.setItem(key, value);
+  } catch (error) {
+    // The application can continue if browser storage is disabled.
+  }
+}
+
+function removeStoredValue(key) {
+  try {
+    window.localStorage.removeItem(key);
+  } catch (error) {
+    // The application can continue if browser storage is disabled.
+  }
+}
+
+function getStoredLanguage() {
+  const savedLanguage = getStoredValue('bricspay_lang');
+  return Object.prototype.hasOwnProperty.call(I18N, savedLanguage)
+    ? savedLanguage
+    : 'fa';
+}
+
+function readStoredUser() {
+  const storedUser = getStoredValue('brics_user');
+
+  if (!storedUser) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(storedUser);
+  } catch (error) {
+    return null;
+  }
+}
+
 const App = {
   state: {
-    lang: localStorage.getItem('bricspay_lang') || 'fa',
-    currentTab: 'workflow',
-    token: localStorage.getItem('brics_token'),
-    user: JSON.parse(localStorage.getItem('brics_user') || 'null')
+    lang: getStoredLanguage(),
+    currentTab: 'overview',
+    token: getStoredValue('brics_token'),
+    user: readStoredUser()
   },
 
-  // متد سراسری برای مدیریت درخواست‌های شبکه و رفع خطای App.api is not a function
   async api(path, options = {}) {
-    const token = localStorage.getItem('brics_token');
+    const token = getStoredValue('brics_token');
     const headers = new Headers(options.headers || {});
+    const isFormData =
+      typeof FormData !== 'undefined' && options.body instanceof FormData;
 
-    if (!(options.body instanceof FormData)) {
+    if (options.body && !isFormData && !headers.has('Content-Type')) {
       headers.set('Content-Type', 'application/json');
     }
 
@@ -108,62 +156,99 @@ const App = {
     this.initTabs();
     this.initLang();
 
-    // اتصال دکمه لاگین بالای صفحه به مدال لاگین
-    const authBtn = document.getElementById('authNavBtn');
-    if (authBtn) {
-      authBtn.addEventListener('click', () => {
-        if (window.AuthModule) {
-          AuthModule.openModal('login');
-        }
-      });
-    }
-
     this.applyLanguage(this.state.lang);
     this.updateAuthUI();
+
     if (window.NewsTickerModule) {
-      NewsTickerModule.init(this.state.lang);
+      window.NewsTickerModule.init(this.state.lang);
     }
+
+    this.switchTab(this.state.currentTab);
   },
 
   initTabs() {
-    const tabButtons = document.querySelectorAll('.tab-btn');
-    tabButtons.forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        const tab = e.currentTarget.getAttribute('data-tab');
-        this.switchTab(tab);
+    const buttons = Array.from(document.querySelectorAll('.nav-btn'));
+
+    buttons.forEach((button) => {
+      // Support the current HTML's inline onclick while moving tab handling
+      // into this file. The inline handler is removed to avoid double calls.
+      const inlineHandler = button.getAttribute('onclick') || '';
+      const inlineTab = inlineHandler.match(
+        /switchTab\(\s*['"]([^'"]+)['"]\s*\)/
+      );
+
+      if (!button.dataset.tab && inlineTab) {
+        button.dataset.tab = inlineTab[1];
+      }
+
+      button.removeAttribute('onclick');
+      button.setAttribute('role', 'tab');
+
+      button.addEventListener('click', (event) => {
+        event.preventDefault();
+
+        const tabName = event.currentTarget.dataset.tab;
+        this.switchTab(tabName);
       });
     });
+
+    const initiallyActive = buttons.find((button) =>
+      button.classList.contains('active')
+    );
+
+    if (initiallyActive && initiallyActive.dataset.tab) {
+      this.state.currentTab = initiallyActive.dataset.tab;
+    } else if (buttons[0] && buttons[0].dataset.tab) {
+      this.state.currentTab = buttons[0].dataset.tab;
+    }
   },
 
   initLang() {
     const langSelect = document.getElementById('langSelect');
-    if (langSelect) {
-      langSelect.value = this.state.lang;
-      langSelect.addEventListener('change', (e) => {
-        this.applyLanguage(e.target.value);
-        if (window.NewsTickerModule) {
-          NewsTickerModule.init(e.target.value);
-        }
-      });
+
+    if (!langSelect) {
+      return;
     }
+
+    langSelect.value = this.state.lang;
+
+    langSelect.addEventListener('change', (event) => {
+      const selectedLanguage = event.target.value;
+      this.applyLanguage(selectedLanguage);
+
+      if (window.NewsTickerModule) {
+        window.NewsTickerModule.init(this.state.lang);
+      }
+    });
   },
 
   applyLanguage(lang) {
-    this.state.lang = lang;
-    localStorage.setItem('bricspay_lang', lang);
+    const selectedLanguage = Object.prototype.hasOwnProperty.call(I18N, lang)
+      ? lang
+      : 'fa';
 
-    document.documentElement.lang = lang;
-    document.documentElement.dir = (lang === 'fa') ? 'rtl' : 'ltr';
+    this.state.lang = selectedLanguage;
+    setStoredValue('bricspay_lang', selectedLanguage);
 
-    const dict = I18N[lang] || I18N['en'];
-    document.querySelectorAll('[data-i18n]').forEach(el => {
-      const key = el.getAttribute('data-i18n');
-      if (dict[key]) {
-        if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
-          el.placeholder = dict[key];
-        } else {
-          el.textContent = dict[key];
-        }
+    document.documentElement.lang = selectedLanguage;
+    document.documentElement.dir = selectedLanguage === 'fa' ? 'rtl' : 'ltr';
+
+    const dict = I18N[selectedLanguage];
+
+    document.querySelectorAll('[data-i18n]').forEach((element) => {
+      const key = element.getAttribute('data-i18n');
+
+      if (!Object.prototype.hasOwnProperty.call(dict, key)) {
+        return;
+      }
+
+      if (
+        element.tagName === 'INPUT' ||
+        element.tagName === 'TEXTAREA'
+      ) {
+        element.placeholder = dict[key];
+      } else {
+        element.textContent = dict[key];
       }
     });
 
@@ -171,69 +256,102 @@ const App = {
   },
 
   switchTab(tabName) {
-    if (!tabName) return;
-    this.state.currentTab = tabName;
-
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-      if (btn.getAttribute('data-tab') === tabName) {
-        btn.classList.add('active');
-      } else {
-        btn.classList.remove('active');
-      }
-    });
-
-    document.querySelectorAll('.tab-pane, .tab-content').forEach(pane => {
-      pane.classList.remove('active');
-      pane.style.display = 'none';
-    });
-
-    const activePane = document.getElementById(`tab-${tabName}`);
-    if (activePane) {
-      activePane.classList.add('active');
-      activePane.style.display = 'block';
+    if (!tabName) {
+      return;
     }
 
+    const targetPane = document.getElementById(`tab-${tabName}`);
+
+    if (!targetPane || !targetPane.classList.contains('tab-pane')) {
+      console.warn(`Tab panel not found: tab-${tabName}`);
+      return;
+    }
+
+    this.state.currentTab = tabName;
+
+    document.querySelectorAll('.nav-btn').forEach((button) => {
+      const isActive = button.dataset.tab === tabName;
+
+      button.classList.toggle('active', isActive);
+      button.setAttribute('aria-selected', String(isActive));
+      button.setAttribute('aria-controls', `tab-${button.dataset.tab || ''}`);
+      button.setAttribute('tabindex', isActive ? '0' : '-1');
+    });
+
+    document.querySelectorAll('.tab-pane').forEach((pane) => {
+      const isActive = pane === targetPane;
+
+      pane.classList.toggle('active', isActive);
+      pane.hidden = !isActive;
+      pane.style.setProperty(
+        'display',
+        isActive ? 'block' : 'none',
+        'important'
+      );
+    });
+
     if (tabName === 'admin' && window.AdminModule) {
-      AdminModule.loadKYCList();
+      window.AdminModule.loadKYCList();
     }
   },
 
   updateAuthUI() {
-    const token = localStorage.getItem('brics_token');
-    const userJson = localStorage.getItem('brics_user');
-    const authNavBtn = document.getElementById('authNavBtn');
-    const dict = I18N[this.state.lang] || I18N['fa'];
+    const token = getStoredValue('brics_token');
+    const userJson = getStoredValue('brics_user');
+    const authButton =
+      document.getElementById('authOpenBtn') ||
+      document.getElementById('authNavBtn');
+    const logoutButton = document.getElementById('logoutBtn');
+    const dict = I18N[this.state.lang] || I18N.fa;
 
-    if (!authNavBtn) return;
+    if (authButton) {
+      if (token && userJson) {
+        let user = null;
 
-    if (token && userJson) {
-      try {
-        const user = JSON.parse(userJson);
-        const displayName = (user && user.email) ? user.email.split('@')[0] : 'User';
-        authNavBtn.textContent = `${displayName} (${dict['nav_logout'] || 'خروج'})`;
-        authNavBtn.onclick = () => {
+        try {
+          user = JSON.parse(userJson);
+        } catch (error) {
+          user = null;
+        }
+
+        const displayName =
+          user && user.email
+            ? user.email.split('@')[0]
+            : 'User';
+
+        authButton.textContent =
+          `${displayName} (${dict.nav_logout || 'Logout'})`;
+
+        authButton.onclick = () => {
           if (window.AuthModule) {
-            AuthModule.logout();
+            window.AuthModule.logout();
           } else {
-            localStorage.removeItem('brics_token');
-            localStorage.removeItem('brics_user');
+            removeStoredValue('brics_token');
+            removeStoredValue('brics_user');
             window.location.reload();
           }
         };
-      } catch (e) {
-        authNavBtn.textContent = dict['nav_login'] || 'ورود / ثبت‌نام';
-        authNavBtn.onclick = () => {
-          if (window.AuthModule) AuthModule.openModal('login');
+      } else {
+        authButton.textContent = dict.nav_login || 'Login / Register';
+        authButton.onclick = () => {
+          if (window.AuthModule) {
+            window.AuthModule.openModal('login');
+          }
         };
       }
-    } else {
-      authNavBtn.textContent = dict['nav_login'] || 'ورود / ثبت‌نام';
-      authNavBtn.onclick = () => {
-        if (window.AuthModule) AuthModule.openModal('login');
-      };
+    }
+
+    if (logoutButton) {
+      logoutButton.classList.toggle('hidden', !(token && userJson));
     }
   }
 };
+
+window.App = App;
+window.I18N = I18N;
+
+// Supports any remaining HTML call to onclick="switchTab('...')".
+window.switchTab = (tabName) => App.switchTab(tabName);
 
 const NewsTickerModule = {
   items: [],
@@ -241,7 +359,8 @@ const NewsTickerModule = {
   timer: null,
 
   init(lang) {
-    const dict = I18N[lang] || I18N['fa'];
+    const dict = I18N[lang] || I18N.fa;
+
     this.items = [
       dict.ticker_event1,
       dict.ticker_event2,
@@ -255,25 +374,39 @@ const NewsTickerModule = {
   },
 
   render() {
-    const tickerEl = document.getElementById('tickerContent');
-    if (!tickerEl || this.items.length === 0) return;
+    const tickerElement = document.getElementById('tickerContent');
 
-    tickerEl.style.opacity = '0';
-    setTimeout(() => {
-      tickerEl.textContent = this.items[this.currentIndex];
-      tickerEl.style.opacity = '1';
+    if (!tickerElement || this.items.length === 0) {
+      return;
+    }
+
+    tickerElement.style.opacity = '0';
+
+    window.setTimeout(() => {
+      tickerElement.textContent = this.items[this.currentIndex];
+      tickerElement.style.opacity = '1';
     }, 200);
   },
 
   startCycle() {
-    if (this.timer) clearInterval(this.timer);
-    this.timer = setInterval(() => {
-      if (this.items.length === 0) return;
-      this.currentIndex = (this.currentIndex + 1) % this.items.length;
+    if (this.timer) {
+      window.clearInterval(this.timer);
+    }
+
+    this.timer = window.setInterval(() => {
+      if (this.items.length === 0) {
+        return;
+      }
+
+      this.currentIndex =
+        (this.currentIndex + 1) % this.items.length;
+
       this.render();
     }, 6000);
   }
 };
+
+window.NewsTickerModule = NewsTickerModule;
 
 document.addEventListener('DOMContentLoaded', () => {
   App.init();
