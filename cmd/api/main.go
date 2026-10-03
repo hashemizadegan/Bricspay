@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"log"
 	"net/http"
 	"os"
@@ -12,7 +11,6 @@ import (
 
 	"bricspay/internal/api"
 	"bricspay/internal/db"
-	"bricspay/internal/ledger"
 
 	_ "github.com/lib/pq"
 )
@@ -23,87 +21,146 @@ func main() {
 		port = "8080"
 	}
 
-	dbURL := os.Getenv("DATABASE_URL")
-	var database *sql.DB
-	var err error
-
-	if dbURL != "" {
-		database, err = db.New(dbURL)
-		if err != nil {
-			log.Printf("[WARN] DB init failed: %v", err)
-		} else {
-			defer database.Close()
-		}
-	} else {
-		log.Println("[WARN] DATABASE_URL is not set. Running in partial mode.")
+	databaseURL := os.Getenv("DATABASE_URL")
+	if databaseURL == "" {
+		log.Fatal("DATABASE_URL is not set")
 	}
 
-	ldg := ledger.NewService(database)
-	srv := api.NewServer(database, ldg)
+	// db.New returns *db.DB, which embeds *sql.DB.
+	database, err := db.New(databaseURL)
+	if err != nil {
+		log.Fatalf("database initialization failed: %v", err)
+	}
+	defer database.Close()
+
+	// api.NewServer accepts the embedded *sql.DB.
+	// It creates and manages the ledger service internally.
+	serverAPI := api.NewServer(database.DB)
 
 	mux := http.NewServeMux()
 
-	// 1. Core Health & Metrics
-	mux.HandleFunc("/health", srv.HealthCheck)
-	mux.HandleFunc("/ready", srv.ReadyCheck)
+	// Health and readiness endpoints.
+	mux.HandleFunc("/health", serverAPI.HealthCheck)
+	mux.HandleFunc("/ready", serverAPI.ReadyCheck)
 
-	// 2. Ledger & Accounts
-	mux.HandleFunc("/accounts", srv.HandleAccounts)
-	mux.HandleFunc("/transactions", srv.HandleTransactions)
+	// Ledger endpoints.
+	mux.HandleFunc("/accounts", serverAPI.HandleAccounts)
+	mux.HandleFunc("/transactions", serverAPI.HandleTransactions)
 
-	// 3. Auth & Corporate KYC Routes
-	mux.HandleFunc("/api/v1/auth/register", srv.HandleRegister)
-	mux.HandleFunc("/api/v1/auth/login", srv.HandleLogin)
-	mux.HandleFunc("/api/v1/kyc/upload", srv.HandleKYCUpload)
+	// Authentication endpoints.
+	mux.HandleFunc("/api/v1/auth/register", serverAPI.HandleRegister)
+	mux.HandleFunc("/api/v1/auth/login", serverAPI.HandleLogin)
 
-	// 4. Admin KYC & Audit Routes
-	mux.HandleFunc("/api/v1/admin/kyc/list", srv.HandleAdminProfiles)
-	mux.HandleFunc("/api/v1/admin/kyc/decide", srv.HandleAdminDecision)
-	mux.HandleFunc("/api/v1/admin/audit/list", srv.HandleAdminAudit)
+	// KYC endpoints.
+	mux.HandleFunc("/api/v1/kyc/upload", serverAPI.HandleKYCUpload)
 
-	// 5. Web3 / MetaMask Wallet Challenge-Response
-	mux.HandleFunc("/api/v1/wallet/challenge", srv.HandleWalletChallenge)
-	mux.HandleFunc("/api/v1/wallet/verify", srv.HandleWalletVerify)
+	// Admin and compliance endpoints.
+	mux.HandleFunc("/api/v1/admin/kyc/list", serverAPI.HandleAdminProfiles)
+	mux.HandleFunc("/api/v1/admin/kyc/decide", serverAPI.HandleAdminDecision)
+	mux.HandleFunc("/api/v1/admin/audit/list", serverAPI.HandleAdminAudit)
 
-	// 6. Static Assets (Fixed with StripPrefix)
-	staticFS := http.FileServer(http.Dir("internal/api/static"))
-	mux.Handle("/static/", http.StripPrefix("/static/", staticFS))
+	// Wallet challenge/verification endpoints.
+	mux.HandleFunc("/api/v1/wallet/challenge", serverAPI.HandleWalletChallenge)
+	mux.HandleFunc("/api/v1/wallet/verify", serverAPI.HandleWalletVerify)
 
-	// Root Index Serve
+	// Static assets.
+	//
+	// Browser URL:
+	//   /static/css/styles.css
+	//
+	// Actual file:
+	//   internal/api/static/css/styles.css
+	staticFiles := http.FileServer(
+		http.Dir("internal/api/static"),
+	)
+
+	mux.Handle(
+		"/static/",
+		http.StripPrefix("/static/", staticFiles),
+	)
+
+	// Serve the application entry point.
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/" {
 			http.NotFound(w, r)
 			return
 		}
-		http.ServeFile(w, r, "internal/api/static/index.html")
+
+		http.ServeFile(
+			w,
+			r,
+			"internal/api/static/index.html",
+		)
 	})
 
-	server := &http.Server{
-		Addr:         ":" + port,
-		Handler:      mux,
-		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 15 * time.Second,
-		IdleTimeout:  60 * time.Second,
+	httpServer := &http.Server{
+		Addr:              ":" + port,
+		Handler:           securityHeaders(mux),
+		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       30 * time.Second,
+		WriteTimeout:      60 * time.Second,
+		IdleTimeout:       120 * time.Second,
 	}
 
-	stop := make(chan os.Signal, 1)
-	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
+	shutdownDone := make(chan struct{})
 
 	go func() {
-		log.Printf("[INFO] BRICS Pay Core Settlement running on port :%s", port)
-		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("[FATAL] Listen error: %v", err)
+		defer close(shutdownDone)
+
+		log.Printf("BRICS Pay API listening on :%s", port)
+
+		if err := httpServer.ListenAndServe(); err != nil &&
+			err != http.ErrServerClosed {
+			log.Fatalf("HTTP server failed: %v", err)
 		}
 	}()
 
-	<-stop
-	log.Println("[INFO] Shutting down gracefully...")
+	stop := make(chan os.Signal, 1)
+	signal.Notify(
+		stop,
+		os.Interrupt,
+		syscall.SIGTERM,
+		syscall.SIGINT,
+	)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	<-stop
+
+	log.Println("Shutdown signal received")
+
+	shutdownContext, cancel := context.WithTimeout(
+		context.Background(),
+		10*time.Second,
+	)
 	defer cancel()
 
-	if err := server.Shutdown(ctx); err != nil {
-		log.Printf("[ERROR] Forced shutdown: %v", err)
+	if err := httpServer.Shutdown(shutdownContext); err != nil {
+		log.Printf("HTTP graceful shutdown failed: %v", err)
 	}
-	log.Println("[INFO] Server stopped cleanly.")
+
+	<-shutdownDone
+
+	log.Println("BRICS Pay API stopped")
+}
+
+// securityHeaders adds basic browser security headers.
+// Authentication and authorization must still be enforced
+// inside the protected handlers or middleware.
+func securityHeaders(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("X-Frame-Options", "DENY")
+		w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
+		w.Header().Set(
+			"Content-Security-Policy",
+			"default-src 'self'; "+
+				"script-src 'self'; "+
+				"style-src 'self' 'unsafe-inline'; "+
+				"img-src 'self' data:; "+
+				"font-src 'self' data:; "+
+				"connect-src 'self'; "+
+				"frame-ancestors 'none'",
+		)
+
+		next.ServeHTTP(w, r)
+	})
 }
