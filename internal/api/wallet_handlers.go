@@ -141,7 +141,7 @@ func (s *Server) HandleWalletVerify(w http.ResponseWriter, r *http.Request) {
    }
    w.Header().Set("Content-Type", "application/json")
    json.NewEncoder(w).Encode(resp)
-
+}
 	// 1. Fetch unconsumed challenge
 	var challengeID string
 	var expectedMsg string
