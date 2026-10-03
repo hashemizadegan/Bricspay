@@ -1,150 +1,164 @@
 package api
 
 import (
-	"crypto/sha256"
 	"database/sql"
-	"encoding/hex"
 	"encoding/json"
-	"fmt"
-	"io"
+	"log"
 	"net/http"
-	"os"
-	"path/filepath"
-	"strings"
 	"time"
 
 	"bricspay/internal/auth"
 )
 
-const maxUpload = 10 << 20 // 10MB
-
-func writeJSON(w http.ResponseWriter, code int, v interface{}) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(code)
-	json.NewEncoder(w).Encode(v)
+type KYCSubmitRequest struct {
+	FullName      string `json:"full_name"`
+	DocumentType  string `json:"document_type"`
+	DocumentNumber string `json:"document_number"`
+	Country       string `json:"country"`
 }
 
-// ---------- Auth ----------
-
-type registerReq struct {
-	Email             string `json:"email"`
-	Password          string `json:"password"`
-	EntityType        string `json:"entity_type"` // CORPORATE | BANK
-	LegalName         string `json:"legal_name"`
-	RegistrationNo    string `json:"registration_number"`
-	TaxID             string `json:"tax_id"`
-	Jurisdiction      string `json:"jurisdiction"`
-	ContactPhone      string `json:"contact_phone"`
+type KYCReviewRequest struct {
+	ID     int64  `json:"id"`
+	Status string `json:"status"` // approved, rejected
+	Notes  string `json:"notes"`
 }
 
-func (s *Server) HandleRegister(w http.ResponseWriter, r *http.Request) {
-	var req registerReq
-	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&req); err != nil {
-		writeJSON(w, 400, map[string]string{"error": "invalid json"}); return
-	}
-	req.Email = strings.ToLower(strings.TrimSpace(req.Email))
-	if !strings.Contains(req.Email, "@") || len(req.Password) < 8 {
-		writeJSON(w, 400, map[string]string{"error": "email invalid or password < 8 chars"}); return
-	}
-	if req.EntityType != "CORPORATE" && req.EntityType != "BANK" {
-		writeJSON(w, 400, map[string]string{"error": "entity_type must be CORPORATE or BANK"}); return
-	}
-	if req.LegalName == "" || req.Jurisdiction == "" {
-		writeJSON(w, 400, map[string]string{"error": "legal_name and jurisdiction required"}); return
-	}
-	hash, err := auth.HashPassword(req.Password)
-	if err != nil { writeJSON(w, 500, map[string]string{"error": "hash failed"}); return }
-
-	var userID string
-	err = s.DB.QueryRow(
-		`INSERT INTO users (email, password_hash, entity_type, role, status)
-		 VALUES ($1,$2,$3,'member','PENDING') RETURNING id`,
-		req.Email, hash, req.EntityType).Scan(&userID)
-	if err == sql.ErrNoRows || strings.Contains(fmt.Sprint(err), "duplicate key") {
-		writeJSON(w, 409, map[string]string{"error": "email already registered"}); return
-	}
-	if err != nil { writeJSON(w, 500, map[string]string{"error": "db error"}); return }
-
-	var profileID string
-	err = s.DB.QueryRow(
-		`INSERT INTO kyc_profiles (user_id, legal_name, registration_number, tax_id, jurisdiction, contact_phone, status)
-		 VALUES ($1,$2,$3,$4,$5,$6,'SUBMITTED') RETURNING id`,
-		userID, req.LegalName, req.RegistrationNo, req.TaxID, req.Jurisdiction, req.ContactPhone).Scan(&profileID)
-	if err != nil { writeJSON(w, 500, map[string]string{"error": "profile error"}); return }
-
-	s.logAudit(userID, req.Email, "REGISTER", "kyc_profile", profileID, r)
-	writeJSON(w, 201, map[string]string{"user_id": userID, "profile_id": profileID, "status": "PENDING"})
-}
-func (s *Server) HandleKYCStatus(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, `{"error":"method_not_allowed"}`, http.StatusMethodNotAllowed)
+func (s *Server) HandleKYCSubmit(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeErr(w, http.StatusMethodNotAllowed, "method_not_allowed")
 		return
 	}
-	p, ok := auth.FromContext(r.Context())
+
+	principal, ok := auth.FromContext(r.Context())
 	if !ok {
-		http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
+		writeErr(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
-	var (
-		status, entity string
-		reason         sql.NullString
-		updated        time.Time
-		resubmits      int
-	)
-	err := s.DB.QueryRow(`
-SELECT COALESCE(status::text,'PENDING'), COALESCE(entity_type::text,'INDIVIDUAL'),
-       rejection_reason, COALESCE(updated_at, created_at), COALESCE(resubmit_count,0)
-  FROM kyc_profiles WHERE user_id = $1`, p.UserID).
-		Scan(&status, &entity, &reason, &updated, &resubmits)
-	if err == sql.ErrNoRows {
-		writeJSON(w, http.StatusOK, map[string]any{
-			"status": "PENDING", "reason": nil, "can_resubmit": true,
-			"entity_type": "INDIVIDUAL", "resubmit_count": 0,
-		})
+
+	var req KYCSubmitRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeErr(w, http.StatusBadRequest, "invalid_request_body")
 		return
 	}
+
+	if req.FullName == "" || req.DocumentType == "" || req.DocumentNumber == "" || req.Country == "" {
+		writeErr(w, http.StatusBadRequest, "missing_required_fields")
+		return
+	}
+
+	query := `
+		INSERT INTO kyc_documents (user_id, full_name, document_type, document_number, country, status, submitted_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, 'pending', NOW(), NOW())
+		ON CONFLICT (user_id)
+		DO UPDATE SET full_name = $2, document_type = $3, document_number = $4, country = $5, status = 'pending', updated_at = NOW();
+	`
+	_, err := s.DB.Exec(query, principal.UserID, req.FullName, req.DocumentType, req.DocumentNumber, req.Country)
 	if err != nil {
-		http.Error(w, `{"error":"db"}`, http.StatusInternalServerError)
+		log.Printf("Error submitting KYC: %v", err)
+		writeErr(w, http.StatusInternalServerError, "database_error")
 		return
 	}
-	can := status == "PENDING" || status == "REJECTED"
-	writeJSON(w, http.StatusOK, map[string]any{
-		"status":          status,
-		"reason":          reason.String,
-		"can_resubmit":    can,
-		"entity_type":     entity,
-		"resubmit_count":  resubmits,
-		"updated_at":      updated.UTC().Format(time.RFC3339),
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"status":  "pending",
+		"message": "kyc_submitted_successfully",
 	})
 }
 
-func (s *Server) HandleKYCResubmit(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, `{"error":"method_not_allowed"}`, http.StatusMethodNotAllowed)
+func (s *Server) HandleKYCStatus(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeErr(w, http.StatusMethodNotAllowed, "method_not_allowed")
 		return
 	}
-	p, ok := auth.FromContext(r.Context())
+
+	principal, ok := auth.FromContext(r.Context())
 	if !ok {
-		http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
+		writeErr(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
-	res, err := s.DB.Exec(`
-UPDATE kyc_profiles
-   SET status = 'PENDING',
-       rejection_reason = NULL,
-       resubmit_count = COALESCE(resubmit_count,0) + 1,
-       submitted_at = NOW(),
-       updated_at = NOW()
- WHERE user_id = $1 AND status IN ('REJECTED','PENDING')`, p.UserID)
-	if err != nil {
-		http.Error(w, `{"error":"db"}`, http.StatusInternalServerError)
+
+	var status, fullName, country string
+	var submittedAt time.Time
+	query := `SELECT status, full_name, country, submitted_at FROM kyc_documents WHERE user_id = $1`
+	err := s.DB.QueryRow(query, principal.UserID).Scan(&status, &fullName, &country, &submittedAt)
+	if err == sql.ErrNoRows {
+		writeJSON(w, http.StatusOK, map[string]interface{}{
+			"status": "not_submitted",
+		})
+		return
+	} else if err != nil {
+		log.Printf("Error querying KYC: %v", err)
+		writeErr(w, http.StatusInternalServerError, "database_error")
 		return
 	}
-	n, _ := res.RowsAffected()
-	if n == 0 {
-		http.Error(w, `{"error":"cannot_resubmit"}`, http.StatusConflict)
-		return
-	}
-	writeJSON(w, http.StatusOK, map[string]string{"status": "PENDING"})
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"status":       status,
+		"full_name":    fullName,
+		"country":      country,
+		"submitted_at": submittedAt,
+	})
 }
 
+func (s *Server) HandleAdminPendingKYC(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeErr(w, http.StatusMethodNotAllowed, "method_not_allowed")
+		return
+	}
+
+	rows, err := s.DB.Query(`SELECT id, user_id, full_name, document_type, document_number, country, status, submitted_at FROM kyc_documents WHERE status = 'pending' ORDER BY submitted_at DESC`)
+	if err != nil {
+		log.Printf("Error querying pending KYC: %v", err)
+		writeErr(w, http.StatusInternalServerError, "database_error")
+		return
+	}
+	defer rows.Close()
+
+	var list []map[string]interface{}
+	for rows.Next() {
+		var id, userID int64
+		var fullName, docType, docNum, country, status string
+		var submittedAt time.Time
+		if err := rows.Scan(&id, &userID, &fullName, &docType, &docNum, &country, &status, &submittedAt); err == nil {
+			list = append(list, map[string]interface{}{
+				"id":              id,
+				"user_id":         userID,
+				"full_name":       fullName,
+				"document_type":   docType,
+				"document_number": docNum,
+				"country":         country,
+				"status":          status,
+				"submitted_at":    submittedAt,
+			})
+		}
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{"data": list})
+}
+
+func (s *Server) HandleAdminReviewKYC(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeErr(w, http.StatusMethodNotAllowed, "method_not_allowed")
+		return
+	}
+
+	var req KYCReviewRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeErr(w, http.StatusBadRequest, "invalid_request_body")
+		return
+	}
+
+	if req.Status != "approved" && req.Status != "rejected" {
+		writeErr(w, http.StatusBadRequest, "invalid_status")
+		return
+	}
+
+	_, err := s.DB.Exec(`UPDATE kyc_documents SET status = $1, notes = $2, updated_at = NOW() WHERE id = $3`, req.Status, req.Notes, req.ID)
+	if err != nil {
+		log.Printf("Error updating KYC review: %v", err)
+		writeErr(w, http.StatusInternalServerError, "database_error")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]string{"message": "kyc_status_updated"})
+}
