@@ -162,3 +162,8 @@ func (s *Server) HandleTransactions(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusUnprocessableEntity, "transaction failed")
 	}
 }
+// writeErr پاسخ خطای JSON استاندارد میسازد و به writeJSON
+// که در kyc_handlers.go تعریف شده تکیه میکند (رفع undefined: writeErr).
+func writeErr(w http.ResponseWriter, code int, msg string) {
+	writeJSON(w, code, map[string]string{"error": msg})
+}
