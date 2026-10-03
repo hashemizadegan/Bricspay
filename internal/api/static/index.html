@@ -3,56 +3,162 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#0B1F3A">
-  <title>BRICS Pay Core Settlement</title>
+  <title>BRICS Pay Core Settlement | Workspace</title>
   <link rel="stylesheet" href="/static/css/styles.css">
 </head>
 <body>
-  <aside class="sidebar" aria-label="Primary navigation">
-    <a class="brand" href="#" aria-label="BRICS Pay Core Settlement"><span class="brand-mark">B</span><span><strong>BRICS Pay</strong><small data-i18n="brand_subtitle">Core Settlement</small></span></a>
-    <div class="sidebar-label" data-i18n="nav_workspace">WORKSPACE</div>
-    <nav class="tabs" aria-label="Main sections">
-      <button class="tab-btn active" data-tab="workflow"><span class="nav-icon">▦</span><span data-i18n="tab_workflow">Dashboard</span></button>
-      <button class="tab-btn" data-tab="kyc"><span class="nav-icon">▤</span><span data-i18n="tab_kyc">Documents / KYC</span></button>
-      <button class="tab-btn" data-tab="admin"><span class="nav-icon">◈</span><span data-i18n="tab_admin">Compliance / Admin</span></button>
-    </nav>
-    <div class="sidebar-foot"><span class="status-dot"></span><span data-i18n="nav_status">Service available</span></div>
-  </aside>
+
+  <!-- Top Bar -->
+  <header class="topbar">
+    <div class="brand-section">
+      <h1 class="brand-title">BRICS Pay Core Settlement</h1>
+      <span class="status-badge"><span class="status-dot"></span> System Live</span>
+    </div>
+    <div class="topbar-actions">
+      <select id="langSelect" class="form-control" style="width: auto; padding: 4px 8px;">
+        <option value="fa">فارسی</option>
+        <option value="en">English</option>
+        <option value="ru">Русский</option>
+      </select>
+      <button id="authOpenBtn" class="btn btn-primary" onclick="AuthModule.openModal()">Sign In / Register</button>
+      <button id="logoutBtn" class="btn btn-outline hidden" onclick="AuthModule.logout()">Sign Out</button>
+    </div>
+  </header>
+
+  <!-- News Ticker -->
+  <div class="brics-news-ticker">
+    <span>🌐 Cross-Border Multi-Currency Settlement Engine • Active Corridor: RUB / CNY / AED / IRR • ISO 20022 Compliant</span>
+  </div>
+
   <div class="app-shell">
-    <header class="topbar">
-      <div class="mobile-brand"><span class="brand-mark">B</span><strong>BRICS Pay</strong></div>
-      <div class="topbar-context"><span class="eyebrow" data-i18n="context_label">SETTLEMENT PORTAL</span><strong data-i18n="brand_title">BRICS Pay Core Settlement</strong></div>
-      <div class="nav-controls">
-        <label class="sr-only" for="langSelect" data-i18n="language_label">Language</label>
-        <select id="langSelect" aria-label="Language"><option value="fa">فارسی</option><option value="en">English</option><option value="ru">Русский</option></select>
-        <span id="userNavInfo" class="user-info hidden"><span id="navUserEmail"></span><button id="logoutBtn" class="btn btn-secondary" data-i18n="nav_logout">Log out</button></span>
-        <button id="authNavBtn" class="btn btn-primary" data-i18n="nav_login">Log in / Register</button>
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <button class="nav-btn active" onclick="switchTab('overview')">📊 Settlement Overview</button>
+      <button class="nav-btn" onclick="switchTab('workflow')">🔄 Trade Workflow</button>
+      <button class="nav-btn" onclick="switchTab('kyc')">📑 Corporate KYC</button>
+      <button class="nav-btn" onclick="switchTab('admin')">🛡️ Compliance / Admin</button>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <div class="container">
+        
+        <!-- Tab 1: Overview -->
+        <section id="tab-overview" class="tab-pane active">
+          <div class="card">
+            <h2>Multi-Currency Settlement Gateway</h2>
+            <p style="color: var(--text-muted); margin-top: 6px;">Real-time settlement for bilateral cross-border trade transactions.</p>
+          </div>
+          <div id="bric-pay-external-section"></div>
+        </section>
+
+        <!-- Tab 2: Workflow -->
+        <section id="tab-workflow" class="tab-pane">
+          <div class="card">
+            <h2>VTB / BRICS Trade Finance Settlement</h2>
+            <p style="color: var(--text-muted); margin-top: 6px;">End-to-end clearing and escrow documentation pathway.</p>
+            <img src="/static/vtb-workflow.jpeg" alt="Settlement Workflow" class="workflow-img" onerror="this.style.display='none'">
+          </div>
+        </section>
+
+        <!-- Tab 3: KYC -->
+        <section id="tab-kyc" class="tab-pane">
+          <div class="card">
+            <h2>Organization Onboarding & KYC</h2>
+            <div id="kycGuestNotice" style="margin-top: 10px; color: var(--warning);">
+              Please sign in to access secure document submission.
+            </div>
+            <div id="kycFormContainer" class="hidden" style="margin-top: 15px;">
+              <form id="kycUploadForm" onsubmit="event.preventDefault(); KYCModule.uploadDocument();">
+                <div class="form-group">
+                  <label>Document Category</label>
+                  <select id="docTypeSelect" class="form-control">
+                    <option value="REGISTRATION_CERTIFICATE">Registration Certificate</option>
+                    <option value="TAX_CERTIFICATE">Tax Certificate / TIN</option>
+                    <option value="BANK_STATEMENT">Bank Statement</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Upload File (PDF, PNG, JPG)</label>
+                  <input type="file" id="docFileInput" class="form-control" required>
+                </div>
+                <button type="submit" class="btn btn-gold">Upload Document</button>
+              </form>
+            </div>
+          </div>
+        </section>
+
+        <!-- Tab 4: Admin -->
+        <section id="tab-admin" class="tab-pane">
+          <div class="card">
+            <h2>Compliance Review Panel</h2>
+            <div class="table-responsive" style="margin-top: 15px;">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Entity</th>
+                    <th>Jurisdiction</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="adminProfilesTableBody">
+                  <tr><td colspan="4" style="color: var(--text-muted); text-align: center;">No pending verifications</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
       </div>
-    </header>
-    <main class="container">
-      <section id="tab-workflow" class="tab-content active" aria-labelledby="dashboard-heading">
-        <div class="page-heading"><div><p class="eyebrow" data-i18n="dashboard_eyebrow">SETTLEMENT WORKSPACE</p><h1 id="dashboard-heading" data-i18n="dashboard_title">Settlement overview</h1><p data-i18n="dashboard_desc">Operational workflow and service information for BRICS Pay Core Settlement.</p></div></div>
-        <div class="overview-grid">
-          <article class="card overview-card"><div class="card-kicker"><span class="icon-tile">↗</span><span data-i18n="overview_card_label">SERVICE OVERVIEW</span></div><h2 data-i18n="workflow_title">Settlement workflow</h2><p data-i18n="workflow_desc">Reference workflow for cross-border settlement and trade-finance coordination.</p><div class="meta-row"><span class="status-pill"><i></i><span data-i18n="service_ready">Portal ready</span></span><span class="muted" data-i18n="service_scope">BRICS Pay Core Settlement</span></div></article>
-          <article class="card timeline-card"><div class="section-heading"><div><p class="eyebrow" data-i18n="status_eyebrow">PROCESS REFERENCE</p><h2 data-i18n="timeline_title">Settlement status</h2></div><span class="subtle-tag" data-i18n="reference_label">Workflow diagram</span></div><ol class="timeline"><li><span class="timeline-marker">1</span><span data-i18n="timeline_step1">Trade instruction and document intake</span></li><li><span class="timeline-marker">2</span><span data-i18n="timeline_step2">Compliance review and settlement coordination</span></li><li><span class="timeline-marker">3</span><span data-i18n="timeline_step3">Clearing messages and final settlement</span></li></ol><p class="helper-text" data-i18n="timeline_note">Illustrative process stages; live transaction status is not shown here.</p></article>
-        </div>
-        <article class="card diagram-card"><div class="section-heading"><div><p class="eyebrow" data-i18n="diagram_eyebrow">PROCESS DOCUMENTATION</p><h2 data-i18n="diagram_heading">Settlement workflow diagram</h2><p data-i18n="diagram_desc">Reference diagram for the settlement and trade-finance process.</p></div></div><div class="workflow-diagram-container"><img src="/static/vtb-workflow.jpeg" alt="VTB Trade Finance Settlement Workflow" data-i18n-alt="diagram_alt"></div></article>
-        <div id="bric-pay-external-section"></div>
-      </section>
-      <section id="tab-kyc" class="tab-content" aria-labelledby="kyc-page-heading">
-        <div class="page-heading"><div><p class="eyebrow" data-i18n="kyc_eyebrow">ORGANIZATION ONBOARDING</p><h1 id="kyc-page-heading" data-i18n="kyc_title">Documents / KYC</h1><p data-i18n="kyc_desc">Securely submit corporate and banking documents for review.</p></div></div>
-        <div id="kycGuestNotice" class="card guest-card"><span class="icon-tile">▤</span><h2 data-i18n="kyc_guest_title">Sign in to submit documents</h2><p data-i18n="kyc_guest_desc">Access to document submission is available to authenticated users.</p><button class="btn btn-primary" onclick="AuthModule.openModal('login')" data-i18n="kyc_signin">Sign in</button></div>
-        <div id="kycFormContainer" class="card upload-card" style="display:none"><div class="section-heading"><div><p class="eyebrow" data-i18n="upload_eyebrow">DOCUMENT INTAKE</p><h2 data-i18n="upload_title">Upload organization documents</h2><p data-i18n="upload_desc">Choose a document category and attach a clear scan or PDF.</p></div></div><form id="kycUploadForm" onsubmit="KYCModule.uploadDocument(event)"><div class="form-group"><label for="docTypeSelect" data-i18n="kyc_doc_type">Document type</label><select id="docTypeSelect" class="form-control"><option value="COMMERCIAL_REGISTRY" data-i18n="doc_registry">Commercial Registry</option><option value="STATUTES" data-i18n="doc_statutes">Articles of Association / Statutes</option><option value="BANK_LICENSE" data-i18n="doc_bank_license">Banking / Exchange License</option><option value="TAX_CERTIFICATE" data-i18n="doc_tax">Tax Certificate</option><option value="PASSPORT_SIGNATORY" data-i18n="doc_passport">Authorized Signatory Passport</option></select></div><div class="form-group"><label for="docFileInput" data-i18n="file_label">Document file</label><input type="file" id="docFileInput" class="form-control file-control" accept=".pdf,.jpg,.jpeg,.png" required><p class="helper-text" data-i18n="file_help">PDF, JPG or PNG · Maximum 10 MB</p></div><button type="submit" class="btn btn-primary" data-i18n="upload_submit">Submit document securely</button></form></div>
-      </section>
-      <section id="tab-admin" class="tab-content" aria-labelledby="admin-page-heading">
-        <div class="page-heading"><div><p class="eyebrow" data-i18n="admin_eyebrow">GOVERNANCE</p><h1 id="admin-page-heading" data-i18n="admin_title">Compliance / Admin</h1><p data-i18n="admin_desc">Review organization onboarding records and audit events.</p></div></div>
-        <article class="card table-card"><div class="section-heading"><div><h2 data-i18n="profiles_heading">KYC / KYB profile reviews</h2><p data-i18n="profiles_desc">Organization identity and submission status.</p></div></div><div class="table-wrap"><table class="table"><thead><tr><th data-i18n="th_company">Company / Bank</th><th data-i18n="th_email">Email</th><th data-i18n="th_jurisdiction">Jurisdiction</th><th data-i18n="th_documents">Documents</th><th data-i18n="th_status">Status</th><th data-i18n="th_actions">Actions</th></tr></thead><tbody id="adminProfilesTableBody"></tbody></table></div></article>
-        <article class="card table-card"><div class="section-heading"><div><h2 data-i18n="audit_heading">Audit log</h2><p data-i18n="audit_desc">Recorded system actions and event metadata.</p></div></div><div class="table-wrap"><table class="table"><thead><tr><th data-i18n="th_action">Action</th><th data-i18n="th_actor">Actor</th><th data-i18n="th_entity">Target entity</th><th data-i18n="th_ip">IP address</th><th data-i18n="th_time">Event time</th></tr></thead><tbody id="adminAuditTableBody"></tbody></table></div></article>
-      </section>
-      <section class="service-notices card" aria-label="Service notices"><div class="notice-label"><span class="notice-dot"></span><span data-i18n="ticker_label">Service notices</span></div><div class="notice-text" id="tickerContent" aria-live="polite"></div></section>
     </main>
   </div>
-  <div id="authModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="authTitle"><div class="modal-box"><button class="modal-close" type="button" onclick="AuthModule.closeModal()" aria-label="Close">×</button><p class="eyebrow" data-i18n="auth_eyebrow">SECURE ACCESS</p><h2 id="authTitle" data-i18n="auth_login_title">Sign in</h2><div id="authStatusMessage" class="auth-status" aria-live="polite"></div><form onsubmit="AuthModule.handleFormSubmit(event)"><div class="form-group"><label for="authEmail" data-i18n="auth_email">Email</label><input type="email" id="authEmail" class="form-control" autocomplete="username" required></div><div class="form-group"><label for="authPassword" data-i18n="auth_password">Password</label><input type="password" id="authPassword" class="form-control" autocomplete="current-password" required minlength="8"></div><div id="registerFields" style="display:none"><div class="form-group"><label for="authEntityType" data-i18n="auth_entity_type">Legal entity type</label><select id="authEntityType" class="form-control"><option value="CORPORATE" data-i18n="entity_corporate">Trading company / importer-exporter</option><option value="BANK" data-i18n="entity_bank">Partner bank / settlement institution</option></select></div><div class="form-group"><label for="authLegalName" data-i18n="auth_legal_name">Legal name</label><input type="text" id="authLegalName" class="form-control"></div><div class="grid-2"><div class="form-group"><label for="authRegNo" data-i18n="auth_reg_no">Registration number</label><input type="text" id="authRegNo" class="form-control"></div><div class="form-group"><label for="authTaxId" data-i18n="auth_tax_id">National / tax ID</label><input type="text" id="authTaxId" class="form-control"></div></div><div class="grid-2"><div class="form-group"><label for="authJurisdiction" data-i18n="auth_jurisdiction">Country / jurisdiction</label><select id="authJurisdiction" class="form-control"><option value="IR" data-i18n="country_ir">Iran (IR)</option><option value="RU" data-i18n="country_ru">Russia (RU)</option><option value="AE" data-i18n="country_ae">United Arab Emirates (AE)</option><option value="CN" data-i18n="country_cn">China (CN)</option></select></div><div class="form-group"><label for="authPhone" data-i18n="auth_phone">Contact phone</label><input type="text" id="authPhone" class="form-control" autocomplete="tel"></div></div></div><button type="submit" id="authSubmitBtn" class="btn btn-primary full-width" data-i18n="auth_submit">Sign in</button><div class="modal-links"><a href="#" id="authToggleText" onclick="AuthModule.switchMode('register'); return false" data-i18n="auth_toggle_register">Create an account</a><a href="#" onclick="AuthModule.closeModal(); return false" data-i18n="auth_cancel">Cancel</a></div></form></div></div>
-  <script src="/static/js/app.js"></script><script src="/static/js/auth.js"></script><script src="/static/js/kyc.js"></script><script src="/static/js/admin.js"></script><script src="/static/js/bric-pay-content.js"></script>
+
+  <!-- Auth Modal -->
+  <div id="authModal" class="modal hidden">
+    <div class="modal-box">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+        <h3 id="authTitle">Sign In</h3>
+        <button onclick="AuthModule.closeModal()" style="background:none; border:none; color:var(--text-muted); font-size:1.2rem; cursor:pointer;">&times;</button>
+      </div>
+
+      <div id="authStatusMessage" style="font-size:0.85rem; margin-bottom:10px;"></div>
+
+      <form id="authForm" onsubmit="event.preventDefault(); AuthModule.submitForm();">
+        <div class="form-group">
+          <label>Email Address</label>
+          <input type="email" id="authEmail" class="form-control" required>
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="authPassword" class="form-control" required>
+        </div>
+
+        <div id="registerFields" class="hidden">
+          <div class="form-group">
+            <label>Legal Entity Name</label>
+            <input type="text" id="authLegalName" class="form-control">
+          </div>
+          <div class="form-group">
+            <label>Jurisdiction (e.g. RU, CN, AE, IR)</label>
+            <input type="text" id="authJurisdiction" class="form-control">
+          </div>
+        </div>
+
+        <button type="submit" id="authSubmitBtn" class="btn btn-primary" style="width:100%; margin-top:10px;">Sign In</button>
+      </form>
+
+      <div style="text-align:center; margin-top:1rem;">
+        <a href="#" id="authSwitchText" onclick="event.preventDefault(); AuthModule.toggleMode();" style="color:var(--accent-gold); font-size:0.85rem;">Need an account? Register here</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="/static/js/app.js"></script>
+  <script src="/static/js/auth.js"></script>
+  <script src="/static/js/kyc.js"></script>
+  <script src="/static/js/admin.js"></script>
+  <script src="/static/js/bric-pay-content.js"></script>
 </body>
 </html>
