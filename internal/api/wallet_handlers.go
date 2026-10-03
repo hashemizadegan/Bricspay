@@ -1,200 +1,98 @@
 package api
 
 import (
-	"crypto/rand"
-	"database/sql"
-	"encoding/hex"
 	"encoding/json"
-	"fmt"
-	"log"
 	"net/http"
 	"strings"
-	"time"
-
-	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/crypto"
 
 	"bricspay/internal/auth"
 )
 
-type NonceRequest struct {
-	WalletAddress string `json:"wallet_address"`
+type walletNonceResponse struct {
+	Nonce string `json:"nonce"`
 }
 
-type NonceResponse struct {
-	Nonce   string `json:"nonce"`
-	Message string `json:"message"`
-}
-
-type VerifyRequest struct {
+type walletVerifyRequest struct {
+	UserID        int64  `json:"user_id"`
+	Address       string `json:"address"`
 	WalletAddress string `json:"wallet_address"`
 	Signature     string `json:"signature"`
 	Nonce         string `json:"nonce"`
 }
 
-type VerifyResponse struct {
-	Token         string `json:"GAPGPTMASKTOKENlzswexhfolrX0X"`
-	WalletAddress string `json:"wallet_address"`
-	UserID        int64  `json:"user_id"`
-	Role          string `json:"role"`
-	Status        string `json:"status"`
+type walletVerifyResponse struct {
+	OK      bool   `json:"ok"`
+	Token   string `json:"token"`
+	Address string `json:"address"`
+	Signer  string `json:"signer"`
+	UserID  int64  `json:"user_id"`
 }
 
-// HandleWalletNonce handles requests for a cryptographic nonce
 func (s *Server) HandleWalletNonce(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, `{"error":"method_not_allowed"}`, http.StatusMethodNotAllowed)
+	if r.Method != http.MethodGet && r.Method != http.MethodPost {
+		writeErr(w, http.StatusMethodNotAllowed, "method not allowed")
 		return
 	}
 
-	var req NonceRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_request_body"})
-		return
-	}
-
-	req.WalletAddress = strings.TrimSpace(req.WalletAddress)
-	if req.WalletAddress == "" {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "wallet_address_required"})
-		return
-	}
-
-	bytes := make([]byte, 16)
-	if _, err := rand.Read(bytes); err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "nonce_generation_failed"})
-		return
-	}
-	nonce := hex.EncodeToString(bytes)
-	message := fmt.Sprintf("Sign this message to authenticate with BRICS Pay: %s", nonce)
-
-	expiresAt := time.Now().Add(10 * time.Minute)
-
-	query := `
-		INSERT INTO wallet_nonces (wallet_address, nonce, expires_at, created_at)
-		VALUES ($1, $2, $3, NOW())
-		ON CONFLICT (wallet_address)
-		DO UPDATE SET nonce = $2, expires_at = $3, created_at = NOW();
-	`
-	_, err := s.DB.Exec(query, strings.ToLower(req.WalletAddress), nonce, expiresAt)
+	nonce, err := auth.GenerateNonce()
 	if err != nil {
-		log.Printf("DB error saving nonce: %v", err)
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "database_error"})
+		writeErr(w, http.StatusInternalServerError, "failed to generate nonce")
 		return
 	}
 
-	writeJSON(w, http.StatusOK, NonceResponse{
-		Nonce:   nonce,
-		Message: message,
+	writeJSON(w, http.StatusOK, walletNonceResponse{
+		Nonce: nonce,
 	})
 }
 
-// HandleWalletVerify verifies the signed nonce and issues a JWT GAPGPTMASKTOKENlzswexhfolrX1X
 func (s *Server) HandleWalletVerify(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, `{"error":"method_not_allowed"}`, http.StatusMethodNotAllowed)
+		writeErr(w, http.StatusMethodNotAllowed, "method not allowed")
 		return
 	}
 
-	var req VerifyRequest
+	var req walletVerifyRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_request_body"})
+		writeErr(w, http.StatusBadRequest, "invalid json body")
 		return
 	}
 
-	req.WalletAddress = strings.TrimSpace(strings.ToLower(req.WalletAddress))
-	req.Signature = strings.TrimSpace(req.Signature)
-	req.Nonce = strings.TrimSpace(req.Nonce)
+	walletAddress := strings.TrimSpace(req.WalletAddress)
+	if walletAddress == "" {
+		walletAddress = strings.TrimSpace(req.Address)
+	}
 
-	if req.WalletAddress == "" || req.Signature == "" || req.Nonce == "" {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "missing_required_fields"})
+	if walletAddress == "" || strings.TrimSpace(req.Signature) == "" || strings.TrimSpace(req.Nonce) == "" {
+		writeErr(w, http.StatusBadRequest, "wallet address, signature and nonce are required")
 		return
 	}
 
-	var dbNonce string
-	var expiresAt time.Time
-	query := `SELECT nonce, expires_at FROM wallet_nonces WHERE wallet_address = $1`
-	err := s.DB.QueryRow(query, req.WalletAddress).Scan(&dbNonce, &expiresAt)
-	if err == sql.ErrNoRows {
-		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "nonce_not_found"})
-		return
-	} else if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "database_error"})
-		return
-	}
+	message := auth.BuildEIP191Message(req.Nonce)
 
-	if dbNonce != req.Nonce {
-		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid_nonce"})
-		return
-	}
-
-	if time.Now().After(expiresAt) {
-		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "nonce_expired"})
-		return
-	}
-
-	msg := fmt.Sprintf("Sign this message to authenticate with BRICS Pay: %s", req.Nonce)
-	prefixedMsg := fmt.Sprintf("\x19Ethereum Signed Message:\n%d%s", len(msg), msg)
-	msgHash := crypto.Keccak256([]byte(prefixedMsg))
-
-	sigHex := strings.TrimPrefix(req.Signature, "0x")
-	sig, err := hexutil.Decode("0x" + sigHex)
-	if err != nil || len(sig) != 65 {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_signature_format"})
-		return
-	}
-
-	if sig[64] == 27 || sig[64] == 28 {
-		sig[64] -= 27
-	}
-
-	pubKey, err := crypto.SigToPub(msgHash, sig)
+	signer, err := auth.RecoverSigner(message, req.Signature)
 	if err != nil {
-		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "signature_recovery_failed"})
+		writeErr(w, http.StatusUnauthorized, "invalid wallet signature")
 		return
 	}
 
-	recoveredAddr := crypto.PubkeyToAddress(*pubKey).Hex()
-	if strings.ToLower(recoveredAddr) != req.WalletAddress {
-		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "signature_verification_failed"})
+	if !strings.EqualFold(signer, walletAddress) {
+		writeErr(w, http.StatusUnauthorized, "signature does not match wallet address")
 		return
 	}
 
-	_, _ = s.DB.Exec(`DELETE FROM wallet_nonces WHERE wallet_address = $1`, req.WalletAddress)
-
-	var userID int64
-	var userRole string
-	userQuery := `SELECT id, role FROM users WHERE wallet_address = $1`
-	err = s.DB.QueryRow(userQuery, req.WalletAddress).Scan(&userID, &userRole)
-
-	if err == sql.ErrNoRows {
-		insertUser := `
-			INSERT INTO users (wallet_address, role, created_at, updated_at)
-			VALUES ($1, 'user', NOW(), NOW())
-			RETURNING id, role
-		`
-		err = s.DB.QueryRow(insertUser, req.WalletAddress).Scan(&userID, &userRole)
-		if err != nil {
-			log.Printf("DB error creating user: %v", err)
-			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_create_user"})
-			return
-		}
-	} else if err != nil {
-		log.Printf("DB error querying user: %v", err)
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "database_error"})
-		return
-	}
-
-	tokenStr, err := auth.IssueToken(userID, userRole)
+	token, err := auth.IssueToken(req.UserID, "user")
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "token_issue_failed"})
+		writeErr(w, http.StatusInternalServerError, "failed to issue token")
 		return
 	}
 
-	writeJSON(w, http.StatusOK, VerifyResponse{
-		Token:         tokenStr,
-		WalletAddress: req.WalletAddress,
-		UserID:        userID,
-		Role:          userRole,
-		Status:        "ok",
+	s.logAudit(req.UserID, walletAddress, "WALLET_VERIFY", "wallet_auth", 0, r)
+
+	writeJSON(w, http.StatusOK, walletVerifyResponse{
+		OK:      true,
+		Token:   token,
+		Address: walletAddress,
+		Signer:  signer,
+		UserID:  req.UserID,
 	})
 }
