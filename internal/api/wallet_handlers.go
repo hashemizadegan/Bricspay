@@ -127,6 +127,20 @@ func (s *Server) HandleWalletVerify(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "wallet_address, nonce, and signature are required"})
 		return
 	}
+	   token, err := auth.IssueToken(userID, userRole)
+   if err != nil {
+       http.Error(w, `{"error":"failed to generate token"}`, http.StatusInternalServerError)
+       return
+   }
+   resp := VerifyResponse{
+       Success: true,
+       Token:   token,
+       UserID:  fmt.Sprintf("%d", userID),
+       Role:    userRole,
+       Address: req.Address,
+   }
+   w.Header().Set("Content-Type", "application/json")
+   json.NewEncoder(w).Encode(resp)
 
 	// 1. Fetch unconsumed challenge
 	var challengeID string
