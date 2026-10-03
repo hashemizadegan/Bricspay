@@ -1,13 +1,15 @@
 package api
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
-	"io"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/ethereum/go-ethereum/common"
 
 	"bricspay/internal/auth"
 )
@@ -17,12 +19,12 @@ type ChallengeRequest struct {
 }
 
 type ChallengeResponse struct {
-	Nonce       string `json:"nonce"`
-	Domain      string `json:"domain"`
-	IssuedAt    string `json:"issued_at"`
-	ExpiresAt   string `json:"expires_at"`
-	Message     string `json:"message"`
-	WalletAddr  string `json:"wallet_address"`
+	Nonce      string `json:"nonce"`
+	Domain     string `json:"domain"`
+	IssuedAt   string `json:"issued_at"`
+	ExpiresAt  string `json:"expires_at"`
+	Message    string `json:"message"`
+	WalletAddr string `json:"wallet_address"`
 }
 
 type VerifyRequest struct {
@@ -39,42 +41,32 @@ type VerifyResponse struct {
 	Status        string `json:"status"`
 }
 
-// HandleWalletChallenge creates a nonce and the exact message
-// that the wallet must sign.
+// HandleWalletChallenge creates a nonce and the message the wallet must sign.
 func (s *Server) HandleWalletChallenge(w http.ResponseWriter, r *http.Request) {
 	var req ChallengeRequest
-
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		walletWriteError(w, http.StatusBadRequest, "invalid_request_body")
-		return
-	}
-
-	if err := json.Unmarshal(body, &req); err != nil {
-		walletWriteError(w, http.StatusBadRequest, "invalid_json")
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeErr(w, http.StatusBadRequest, "invalid_json")
 		return
 	}
 
 	walletAddress := strings.ToLower(strings.TrimSpace(req.WalletAddress))
-
-	if len(walletAddress) != 42 ||
+	if !common.IsHexAddress(walletAddress) ||
 		!strings.HasPrefix(walletAddress, "0x") {
-		walletWriteError(w, http.StatusBadRequest, "invalid_wallet_address")
+		writeErr(w, http.StatusBadRequest, "invalid_wallet_address")
 		return
 	}
 
-	domain := strings.TrimSpace(r.Host)
-	if domain == "" {
-		domain = "bricspay.local"
-	}
+	domain := walletRequestDomain(r)
 
 	nonce, err := auth.GenerateNonce()
 	if err != nil {
-		walletWriteError(w, http.StatusInternalServerError, "nonce_generation_failed")
+		writeErr(w, http.StatusInternalServerError, "nonce_generation_failed")
 		return
 	}
 
-	issuedAt := time.Now().UTC()
+	// Use whole seconds so the timestamps stored by Postgres can be used
+	// to reconstruct the exact message during verification.
+	issuedAt := time.Now().UTC().Truncate(time.Second)
 	expiresAt := issuedAt.Add(5 * time.Minute)
 
 	issuedAtString := issuedAt.Format(time.RFC3339)
@@ -88,26 +80,27 @@ func (s *Server) HandleWalletChallenge(w http.ResponseWriter, r *http.Request) {
 		expiresAtString,
 	)
 
-	_, err = s.db.ExecContext(
+	// v11's wallet_challenges table uses "address"; it does not have
+	// wallet_address, message, or domain columns.
+	_, err = s.DB.ExecContext(
 		r.Context(),
 		`
 		INSERT INTO wallet_challenges
-			(wallet_address, nonce, domain, message, expires_at, consumed)
+			(address, nonce, expires_at, consumed, created_at)
 		VALUES
-			($1, $2, $3, $4, $5, FALSE)
+			($1, $2, $3, FALSE, $4)
 		`,
 		walletAddress,
 		nonce,
-		domain,
-		message,
 		expiresAt,
+		issuedAt,
 	)
 	if err != nil {
-		walletWriteError(w, http.StatusInternalServerError, "challenge_storage_failed")
+		writeErr(w, http.StatusInternalServerError, "challenge_storage_failed")
 		return
 	}
 
-	walletWriteJSON(w, http.StatusOK, ChallengeResponse{
+	writeJSON(w, http.StatusOK, ChallengeResponse{
 		Nonce:      nonce,
 		Domain:     domain,
 		IssuedAt:   issuedAtString,
@@ -117,19 +110,11 @@ func (s *Server) HandleWalletChallenge(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// HandleWalletVerify verifies the signature against the exact message
-// previously stored in wallet_challenges.
+// HandleWalletVerify verifies the signature and issues a JWT.
 func (s *Server) HandleWalletVerify(w http.ResponseWriter, r *http.Request) {
 	var req VerifyRequest
-
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		walletWriteError(w, http.StatusBadRequest, "invalid_request_body")
-		return
-	}
-
-	if err := json.Unmarshal(body, &req); err != nil {
-		walletWriteError(w, http.StatusBadRequest, "invalid_json")
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeErr(w, http.StatusBadRequest, "invalid_json")
 		return
 	}
 
@@ -137,14 +122,14 @@ func (s *Server) HandleWalletVerify(w http.ResponseWriter, r *http.Request) {
 	nonce := strings.TrimSpace(req.Nonce)
 	signature := strings.TrimSpace(req.Signature)
 
-	if len(walletAddress) != 42 ||
+	if !common.IsHexAddress(walletAddress) ||
 		!strings.HasPrefix(walletAddress, "0x") {
-		walletWriteError(w, http.StatusBadRequest, "invalid_wallet_address")
+		writeErr(w, http.StatusBadRequest, "invalid_wallet_address")
 		return
 	}
 
 	if nonce == "" || signature == "" {
-		walletWriteError(
+		writeErr(
 			w,
 			http.StatusBadRequest,
 			"wallet_address_nonce_and_signature_are_required",
@@ -152,147 +137,114 @@ func (s *Server) HandleWalletVerify(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Retrieve the exact message created during the challenge step.
-	var expectedMessage string
+	// v11 stores created_at and expires_at, not the message itself.
+	var issuedAt time.Time
 	var expiresAt time.Time
 	var consumed bool
 
-	err = s.db.QueryRowContext(
+	err := s.DB.QueryRowContext(
 		r.Context(),
 		`
-		SELECT message, expires_at, consumed
+		SELECT created_at, expires_at, consumed
 		FROM wallet_challenges
-		WHERE wallet_address = $1
+		WHERE address = $1
 		  AND nonce = $2
-		ORDER BY expires_at DESC
+		ORDER BY created_at DESC
 		LIMIT 1
 		`,
 		walletAddress,
 		nonce,
-	).Scan(
-		&expectedMessage,
-		&expiresAt,
-		&consumed,
-	)
+	).Scan(&issuedAt, &expiresAt, &consumed)
+
 	if err != nil {
 		if err == sql.ErrNoRows {
-			walletWriteError(w, http.StatusUnauthorized, "challenge_not_found")
+			writeErr(w, http.StatusUnauthorized, "challenge_not_found")
 			return
 		}
 
-		walletWriteError(
-			w,
-			http.StatusInternalServerError,
-			"challenge_lookup_failed",
-		)
+		writeErr(w, http.StatusInternalServerError, "challenge_lookup_failed")
 		return
 	}
 
 	if consumed {
-		walletWriteError(w, http.StatusUnauthorized, "challenge_already_used")
+		writeErr(w, http.StatusUnauthorized, "challenge_already_used")
 		return
 	}
 
 	if time.Now().UTC().After(expiresAt.UTC()) {
-		walletWriteError(w, http.StatusUnauthorized, "challenge_expired")
+		writeErr(w, http.StatusUnauthorized, "challenge_expired")
 		return
 	}
 
-	// Verify against the stored message. Do not rebuild the message here.
+	// Rebuild the exact message using the stored timestamps. The challenge
+	// and verification requests must use the same host/domain.
+	expectedMessage := auth.BuildEIP191Message(
+		walletRequestDomain(r),
+		walletAddress,
+		nonce,
+		issuedAt.UTC().Format(time.RFC3339),
+		expiresAt.UTC().Format(time.RFC3339),
+	)
+
 	recoveredAddress, err := auth.RecoverSigner(expectedMessage, signature)
 	if err != nil {
-		walletWriteError(w, http.StatusUnauthorized, "invalid_wallet_signature")
+		writeErr(w, http.StatusUnauthorized, "invalid_wallet_signature")
 		return
 	}
 
 	if strings.ToLower(recoveredAddress) != walletAddress {
-		walletWriteError(w, http.StatusUnauthorized, "wallet_address_mismatch")
+		writeErr(w, http.StatusUnauthorized, "wallet_address_mismatch")
 		return
 	}
 
-	// Consume the challenge after successful signature verification.
-	_, err = s.db.ExecContext(
+	// Atomically mark the challenge as used. This prevents the same
+	// signature from being accepted more than once.
+	result, err := s.DB.ExecContext(
 		r.Context(),
 		`
 		UPDATE wallet_challenges
 		SET consumed = TRUE
-		WHERE wallet_address = $1
+		WHERE address = $1
 		  AND nonce = $2
 		  AND consumed = FALSE
+		  AND expires_at > $3
 		`,
 		walletAddress,
 		nonce,
+		time.Now().UTC(),
 	)
 	if err != nil {
-		walletWriteError(
-			w,
-			http.StatusInternalServerError,
-			"challenge_update_failed",
-		)
+		writeErr(w, http.StatusInternalServerError, "challenge_update_failed")
 		return
 	}
 
-	// Find the existing user.
-	var userID int64
-	var userRole string
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, "challenge_update_failed")
+		return
+	}
+	if rowsAffected != 1 {
+		writeErr(w, http.StatusUnauthorized, "challenge_invalid_or_already_used")
+		return
+	}
 
-	err = s.db.QueryRowContext(
+	userID, userRole, err := walletFindOrCreateUser(
 		r.Context(),
-		`
-		SELECT id, role
-		FROM users
-		WHERE wallet_address = $1
-		LIMIT 1
-		`,
+		s.DB,
 		walletAddress,
-	).Scan(&userID, &userRole)
-
-	// If the wallet has no account, create one.
-	if err == sql.ErrNoRows {
-		err = s.db.QueryRowContext(
-			r.Context(),
-			`
-			INSERT INTO users
-				(wallet_address, role, status)
-			VALUES
-				($1, 'user', 'APPROVED')
-			RETURNING id, role
-			`,
-			walletAddress,
-		).Scan(&userID, &userRole)
-
-		if err != nil {
-			walletWriteError(
-				w,
-				http.StatusInternalServerError,
-				"user_creation_failed",
-			)
-			return
-		}
-	} else if err != nil {
-		walletWriteError(
-			w,
-			http.StatusInternalServerError,
-			"user_lookup_failed",
-		)
+	)
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, "user_lookup_or_creation_failed")
 		return
-	}
-
-	if userRole == "" {
-		userRole = "user"
 	}
 
 	token, err := auth.IssueToken(userID, userRole)
 	if err != nil {
-		walletWriteError(
-			w,
-			http.StatusInternalServerError,
-			"token_issue_failed",
-		)
+		writeErr(w, http.StatusInternalServerError, "token_issue_failed")
 		return
 	}
 
-	walletWriteJSON(w, http.StatusOK, VerifyResponse{
+	writeJSON(w, http.StatusOK, VerifyResponse{
 		Token:         token,
 		WalletAddress: walletAddress,
 		UserID:        strconv.FormatInt(userID, 10),
@@ -301,15 +253,137 @@ func (s *Server) HandleWalletVerify(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func walletWriteJSON(w http.ResponseWriter, statusCode int, value interface{}) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(statusCode)
-
-	_ = json.NewEncoder(w).Encode(value)
+func walletRequestDomain(r *http.Request) string {
+	domain := strings.TrimSpace(r.Host)
+	if domain == "" {
+		return "bricspay.local"
+	}
+	return domain
 }
 
-func walletWriteError(w http.ResponseWriter, statusCode int, message string) {
-	walletWriteJSON(w, statusCode, map[string]string{
-		"error": message,
-	})
+func walletFindOrCreateUser(
+	ctx context.Context,
+	db *sql.DB,
+	walletAddress string,
+) (int64, string, error) {
+	// First check whether this wallet is already linked to a user.
+	userID, userRole, err := walletLookupUser(ctx, db, walletAddress)
+	if err == nil {
+		return userID, userRole, nil
+	}
+	if err != sql.ErrNoRows {
+		return 0, "", err
+	}
+
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return 0, "", err
+	}
+	defer tx.Rollback()
+
+	// Check again inside the transaction in case another request linked
+	// the wallet after the first lookup.
+	err = tx.QueryRowContext(
+		ctx,
+		`
+		SELECT u.id, u.role
+		FROM wallet_accounts AS wa
+		JOIN users AS u ON u.id = wa.user_id
+		WHERE wa.address = $1
+		LIMIT 1
+		`,
+		walletAddress,
+	).Scan(&userID, &userRole)
+
+	if err == nil {
+		if err := tx.Commit(); err != nil {
+			return 0, "", err
+		}
+		if userRole == "" {
+			userRole = "user"
+		}
+		return userID, userRole, nil
+	}
+	if err != sql.ErrNoRows {
+		return 0, "", err
+	}
+
+	// The v11 users table has a role column; wallet addresses are stored
+	// separately in wallet_accounts.
+	err = tx.QueryRowContext(
+		ctx,
+		`
+		INSERT INTO users (role)
+		VALUES ('user')
+		RETURNING id, role
+		`,
+	).Scan(&userID, &userRole)
+	if err != nil {
+		return 0, "", err
+	}
+
+	_, err = tx.ExecContext(
+		ctx,
+		`
+		INSERT INTO wallet_accounts (user_id, address)
+		VALUES ($1, $2)
+		`,
+		userID,
+		walletAddress,
+	)
+	if err != nil {
+		_ = tx.Rollback()
+
+		// If another request won a race to register this unique address,
+		// return that account instead of failing.
+		existingID, existingRole, lookupErr := walletLookupUser(
+			ctx,
+			db,
+			walletAddress,
+		)
+		if lookupErr == nil {
+			return existingID, existingRole, nil
+		}
+
+		return 0, "", err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return 0, "", err
+	}
+
+	if userRole == "" {
+		userRole = "user"
+	}
+	return userID, userRole, nil
+}
+
+func walletLookupUser(
+	ctx context.Context,
+	db *sql.DB,
+	walletAddress string,
+) (int64, string, error) {
+	var userID int64
+	var userRole string
+
+	err := db.QueryRowContext(
+		ctx,
+		`
+		SELECT u.id, u.role
+		FROM wallet_accounts AS wa
+		JOIN users AS u ON u.id = wa.user_id
+		WHERE wa.address = $1
+		LIMIT 1
+		`,
+		walletAddress,
+	).Scan(&userID, &userRole)
+
+	if err != nil {
+		return 0, "", err
+	}
+	if userRole == "" {
+		userRole = "user"
+	}
+
+	return userID, userRole, nil
 }
