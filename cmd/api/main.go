@@ -46,7 +46,7 @@ func main() {
 	srv := api.NewServer(database)
 	mux := http.NewServeMux()
 
-	fs := http.FileServer(http.Dir("./internal/api/static"))
+	fs := mux.Handle("/", api.StaticHandler())
 	mux.Handle("/", fs)
 
 	mux.HandleFunc("/api/v1/health", srv.HealthCheck)
@@ -60,6 +60,10 @@ func main() {
 	mux.HandleFunc("/api/v1/admin/kyc/audit", srv.HandleAdminAudit)
 	mux.HandleFunc("/api/v1/accounts", srv.HandleAccounts)
 	mux.HandleFunc("/api/v1/transactions", srv.HandleTransactions)
+    mux.Handle("/api/v1/kyc/status", api.authWrap(srv.HandleKYCStatus))
+    mux.Handle("/api/v1/kyc/resubmit", api.authWrap(srv.HandleKYCResubmit))
+    mux.Handle("/api/v1/cards", api.authWrap(srv.HandleCards))
+    mux.Handle("/api/v1/cards/", api.authWrap(srv.HandleCardItem))
 
 	log.Printf("🚀 سرور BRICS Pay روی پورت %s در حال اجرا است", port)
 	if err := http.ListenAndServe(":"+port, mux); err != nil {
