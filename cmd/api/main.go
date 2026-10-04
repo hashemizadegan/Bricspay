@@ -1,6 +1,9 @@
 package main
 
 import (
+	"crypto/rand"
+	"database/sql"
+	"encoding/hex"
 	"log"
 	"net/http"
 	"os"
@@ -18,26 +21,40 @@ func main() {
 		port = "8080"
 	}
 
-	// در v12 اگر JWT_SECRET خالی باشد SetJWTSecret ممکن است panic کند.
+	// JWT_SECRET: اگر تنظیم نشده بود، یک کلید تصادفی می‌سازیم تا سرویس بالا بیاید.
+	// (در این حالت توکن‌ها بعد از هر ری‌استارت نامعتبر می‌شوند؛ بعداً در Railway مقدار دائمی ست کنید.)
 	jwtSecret := os.Getenv("JWT_SECRET")
 	if jwtSecret == "" {
-		log.Fatal("JWT_SECRET is not set")
+		buf := make([]byte, 32)
+		if _, err := rand.Read(buf); err != nil {
+			log.Fatalf("failed to generate ephemeral JWT secret: %v", err)
+		}
+		jwtSecret = hex.EncodeToString(buf)
+		log.Println("WARNING: JWT_SECRET is not set; using an ephemeral secret for this boot")
 	}
 	auth.SetJWTSecret(jwtSecret)
 
+	// DATABASE_URL: اگر نبود یا اتصال/مایگریشن شکست خورد، سرویس همچنان بالا می‌آید
+	// و endpointهای وابسته به دیتابیس با خطای 500 (توسط Recovery) پاسخ می‌دهند.
+	var database *sql.DB
+
 	dbURL := os.Getenv("DATABASE_URL")
 	if dbURL == "" {
-		log.Fatal("DATABASE_URL is not set")
+		log.Println("WARNING: DATABASE_URL is not set; running without database")
+	} else {
+		db, err := dbpkg.Open(dbURL)
+		if err != nil {
+			log.Printf("WARNING: database connection failed (%v); running without database", err)
+		} else if err := dbpkg.InitSchema(db); err != nil {
+			log.Printf("WARNING: schema migration failed (%v); running without database", err)
+			db.Close()
+		} else {
+			database = db
+			log.Println("database connected and schema initialized")
+		}
 	}
-
-	database, err := dbpkg.Open(dbURL)
-	if err != nil {
-		log.Fatalf("failed to connect to database: %v", err)
-	}
-	defer database.Close()
-
-	if err := dbpkg.InitSchema(database); err != nil {
-		log.Fatalf("failed to initialize schema: %v", err)
+	if database != nil {
+		defer database.Close()
 	}
 
 	server := api.NewServer(database)
@@ -50,7 +67,7 @@ func main() {
 	mux.HandleFunc("/api/v1/health", server.HealthCheck)
 	mux.HandleFunc("/api/v1/ready", server.ReadyCheck)
 
-	// Wallet auth (جایگزین register/login)
+	// Wallet auth
 	mux.HandleFunc("/api/v1/auth/wallet/challenge", server.HandleWalletChallenge)
 	mux.HandleFunc("/api/v1/auth/wallet/verify", server.HandleWalletVerify)
 
@@ -62,17 +79,17 @@ func main() {
 	mux.Handle("/api/v1/kyc/submit", auth.Middleware(http.HandlerFunc(server.HandleKYCSubmit)))
 	mux.Handle("/api/v1/kyc/status", auth.Middleware(http.HandlerFunc(server.HandleKYCStatus)))
 
-	// Admin KYC (admin only)
+	// Admin KYC
 	mux.Handle("/api/v1/admin/kyc/pending", auth.AdminOnly(http.HandlerFunc(server.HandleAdminPendingKYC)))
 	mux.Handle("/api/v1/admin/kyc/review", auth.AdminOnly(http.HandlerFunc(server.HandleAdminReviewKYC)))
 
-	// Cards (authenticated)
+	// Cards
 	mux.Handle("/api/v1/cards", auth.Middleware(http.HandlerFunc(server.HandleCards)))
 	mux.Handle("/api/v1/cards/", auth.Middleware(http.HandlerFunc(server.HandleCardItem)))
 
 	handler := api.RateLimit(api.Recovery(api.SecurityHeaders(mux)))
 
-	log.Printf("BRICSPAY listening on :%s", port)
+	log.Printf("BRICS Pay API listening on port %s", port)
 	if err := http.ListenAndServe(":"+port, handler); err != nil {
 		log.Fatalf("server failed: %v", err)
 	}
