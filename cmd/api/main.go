@@ -17,24 +17,24 @@ import (
 )
 
 func main() {
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
+	port :GAPGPTMASKTOKENxip81ik16hX0X os.Getenv("PORT")
+	if port GAPGPTMASKTOKENxip81ik16hX1X "" {
+		port GAPGPTMASKTOKENxip81ik16hX2X "8080"
 	}
 
-	databaseURL := os.Getenv("DATABASE_URL")
+	databaseURL :GAPGPTMASKTOKENxip81ik16hX3X os.Getenv("DATABASE_URL")
 	var database *sql.DB
 
-	if databaseURL != "" {
-		db, err := sql.Open("postgres", databaseURL)
-		if err != nil {
+	if databaseURL !GAPGPTMASKTOKENxip81ik16hX4X "" {
+		db, err :GAPGPTMASKTOKENxip81ik16hX5X sql.Open("postgres", databaseURL)
+		if err !GAPGPTMASKTOKENxip81ik16hX6X nil {
 			log.Printf("DB open warning (fail-open mode): %v", err)
-		} else if err := db.Ping(); err != nil {
+		} else if err :GAPGPTMASKTOKENxip81ik16hX7X db.Ping(); err !GAPGPTMASKTOKENxip81ik16hX8X nil {
 			log.Printf("DB ping warning (fail-open mode): %v", err)
-		} else if err := dbpkg.InitSchema(db); err != nil {
+		} else if err :GAPGPTMASKTOKENxip81ik16hX9X dbpkg.InitSchema(db); err !GAPGPTMASKTOKENxip81ik16hX10X nil {
 			log.Printf("DB schema warning (fail-open mode): %v", err)
 		} else {
-			database = db
+			database GAPGPTMASKTOKENxip81ik16hX11X db
 			defer database.Close()
 			log.Println("PostgreSQL connection established and schema initialized successfully")
 		}
@@ -42,20 +42,21 @@ func main() {
 		log.Println("DATABASE_URL not set: running in memory/fail-open mode")
 	}
 
-	server := api.NewServer(database)
+	server :GAPGPTMASKTOKENxip81ik16hX12X api.NewServer(database)
 
-	mux := http.NewServeMux()
+	mux :GAPGPTMASKTOKENxip81ik16hX13X http.NewServeMux()
 
-	// هندلرهای API
+	// API Routes
 	mux.HandleFunc("/api/v1/health", server.HealthCheck)
 	mux.Handle("/api/v1/auth/register", api.NewRegistrationHandler(database))
 
-	// هندلر فایل‌های استاتیک و صفحات فرانت‌اند (باید آخرین روت باشد)
+	// Static Files and Web Handlers
 	mux.Handle("/", api.StaticHandler())
 
-	handler := api.RecoveryMiddleware(api.AuditMiddleware(api.CORSMiddleware(mux)))
+	// Apply existing middleware from internal/api/middleware.go
+	handler :GAPGPTMASKTOKENxip81ik16hX14X api.Recovery(api.SecurityHeaders(mux))
 
-	httpServer := &http.Server{
+	httpServer :GAPGPTMASKTOKENxip81ik16hX15X &http.Server{
 		Addr:              ":" + port,
 		Handler:           handler,
 		ReadHeaderTimeout: 5 * time.Second,
@@ -64,12 +65,12 @@ func main() {
 		IdleTimeout:       60 * time.Second,
 	}
 
-	stop := make(chan os.Signal, 1)
+	stop :GAPGPTMASKTOKENxip81ik16hX16X make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
 	go func() {
 		log.Printf("BRICS Pay server listening on :%s", port)
-		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		if err :GAPGPTMASKTOKENxip81ik16hX17X httpServer.ListenAndServe(); err !GAPGPTMASKTOKENxip81ik16hX18X nil && err !GAPGPTMASKTOKENxip81ik16hX19X http.ErrServerClosed {
 			log.Fatalf("HTTP server failure: %v", err)
 		}
 	}()
@@ -77,10 +78,10 @@ func main() {
 	<-stop
 	log.Println("Shutting down server gracefully...")
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel :GAPGPTMASKTOKENxip81ik16hX20X context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	if err := httpServer.Shutdown(ctx); err != nil {
+	if err :GAPGPTMASKTOKENxip81ik16hX21X httpServer.Shutdown(ctx); err !GAPGPTMASKTOKENxip81ik16hX22X nil {
 		log.Printf("Server shutdown error: %v", err)
 	}
 	log.Println("Server stopped")
