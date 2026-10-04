@@ -1,7 +1,6 @@
 package api
 
 import (
-	"bytes"
 	"embed"
 	"io/fs"
 	"log"
@@ -13,23 +12,6 @@ import (
 	"time"
 )
 
-// Embed both application assets and multilingual landing pages.
-//
-// Directory structure:
-//
-// internal/api/
-// ├── middleware.go
-// ├── static/
-// │   ├── index.html
-// │   ├── register.html
-// │   ├── css/
-// │   └── js/
-// └── web/
-//     ├── fa/index.html
-//     ├── en/index.html
-//     ├── ru/index.html
-//     └── zh/index.html
-//
 //go:embed static web
 var staticFS embed.FS
 
@@ -39,6 +21,7 @@ func StaticHandler() http.Handler {
 	staticRoot, err := fs.Sub(staticFS, "static")
 	if err != nil {
 		log.Printf("unable to load embedded static directory: %v", err)
+
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			http.Error(
 				w,
@@ -53,22 +36,15 @@ func StaticHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requestPath := path.Clean("/" + r.URL.Path)
 
-		// Remove a trailing slash except for the root path.
 		if len(requestPath) > 1 {
 			requestPath = strings.TrimRight(requestPath, "/")
 		}
 
 		switch requestPath {
-		// ------------------------------------------------------------
-		// Main landing page
-		// ------------------------------------------------------------
 		case "/":
 			serveEmbeddedHTML(w, r, "web/fa/index.html")
 			return
 
-		// ------------------------------------------------------------
-		// Multilingual landing pages
-		// ------------------------------------------------------------
 		case "/fa":
 			serveEmbeddedHTML(w, r, "web/fa/index.html")
 			return
@@ -85,60 +61,42 @@ func StaticHandler() http.Handler {
 			serveEmbeddedHTML(w, r, "web/zh/index.html")
 			return
 
-		// ------------------------------------------------------------
-		// Registration routes
-		// ------------------------------------------------------------
-		// All of these URLs serve the same embedded registration page.
 		case "/app/register", "/register", "/signup":
 			serveEmbeddedHTML(w, r, "static/register.html")
 			return
 
-		// ------------------------------------------------------------
-		// Login routes
-		// ------------------------------------------------------------
-		// The current project does not contain a separate login.html.
-		// Therefore the existing application page is served here.
 		case "/app/login", "/login":
+			// The project has no separate login.html, so use its
+			// existing application page.
 			serveEmbeddedHTML(w, r, "static/index.html")
 			return
 
-		// ------------------------------------------------------------
-		// Static assets
-		// ------------------------------------------------------------
-		// Support URLs such as:
-		// /static/css/styles.css
-		// /static/js/auth.js
-		if strings.HasPrefix(requestPath, "/static/") {
-			assetPath := strings.TrimPrefix(requestPath, "/static/")
-			if assetPath == "" {
-				http.NotFound(w, r)
+		default:
+			// Support asset URLs such as:
+			// /static/css/styles.css
+			// /static/js/auth.js
+			if strings.HasPrefix(requestPath, "/static/") {
+				assetPath := strings.TrimPrefix(requestPath, "/static/")
+				if assetPath == "" {
+					http.NotFound(w, r)
+					return
+				}
+
+				rewrittenRequest := r.Clone(r.Context())
+				rewrittenRequest.URL.Path = "/" + assetPath
+				staticHandler.ServeHTTP(w, rewrittenRequest)
 				return
 			}
 
-			rewrittenRequest := r.Clone(r.Context())
-			rewrittenRequest.URL.Path = "/" + assetPath
-
-			staticHandler.ServeHTTP(w, rewrittenRequest)
+			// Also serve assets referenced without the /static prefix,
+			// such as /css/styles.css or /js/auth.js.
+			staticHandler.ServeHTTP(w, r)
 			return
 		}
-
-		// Also support direct asset URLs such as:
-		// /css/styles.css
-		// /js/auth.js
-		// /vtb-workflow.jpeg
-		//
-		// Existing HTML files may use either form.
-		staticHandler.ServeHTTP(w, r)
 	})
 }
 
-// serveEmbeddedHTML reads an HTML file from the embedded filesystem
-// and writes it to the HTTP response.
-func serveEmbeddedHTML(
-	w http.ResponseWriter,
-	r *http.Request,
-	fileName string,
-) {
+func serveEmbeddedHTML(w http.ResponseWriter, r *http.Request, fileName string) {
 	content, err := fs.ReadFile(staticFS, fileName)
 	if err != nil {
 		log.Printf("embedded file %q was not found: %v", fileName, err)
@@ -148,30 +106,18 @@ func serveEmbeddedHTML(
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
-
 	_, _ = w.Write(content)
 }
 
 // SecurityHeaders adds security-related HTTP headers.
 func SecurityHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Prevent MIME-type sniffing.
 		w.Header().Set("X-Content-Type-Options", "nosniff")
-
-		// Prevent the application from being embedded in an iframe.
 		w.Header().Set("X-Frame-Options", "DENY")
-
-		// Enable browser XSS protection where supported.
 		w.Header().Set("X-XSS-Protection", "1; mode=block")
+		w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
 
-		// Limit referrer information.
-		w.Header().Set(
-			"Referrer-Policy",
-			"strict-origin-when-cross-origin",
-		)
-
-		// Allow the inline CSS and JavaScript used by the existing
-		// landing and registration pages.
+		// Allows inline CSS/JS used by the current pages.
 		w.Header().Set(
 			"Content-Security-Policy",
 			"default-src 'self'; "+
@@ -215,9 +161,6 @@ func Recovery(next http.Handler) http.Handler {
 }
 
 // RateLimit implements a lightweight in-memory per-IP rate limiter.
-//
-// This limiter is intentionally fail-open: if the limiter encounters
-// an internal problem, the request is still passed to the application.
 func RateLimit(next http.Handler) http.Handler {
 	var (
 		mu      sync.Mutex
@@ -231,7 +174,6 @@ func RateLimit(next http.Handler) http.Handler {
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		clientIP := requestIP(r)
-
 		now := time.Now()
 
 		mu.Lock()
@@ -249,7 +191,6 @@ func RateLimit(next http.Handler) http.Handler {
 		}
 
 		client.requests++
-
 		requestsExceeded := client.requests > maxRequests
 
 		mu.Unlock()
@@ -268,22 +209,14 @@ func RateLimit(next http.Handler) http.Handler {
 	})
 }
 
-// rateLimitClient stores request information for one client IP.
 type rateLimitClient struct {
 	windowStart time.Time
 	requests    int
 }
 
-// requestIP extracts the best available client IP.
-//
-// Railway and reverse proxies may provide the original IP through
-// X-Forwarded-For or X-Real-IP.
 func requestIP(r *http.Request) string {
 	if forwardedFor := r.Header.Get("X-Forwarded-For"); forwardedFor != "" {
-		firstIP := strings.TrimSpace(
-			strings.Split(forwardedFor, ",")[0],
-		)
-
+		firstIP := strings.TrimSpace(strings.Split(forwardedFor, ",")[0])
 		if firstIP != "" {
 			return firstIP
 		}
@@ -304,7 +237,3 @@ func requestIP(r *http.Request) string {
 
 	return "unknown"
 }
-
-// Keep bytes imported for compatibility with projects that previously
-// used an embedded content buffer in this middleware file.
-var _ = bytes.NewReader
