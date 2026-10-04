@@ -1,7 +1,6 @@
 package main
 
 import (
-	"database/sql"
 	"log"
 	"net/http"
 	"os"
@@ -22,95 +21,84 @@ func main() {
 	jwtSecret := os.Getenv("JWT_SECRET")
 	if jwtSecret != "" {
 		auth.SetJWTSecret(jwtSecret)
-		log.Println("JWT_SECRET سفارشی فعال شد.")
+		log.Println("JWT_SECRET configured")
 	}
 
-	var database *sql.DB
+	var database = dbpkg.MustOpenFromEnv()
 
-	dbURL := os.Getenv("DATABASE_URL")
-	if dbURL == "" {
-		log.Println("هشدار: DATABASE_URL تنظیم نشده است؛ سرور بدون دیتابیس اجرا می‌شود.")
-	} else {
-		var err error
-		database, err = sql.Open("postgres", dbURL)
-		if err != nil {
-			log.Fatalf("خطا در اتصال به پایگاه داده: %v", err)
-		}
+	if database != nil {
 		defer database.Close()
 
 		if err := dbpkg.InitSchema(database); err != nil {
-			log.Fatalf("خطا در راه‌اندازی schema: %v", err)
+			log.Fatalf("failed to initialize database schema: %v", err)
 		}
 
-		log.Println("Schema پایگاه داده آماده است.")
+		log.Println("database schema initialized")
 	}
 
 	server := api.NewServer(database)
 	mux := http.NewServeMux()
 
+	// Static files
 	mux.Handle("/", api.StaticHandler())
 
-// سلامت سرویس
-mux.HandleFunc("/api/v1/health", server.HealthCheck)
-mux.HandleFunc("/api/v1/ready", server.ReadyCheck)
+	// Public health endpoints
+	mux.HandleFunc("/api/v1/health", server.HealthCheck)
+	mux.HandleFunc("/api/v1/ready", server.ReadyCheck)
 
-// احراز هویت کیف‌پولی؛ در v12 جایگزین register/login قدیمی
-mux.HandleFunc(
-	"/api/v1/auth/wallet/challenge",
-	server.HandleWalletChallenge,
-)
-mux.HandleFunc(
-	"/api/v1/auth/wallet/verify",
-	server.HandleWalletVerify,
-)
+	// Wallet authentication
+	mux.HandleFunc(
+		"/api/v1/auth/wallet/challenge",
+		server.HandleWalletChallenge,
+	)
+	mux.HandleFunc(
+		"/api/v1/auth/wallet/verify",
+		server.HandleWalletVerify,
+	)
 
-// عملیات نیازمند احراز هویت
-mux.Handle(
-	"/api/v1/kyc/submit",
-	auth.AuthMiddleware(http.HandlerFunc(server.HandleKYCSubmit)),
-)
-mux.Handle(
-	"/api/v1/kyc/status",
-	auth.AuthMiddleware(http.HandlerFunc(server.HandleKYCStatus)),
-)
+	// Core endpoints
+	mux.HandleFunc("/api/v1/accounts", server.HandleAccounts)
+	mux.HandleFunc("/api/v1/transactions", server.HandleTransactions)
 
-// در v12 ارسال مجدد با همان handler ثبت KYC انجام می‌شود.
-// اگر فرانت‌اند از این مسیر استفاده می‌کند، این route را نگه دارید.
-mux.Handle(
-	"/api/v1/kyc/resubmit",
-	auth.AuthMiddleware(http.HandlerFunc(server.HandleKYCSubmit)),
-)
+	// Authenticated KYC endpoints
+	mux.Handle(
+		"/api/v1/kyc/submit",
+		auth.Middleware(http.HandlerFunc(server.HandleKYCSubmit)),
+	)
+	mux.Handle(
+		"/api/v1/kyc/status",
+		auth.Middleware(http.HandlerFunc(server.HandleKYCStatus)),
+	)
 
-// مدیریت KYC
-mux.Handle(
-	"/api/v1/admin/kyc/pending",
-	auth.AuthMiddleware(http.HandlerFunc(server.HandleAdminPendingKYC)),
-)
-mux.Handle(
-	"/api/v1/admin/kyc/review",
-	auth.AuthMiddleware(http.HandlerFunc(server.HandleAdminReviewKYC)),
-)
+	// Admin KYC endpoints
+	mux.Handle(
+		"/api/v1/admin/kyc/pending",
+		auth.AdminOnly(http.HandlerFunc(server.HandleAdminPendingKYC)),
+	)
+	mux.Handle(
+		"/api/v1/admin/kyc/review",
+		auth.AdminOnly(http.HandlerFunc(server.HandleAdminReviewKYC)),
+	)
 
-// کارت‌ها، حساب‌ها و تراکنش‌ها
-mux.Handle(
-	"/api/v1/cards",
-	auth.AuthMiddleware(http.HandlerFunc(server.HandleCards)),
-)
-mux.Handle(
-	"/api/v1/cards/",
-	auth.AuthMiddleware(http.HandlerFunc(server.HandleCardItem)),
-)
-mux.Handle(
-	"/api/v1/accounts",
-	auth.AuthMiddleware(http.HandlerFunc(server.HandleAccounts)),
-)
-mux.Handle(
-	"/api/v1/transactions",
-	auth.AuthMiddleware(http.HandlerFunc(server.HandleTransactions)),
-)
+	// Bank card endpoints
+	mux.Handle(
+		"/api/v1/cards",
+		auth.Middleware(http.HandlerFunc(server.HandleCards)),
+	)
+	mux.Handle(
+		"/api/v1/cards/",
+		auth.Middleware(http.HandlerFunc(server.HandleCardItem)),
+	)
 
-	log.Printf("سرور BRICS Pay روی پورت %s در حال اجرا است", port)
-	if err := http.ListenAndServe(":"+port, mux); err != nil {
-		log.Fatalf("خطا در راه‌اندازی سرور: %v", err)
+	handler := api.RateLimit(
+		api.Recovery(
+			api.SecurityHeaders(mux),
+		),
+	)
+
+	log.Printf("BRICS Pay API listening on port %s", port)
+
+	if err := http.ListenAndServe(":"+port, handler); err != nil {
+		log.Fatalf("server failed: %v", err)
 	}
 }
