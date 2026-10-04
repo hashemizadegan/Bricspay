@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign Up | BRICS PAY Borderless Transactions</title>
+    <style>
+        :root {
+            --bg-body: #05070a;
+            --bg-panel: #0b0f17;
+            --bg-input: #121824;
+            --border-input: #1e293b;
+            --border-focus: #388bfd;
+            --text-main: #ffffff;
+            --text-muted: #8b949e;
+            --btn-blue: #2f81f7;
+            --btn-blue-hover: #1f6feb;
+            --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: var(--font-family);
+        }
+
+        body {
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .auth-container {
+            display: flex;
+            width: 100vw;
+            min-height: 100vh;
+            background-color: var(--bg-body);
+        }
+
+        /* ستون سمت چپ - فرم ثبت‌نام */
+        .form-side {
+            flex: 1.1;
+            padding: 40px 80px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            max-width: 640px;
+            margin: 0 auto;
+        }
+
+        /* لوگوی بریکس */
+        .brand-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 32px;
+            cursor: pointer;
+        }
+
+        .brand-logo-svg {
+            width: 32px;
+            height: 32px;
+        }
+
+        .brand-title {
+            font-size: 22px;
+            font-weight: 800;
+            letter-spacing: 1px;
+            color: #ffffff;
+        }
+
+        .auth-title {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+
+        .auth-subtitle {
+            color: var(--text-muted);
+            font-size: 14px;
+            margin-bottom: 28px;
+        }
+
+        /* فیلدهای ورودی */
+        .form-group {
+            margin-bottom: 18px;
+            position: relative;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            color: #c9d1d9;
+            margin-bottom: 8px;
+        }
+
+        .input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .form-control {
+            width: 100%;
+            background-color: var(--bg-input);
+            border: 1px solid var(--border-input);
+            border-radius: 8px;
+            padding: 14px 16px;
+            font-size: 14px;
+            color: #ffffff;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .form-control:focus {
+            border-color: var(--border-focus);
+            box-shadow: 0 0 0 3px rgba(56, 139, 253, 0.15);
+        }
+
+        .form-control::placeholder {
+            color: #484f58;
+        }
+
+        .toggle-password {
+            position: absolute;
+            right: 14px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #6e7681;
+            display: flex;
+            align-items: center;
+            padding: 4px;
+        }
+        [dir="rtl"] .toggle-password {
+            right: auto;
+            left: 14px;
+        }
+
+        .toggle-password:hover {
+            color: #ffffff;
+        }
+
+        /* بخش کد معرف */
+        .referral-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--text-muted);
+            font-size: 13px;
+            cursor: pointer;
+            margin-bottom: 12px;
+            user-select: none;
+        }
+
+        .referral-box {
+            display: none;
+            margin-bottom: 16px;
+        }
+
+        .referral-box.active {
+            display: block;
+        }
+
+        /* چک‌باکس قوانین */
+        .terms-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 24px;
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        .terms-row input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: var(--btn-blue);
+            cursor: pointer;
+        }
+
+        .terms-row a {
+            color: #58a6ff;
+            text-decoration: none;
+        }
+
+        .terms-row a:hover {
+            text-decoration: underline;
+        }
+
+        /* دکمه ثبت نام */
+        .btn-submit {
+            width: 100%;
+            background: linear-gradient(180deg, #388bfd 0%, #1f6feb 100%);
+            border: none;
+            border-radius: 8px;
+            padding: 14px;
+            font-size: 16px;
+            font-weight: 600;
+            color: #ffffff;
+            cursor: pointer;
+            box-shadow: 0 4px 14px rgba(31, 111, 235, 0.4);
+            transition: opacity 0.2s, transform 0.1s;
+        }
+
+        .btn-submit:hover {
+            opacity: 0.95;
+        }
+
+        .btn-submit:active {
+            transform: scale(0.99);
+        }
+
+        .footer-note {
+            text-align: center;
+            margin-top: 24px;
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+
+        .footer-note a {
+            color: #ffffff;
+            font-weight: 600;
+            text-decoration: none;
+            margin-left: 4px;
+        }
+
+        .footer-note a:hover {
+            text-decoration: underline;
+        }
+
+        /* ستون سمت راست - تصویر و انیمیشن ۳ بعدی */
+        .hero-side {
+            flex: 1.2;
+            background: radial-gradient(circle at center, #101726 0%, #06090e 100%);
+            border-left: 1px solid #161f30;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+            position: relative;
+        }
+
+        .hero-graphic {
+            width: 380px;
+            max-width: 90%;
+            margin-bottom: 36px;
+            filter: drop-shadow(0 20px 30px rgba(0,0,0,0.7));
+        }
+
+        .hero-title {
+            font-size: 20px;
+            font-weight: 800;
+            letter-spacing: 1.5px;
+            text-align: center;
+            margin-bottom: 12px;
+            color: #ffffff;
+        }
+
+        .hero-desc {
+            color: var(--text-muted);
+            font-size: 14px;
+            text-align: center;
+            max-width: 440px;
+            line-height: 1.6;
+            margin-bottom: 28px;
+        }
+
+        .btn-explore {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 24px;
+            padding: 10px 28px;
+            color: #ffffff;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            transition: background 0.2s, border-color 0.2s;
+        }
+
+        .btn-explore:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        /* انتخاب زبان */
+        .lang-picker {
+            position: absolute;
+            top: 24px;
+            right: 24px;
+            display: flex;
+            gap: 8px;
+            z-index: 10;
+        }
+        [dir="rtl"] .lang-picker {
+            right: auto;
+            left: 24px;
+        }
+
+        .lang-btn {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            color: #c9d1d9;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .lang-btn.active {
+            background: var(--btn-blue);
+            color: #ffffff;
+            border-color: var(--btn-blue);
+        }
+
+        /* پیام‌ها و Toast */
+        .toast {
+            position: fixed;
+            top: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            z-index: 999;
+            display: none;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+        }
+        .toast.success { background: #238636; color: white; }
+        .toast.error { background: #da3633; color: white; }
+
+        @media (max-width: 900px) {
+            .auth-container { flex-direction: column; }
+            .hero-side { display: none; }
+            .form-side { padding: 40px 24px; width: 100%; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="toast" class="toast"></div>
+
+    <div class="lang-picker">
+        <button class="lang-btn active" onclick="setLanguage('en')">EN</button>
+        <button class="lang-btn" onclick="setLanguage('fa')">FA</button>
+        <button class="lang-btn" onclick="setLanguage('ru')">RU</button>
+        <button class="lang-btn" onclick="setLanguage('zh')">ZH</button>
+    </div>
+
+    <div class="auth-container">
+        <!-- ستون فرم -->
+        <div class="form-side">
+            <div class="brand-header" onclick="location.href='/'">
+                <svg class="brand-logo-svg" viewBox="0 0 100 100">
+                    <circle cx="50" cy="22" r="14" fill="#e63946" />
+                    <circle cx="77" cy="41" r="14" fill="#2a9d8f" />
+                    <circle cx="67" cy="73" r="14" fill="#e9c46a" />
+                    <circle cx="33" cy="73" r="14" fill="#f4a261" />
+                    <circle cx="23" cy="41" r="14" fill="#457b9d" />
+                </svg>
+                <span class="brand-title">BRICSPAY</span>
+            </div>
+
+            <h1 class="auth-title" id="txt-title">Sign Up</h1>
+            <p class="auth-subtitle" id="txt-subtitle">Create your account now</p>
+
+            <form id="registerForm" onsubmit="handleRegister(event)">
+                <div class="form-group">
+                    <label id="lbl-email">Email</label>
+                    <div class="input-wrapper">
+                        <input type="email" id="email" class="form-control" placeholder="Email" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label id="lbl-nationality">Nationality</label>
+                    <div class="input-wrapper">
+                        <input type="text" id="nationality" class="form-control" placeholder="Country of Your Passport" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label id="lbl-residence">Country of Residence</label>
+                    <div class="input-wrapper">
+                        <input type="text" id="residence" class="form-control" placeholder="Country Where You Live" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label id="lbl-password">Password</label>
+                    <div class="input-wrapper">
+                        <input type="password" id="password" class="form-control" placeholder="Password" minlength="8" required>
+                        <button type="button" class="toggle-password" onclick="togglePass('password', this)">
+                            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label id="lbl-confirm-password">Confirm Password</label>
+                    <div class="input-wrapper">
+                        <input type="password" id="confirmPassword" class="form-control" placeholder="Confirm Password" minlength="8" required>
+                        <button type="button" class="toggle-password" onclick="togglePass('confirmPassword', this)">
+                            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="referral-toggle" onclick="toggleReferral()">
+                    <span id="txt-referral">Referral ID (optional)</span>
+                    <svg id="ref-arrow" width="14" height="14" fill="currentColor" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/></svg>
+                </div>
+
+                <div class="referral-box" id="referralBox">
+                    <input type="text" id="referralId" class="form-control" placeholder="Referral Code">
+                </div>
+
+                <div class="terms-row">
+                    <input type="checkbox" id="terms" required>
+                    <label for="terms" id="txt-terms">I agree to the <a href="#">Terms of Service</a></label>
+                </div>
+
+                <button type="submit" class="btn-submit" id="btn-submit">Sign Up</button>
+            </form>
+
+            <div class="footer-note">
+                <span id="txt-already">Already have an account?</span>
+                <a href="/login" id="link-signin">Sign In</a>
+            </div>
+        </div>
+
+        <!-- ستون گرافیک و معرفی -->
+        <div class="hero-side">
+            <svg class="hero-graphic" viewBox="0 0 400 400" fill="none">
+                <!-- دایره‌های چرخان -->
+                <circle cx="200" cy="200" r="140" stroke="#1f6feb" stroke-width="12" stroke-dasharray="24 16" stroke-linecap="round" opacity="0.8"/>
+                <circle cx="200" cy="200" r="110" fill="#1652a2" />
+                <path d="M 120 160 Q 200 120 280 160 Q 200 240 120 160" fill="#287be0" opacity="0.6"/>
+                
+                <!-- کارت اعتباری سه‌بعدی -->
+                <rect x="130" y="190" width="130" height="80" rx="10" fill="#3b49df" transform="rotate(-12 195 230)" filter="drop-shadow(0 10px 15px rgba(0,0,0,0.5))"/>
+                <rect x="145" y="215" width="25" height="18" rx="3" fill="#e9c46a" transform="rotate(-12 195 230)"/>
+                
+                <!-- سکه طلا دلار -->
+                <circle cx="250" cy="180" r="40" fill="#f4a261" stroke="#e9c46a" stroke-width="4" filter="drop-shadow(0 8px 12px rgba(0,0,0,0.4))"/>
+                <text x="240" y="195" font-family="Arial" font-size="42" font-weight="bold" fill="#ffffff">$</text>
+                
+                <!-- لوگوی مرکزی ۵ برگ بریکس -->
+                <g transform="translate(160, 100) scale(0.8)">
+                    <circle cx="50" cy="22" r="14" fill="#e63946" />
+                    <circle cx="77" cy="41" r="14" fill="#2a9d8f" />
+                    <circle cx="67" cy="73" r="14" fill="#e9c46a" />
+                    <circle cx="33" cy="73" r="14" fill="#f4a261" />
+                    <circle cx="23" cy="41" r="14" fill="#457b9d" />
+                </g>
+            </svg>
+
+            <h2 class="hero-title" id="txt-hero-title">BRICSPAY BORDERLESS TRANSACTIONS</h2>
+            <p class="hero-desc" id="txt-hero-desc">Log in to access your account securely or sign up to start your banking journey with BricsPay.</p>
+            <button class="btn-explore" id="btn-explore">Explore More</button>
+        </div>
+    </div>
+
+    <script>
+        const translations = {
+            en: {
+                dir: 'ltr',
+                title: 'Sign Up',
+                subtitle: 'Create your account now',
+                email: 'Email',
+                nationality: 'Nationality',
+                p_nationality: 'Country of Your Passport',
+                residence: 'Country of Residence',
+                p_residence: 'Country Where You Live',
+                password: 'Password',
+                confirmPassword: 'Confirm Password',
+                referral: 'Referral ID (optional)',
+                terms: 'I agree to the <a href="#">Terms of Service</a>',
+                signup: 'Sign Up',
+                already: 'Already have an account?',
+                signin: 'Sign In',
+                heroTitle: 'BRICSPAY BORDERLESS TRANSACTIONS',
+                heroDesc: 'Log in to access your account securely or sign up to start your banking journey with BricsPay.',
+                explore: 'Explore More'
+            },
+            fa: {
+                dir: 'rtl',
+                title: 'ثبت‌نام',
+                subtitle: 'حساب تجاری خود را هم‌اکنون ایجاد کنید',
+                email: 'پست الکترونیک',
+                nationality: 'تابعیت',
+                p_nationality: 'کشور صادرکننده پاسپورت',
+                residence: 'کشور محل سکونت',
+                p_residence: 'کشوری که در آن زندگی می‌کنید',
+                password: 'کلمه عبور',
+                confirmPassword: 'تکرار کلمه عبور',
+                referral: 'شناسه معرف (اختیاری)',
+                terms: 'تمامی <a href="#">شرایط و قوانین خدمات</a> را می‌پذیرم',
+                signup: 'ایجاد حساب کاربری',
+                already: 'قبلاً ثبت‌نام کرده‌اید؟',
+                signin: 'ورود به درگاه',
+                heroTitle: 'تراکنش‌های فرامرزی بریکس‌پی',
+                heroDesc: 'برای دسترسی امن به حساب کاربری وارد شوید یا برای شروع تراکنش‌های مالی مستقل بین‌المللی ثبت‌نام کنید.',
+                explore: 'اطلاعات بیشتر'
+            },
+            ru: {
+                dir: 'ltr',
+                title: 'Регистрация',
+                subtitle: 'Создайте аккаунт прямо сейчас',
+                email: 'Эл. почта',
+                nationality: 'Гражданство',
+                p_nationality: 'Страна вашего паспорта',
+                residence: 'Страна проживания',
+                p_residence: 'Страна, где вы живете',
+                password: 'Пароль',
+                confirmPassword: 'Подтвердите пароль',
+                referral: 'Реферальный ID (необязательно)',
+                terms: 'Я принимаю <a href="#">Условия обслуживания</a>',
+                signup: 'Зарегистрироваться',
+                already: 'Уже есть аккаунт?',
+                signin: 'Войти',
+                heroTitle: 'БЕЗГРАНИЧНЫЕ ТРАНЗАКЦИИ BRICSPAY',
+                heroDesc: 'Войдите для безопасного доступа или зарегистрируйтесь, чтобы начать работу с BricsPay.',
+                explore: 'Узнать больше'
+            },
+            zh: {
+                dir: 'ltr',
+                title: '注册',
+                subtitle: '立即创建您的账户',
+                email: '电子邮件',
+                nationality: '国籍',
+                p_nationality: '护照签发国',
+                residence: '居住国家',
+                p_residence: '您目前居住的国家',
+                password: '密码',
+                confirmPassword: '确认密码',
+                referral: '推荐人 ID（可选）',
+                terms: '我同意 <a href="#">服务条款</a>',
+                signup: '注册',
+                already: '已有账户？',
+                signin: '登录',
+                heroTitle: 'BRICSPAY 无国界结算网络',
+                heroDesc: '安全登录以访问您的账户，或立即注册开启您的金砖国际支付旅程。',
+                explore: '探索更多'
+            }
+        };
+
+        function setLanguage(lang) {
+            const t = translations[lang] || translations.en;
+            document.documentElement.dir = t.dir;
+            document.documentElement.lang = lang;
+
+            document.querySelectorAll('.lang-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.innerText.toLowerCase() === lang);
+            });
+
+            document.getElementById('txt-title').innerText = t.title;
+            document.getElementById('txt-subtitle').innerText = t.subtitle;
+            document.getElementById('lbl-email').innerText = t.email;
+            document.getElementById('lbl-nationality').innerText = t.nationality;
+            document.getElementById('nationality').placeholder = t.p_nationality;
+            document.getElementById('lbl-residence').innerText = t.residence;
+            document.getElementById('residence').placeholder = t.p_residence;
+            document.getElementById('lbl-password').innerText = t.password;
+            document.getElementById('lbl-confirm-password').innerText = t.confirmPassword;
+            document.getElementById('txt-referral').innerText = t.referral;
+            document.getElementById('txt-terms').innerHTML = t.terms;
+            document.getElementById('btn-submit').innerText = t.signup;
+            document.getElementById('txt-already').innerText = t.already;
+            document.getElementById('link-signin').innerText = t.signin;
+            document.getElementById('txt-hero-title').innerText = t.heroTitle;
+            document.getElementById('txt-hero-desc').innerText = t.heroDesc;
+            document.getElementById('btn-explore').innerText = t.explore;
+        }
+
+        function togglePass(id, btn) {
+            const input = document.getElementById(id);
+            if (input.type === 'password') {
+                input.type = 'text';
+                btn.style.color = '#388bfd';
+            } else {
+                input.type = 'password';
+                btn.style.color = '#6e7681';
+            }
+        }
+
+        function toggleReferral() {
+            const box = document.getElementById('referralBox');
+            box.classList.toggle('active');
+        }
+
+        function showToast(msg, type = 'success') {
+            const toast = document.getElementById('toast');
+            toast.innerText = msg;
+            toast.className = `toast ${type}`;
+            toast.style.display = 'block';
+            setTimeout(() => { toast.style.display = 'none'; }, 4000);
+        }
+
+        async function handleRegister(e) {
+            e.preventDefault();
+
+            const email = document.getElementById('email').value.trim();
+            const nationality = document.getElementById('nationality').value.trim();
+            const residence = document.getElementById('residence').value.trim();
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            const referralId = document.getElementById('referralId').value.trim();
+
+            if (password !== confirmPassword) {
+                showToast('Passwords do not match.', 'error');
+                return;
+            }
+
+            const payload = {
+                email: email,
+                password: password,
+                legal_name: nationality + " - " + residence,
+                jurisdiction: residence,
+                nationality: nationality,
+                residence: residence,
+                referral_id: referralId
+            };
+
+            const submitBtn = document.getElementById('btn-submit');
+            submitBtn.disabled = true;
+            submitBtn.innerText = 'Processing...';
+
+            try {
+                const res = await fetch('/api/v1/auth/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await res.json();
+                if (!res.ok) {
+                    throw new Error(data.error || 'Registration failed');
+                }
+
+                showToast('Account created successfully! Redirecting...', 'success');
+                setTimeout(() => {
+                    window.location.href = '/login';
+                }, 1500);
+            } catch (err) {
+                showToast(err.message, 'error');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerText = document.documentElement.lang === 'fa' ? 'ایجاد حساب کاربری' : 'Sign Up';
+            }
+        }
+    </script>
+</body>
+</html>
