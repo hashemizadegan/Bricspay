@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"log"
 	"net/http"
 	"os"
@@ -24,8 +25,7 @@ func main() {
 		log.Println("JWT_SECRET configured")
 	}
 
-	var database = openDatabase()
-
+	database := openDatabase()
 	if database != nil {
 		defer database.Close()
 
