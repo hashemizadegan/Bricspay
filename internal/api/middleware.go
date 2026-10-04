@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-//go:embed static
+//go:embed static web
 var staticFS embed.FS
 
 // StaticHandler فایلهای استاتیک را از داخل باینری سرو میکند (نه از CWD).
@@ -19,7 +19,32 @@ func StaticHandler() http.Handler {
 	if err != nil {
 		panic(err)
 	}
-	return http.FileServer(http.FS(sub))
+	staticHandler := http.FileServer(http.FS(sub))
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		lang := ""
+		switch r.URL.Path {
+		case "/fa", "/fa/":
+			lang = "fa"
+		case "/ru", "/ru/":
+			lang = "ru"
+		case "/zh", "/zh/":
+			lang = "zh"
+		}
+		if lang == "" {
+			staticHandler.ServeHTTP(w, r)
+			return
+		}
+		langFS, err := fs.Sub(staticFS, "web/"+lang)
+		if err != nil {
+			http.NotFound(w, r)
+			return
+		}
+		langRequest := r.Clone(r.Context())
+		langURL := *r.URL
+		langURL.Path = "/"
+		langRequest.URL = &langURL
+		http.FileServer(http.FS(langFS)).ServeHTTP(w, langRequest)
+	})
 }
 
 func SecurityHeaders(next http.Handler) http.Handler {
@@ -29,8 +54,7 @@ func SecurityHeaders(next http.Handler) http.Handler {
 		h.Set("X-Frame-Options", "DENY")
 		h.Set("Referrer-Policy", "no-referrer")
 		h.Set("Content-Security-Policy",
-    "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; frame-ancestors 'none'; object-src 'none'")
-
+			"default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; frame-ancestors 'none'; object-src 'none'")
 		next.ServeHTTP(w, r)
 	})
 }
