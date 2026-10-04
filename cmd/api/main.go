@@ -1,13 +1,16 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"bricspay/internal/api"
-	"bricspay/internal/auth"
 	dbpkg "bricspay/internal/db"
 
 	_ "github.com/lib/pq"
@@ -19,46 +22,66 @@ func main() {
 		port = "8080"
 	}
 
-	if jwtSecret := os.Getenv("JWT_SECRET"); jwtSecret != "" {
-		auth.SetJWTSecret(jwtSecret)
-		log.Println("JWT_SECRET is set")
-	} else {
-		log.Println("warning: JWT_SECRET not set")
-	}
-
+	databaseURL := os.Getenv("DATABASE_URL")
 	var database *sql.DB
 
-	dbURL := os.Getenv("DATABASE_URL")
-	switch {
-	case dbURL == "":
-		log.Println("warning: DATABASE_URL not set; running without database")
-	default:
-		db, err := sql.Open("postgres", dbURL)
+	if databaseURL != "" {
+		db, err := sql.Open("postgres", databaseURL)
 		if err != nil {
-			log.Printf("warning: DB open failed (%v); running without database", err)
+			log.Printf("DB open warning (fail-open mode): %v", err)
 		} else if err := db.Ping(); err != nil {
-			log.Printf("warning: DB ping failed (%v); running without database", err)
-			db.Close()
+			log.Printf("DB ping warning (fail-open mode): %v", err)
 		} else if err := dbpkg.InitSchema(db); err != nil {
-			log.Printf("warning: schema init failed (%v); running without database", err)
-			db.Close()
+			log.Printf("DB schema warning (fail-open mode): %v", err)
 		} else {
 			database = db
 			defer database.Close()
-			log.Println("database connected, schema ready")
+			log.Println("PostgreSQL connection established and schema initialized successfully")
 		}
+	} else {
+		log.Println("DATABASE_URL not set: running in memory/fail-open mode")
 	}
 
 	server := api.NewServer(database)
+
 	mux := http.NewServeMux()
 
-	mux.Handle("/", api.StaticHandler())
+	// هندلرهای API
 	mux.HandleFunc("/api/v1/health", server.HealthCheck)
-	// ... بقیه مسیرها دقیقاً مثل قبل بدون تغییر باقی بمانند ...
+	mux.Handle("/api/v1/auth/register", api.NewRegistrationHandler(database))
 
-	log.Printf("BRICS Pay server listening on :%s", port)
-	if err := http.ListenAndServe(":"+port, mux); err != nil {
-		log.Printf("server error: %v", err)
-		os.Exit(1)
+	// هندلر فایل‌های استاتیک و صفحات فرانت‌اند (باید آخرین روت باشد)
+	mux.Handle("/", api.StaticHandler())
+
+	handler := api.RecoveryMiddleware(api.AuditMiddleware(api.CORSMiddleware(mux)))
+
+	httpServer := &http.Server{
+		Addr:              ":" + port,
+		Handler:           handler,
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       15 * time.Second,
+		WriteTimeout:      30 * time.Second,
+		IdleTimeout:       60 * time.Second,
 	}
+
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
+
+	go func() {
+		log.Printf("BRICS Pay server listening on :%s", port)
+		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("HTTP server failure: %v", err)
+		}
+	}()
+
+	<-stop
+	log.Println("Shutting down server gracefully...")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if err := httpServer.Shutdown(ctx); err != nil {
+		log.Printf("Server shutdown error: %v", err)
+	}
+	log.Println("Server stopped")
 }
