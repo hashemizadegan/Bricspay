@@ -15,8 +15,7 @@ import (
 //go:embed static web
 var staticFS embed.FS
 
-// StaticHandler serves the landing pages, registration page,
-// login page and static assets.
+// StaticHandler serves the embedded application files.
 func StaticHandler() http.Handler {
 	staticRoot, err := fs.Sub(staticFS, "static")
 	if err != nil {
@@ -31,12 +30,12 @@ func StaticHandler() http.Handler {
 		})
 	}
 
-	staticHandler := http.FileServer(http.FS(staticRoot))
+	staticServer := http.FileServer(http.FS(staticRoot))
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requestPath := path.Clean("/" + r.URL.Path)
 
-		if len(requestPath) > 1 {
+		if requestPath != "/" {
 			requestPath = strings.TrimRight(requestPath, "/")
 		}
 
@@ -66,17 +65,16 @@ func StaticHandler() http.Handler {
 			return
 
 		case "/app/login", "/login":
-			// The project has no separate login.html, so use its
-			// existing application page.
 			serveEmbeddedHTML(w, r, "static/index.html")
 			return
 
 		default:
-			// Support asset URLs such as:
+			// Serve paths such as:
 			// /static/css/styles.css
 			// /static/js/auth.js
 			if strings.HasPrefix(requestPath, "/static/") {
 				assetPath := strings.TrimPrefix(requestPath, "/static/")
+
 				if assetPath == "" {
 					http.NotFound(w, r)
 					return
@@ -84,19 +82,27 @@ func StaticHandler() http.Handler {
 
 				rewrittenRequest := r.Clone(r.Context())
 				rewrittenRequest.URL.Path = "/" + assetPath
-				staticHandler.ServeHTTP(w, rewrittenRequest)
+
+				staticServer.ServeHTTP(w, rewrittenRequest)
 				return
 			}
 
-			// Also serve assets referenced without the /static prefix,
-			// such as /css/styles.css or /js/auth.js.
-			staticHandler.ServeHTTP(w, r)
+			// Serve ordinary assets such as:
+			// /css/styles.css
+			// /js/auth.js
+			// /vtb-workflow.jpeg
+			staticServer.ServeHTTP(w, r)
 			return
 		}
 	})
 }
 
-func serveEmbeddedHTML(w http.ResponseWriter, r *http.Request, fileName string) {
+// serveEmbeddedHTML serves an HTML file from the embedded filesystem.
+func serveEmbeddedHTML(
+	w http.ResponseWriter,
+	r *http.Request,
+	fileName string,
+) {
 	content, err := fs.ReadFile(staticFS, fileName)
 	if err != nil {
 		log.Printf("embedded file %q was not found: %v", fileName, err)
@@ -106,18 +112,21 @@ func serveEmbeddedHTML(w http.ResponseWriter, r *http.Request, fileName string) 
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
+
 	_, _ = w.Write(content)
 }
 
-// SecurityHeaders adds security-related HTTP headers.
+// SecurityHeaders adds security-related response headers.
 func SecurityHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("X-Frame-Options", "DENY")
 		w.Header().Set("X-XSS-Protection", "1; mode=block")
-		w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
+		w.Header().Set(
+			"Referrer-Policy",
+			"strict-origin-when-cross-origin",
+		)
 
-		// Allows inline CSS/JS used by the current pages.
 		w.Header().Set(
 			"Content-Security-Policy",
 			"default-src 'self'; "+
@@ -136,7 +145,7 @@ func SecurityHeaders(next http.Handler) http.Handler {
 	})
 }
 
-// Recovery prevents a panic in one request from terminating the server.
+// Recovery prevents a panic from terminating the server.
 func Recovery(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
@@ -160,7 +169,7 @@ func Recovery(next http.Handler) http.Handler {
 	})
 }
 
-// RateLimit implements a lightweight in-memory per-IP rate limiter.
+// RateLimit applies a lightweight in-memory per-IP rate limit.
 func RateLimit(next http.Handler) http.Handler {
 	var (
 		mu      sync.Mutex
@@ -169,7 +178,7 @@ func RateLimit(next http.Handler) http.Handler {
 
 	const (
 		windowDuration = time.Minute
-		maxRequests    = 120
+		maxRequests    = 30
 	)
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -179,13 +188,14 @@ func RateLimit(next http.Handler) http.Handler {
 		mu.Lock()
 
 		client, exists := clients[clientIP]
+
 		if !exists || now.Sub(client.windowStart) >= windowDuration {
 			clients[clientIP] = &rateLimitClient{
 				windowStart: now,
 				requests:    1,
 			}
-			mu.Unlock()
 
+			mu.Unlock()
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -214,9 +224,13 @@ type rateLimitClient struct {
 	requests    int
 }
 
+// requestIP returns the best available client IP.
 func requestIP(r *http.Request) string {
 	if forwardedFor := r.Header.Get("X-Forwarded-For"); forwardedFor != "" {
-		firstIP := strings.TrimSpace(strings.Split(forwardedFor, ",")[0])
+		firstIP := strings.TrimSpace(
+			strings.Split(forwardedFor, ",")[0],
+		)
+
 		if firstIP != "" {
 			return firstIP
 		}
@@ -236,4 +250,13 @@ func requestIP(r *http.Request) string {
 	}
 
 	return "unknown"
+}
+
+// writeJSONError is kept for the existing API handlers.
+func writeJSONError(
+	w http.ResponseWriter,
+	status int,
+	message string,
+) {
+	http.Error(w, message, status)
 }
