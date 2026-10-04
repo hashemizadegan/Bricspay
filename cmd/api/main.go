@@ -50,43 +50,64 @@ func main() {
 
 	mux.Handle("/", api.StaticHandler())
 
-	mux.HandleFunc("/api/v1/health", server.HealthCheck)
-	mux.HandleFunc("/api/v1/auth/register", server.HandleRegister)
-	mux.HandleFunc("/auth/login", server.HandleLogin)
+// سلامت سرویس
+mux.HandleFunc("/api/v1/health", server.HealthCheck)
+mux.HandleFunc("/api/v1/ready", server.ReadyCheck)
 
-	// نام صحیح handler در wallet_handlers.go این است:
-	mux.HandleFunc(
-		"/api/v1/auth/wallet/challenge",
-		server.HandleWalletChallenge,
-	)
-	mux.HandleFunc(
-		"/api/v1/auth/wallet/verify",
-		server.HandleWalletVerify,
-	)
+// احراز هویت کیف‌پولی؛ در v12 جایگزین register/login قدیمی
+mux.HandleFunc(
+	"/api/v1/auth/wallet/challenge",
+	server.HandleWalletChallenge,
+)
+mux.HandleFunc(
+	"/api/v1/auth/wallet/verify",
+	server.HandleWalletVerify,
+)
 
-	mux.HandleFunc("/api/v1/kyc/upload", server.HandleKYCUpload)
-	mux.HandleFunc("/api/v1/admin/kyc/profiles", server.HandleAdminProfiles)
-	mux.HandleFunc("/api/v1/admin/kyc/decision", server.HandleAdminDecision)
-	mux.HandleFunc("/api/v1/admin/kyc/audit", server.HandleAdminAudit)
-	mux.HandleFunc("/api/v1/accounts", server.HandleAccounts)
-	mux.HandleFunc("/api/v1/transactions", server.HandleTransactions)
+// عملیات نیازمند احراز هویت
+mux.Handle(
+	"/api/v1/kyc/submit",
+	auth.AuthMiddleware(http.HandlerFunc(server.HandleKYCSubmit)),
+)
+mux.Handle(
+	"/api/v1/kyc/status",
+	auth.AuthMiddleware(http.HandlerFunc(server.HandleKYCStatus)),
+)
 
-	mux.Handle(
-		"/api/v1/kyc/status",
-		api.AuthWrap(server.HandleKYCStatus),
-	)
-	mux.Handle(
-		"/api/v1/kyc/resubmit",
-		api.AuthWrap(server.HandleKYCResubmit),
-	)
-	mux.Handle(
-		"/api/v1/cards",
-		api.AuthWrap(server.HandleCards),
-	)
-	mux.Handle(
-		"/api/v1/cards/",
-		api.AuthWrap(server.HandleCardItem),
-	)
+// در v12 ارسال مجدد با همان handler ثبت KYC انجام می‌شود.
+// اگر فرانت‌اند از این مسیر استفاده می‌کند، این route را نگه دارید.
+mux.Handle(
+	"/api/v1/kyc/resubmit",
+	auth.AuthMiddleware(http.HandlerFunc(server.HandleKYCSubmit)),
+)
+
+// مدیریت KYC
+mux.Handle(
+	"/api/v1/admin/kyc/pending",
+	auth.AuthMiddleware(http.HandlerFunc(server.HandleAdminPendingKYC)),
+)
+mux.Handle(
+	"/api/v1/admin/kyc/review",
+	auth.AuthMiddleware(http.HandlerFunc(server.HandleAdminReviewKYC)),
+)
+
+// کارت‌ها، حساب‌ها و تراکنش‌ها
+mux.Handle(
+	"/api/v1/cards",
+	auth.AuthMiddleware(http.HandlerFunc(server.HandleCards)),
+)
+mux.Handle(
+	"/api/v1/cards/",
+	auth.AuthMiddleware(http.HandlerFunc(server.HandleCardItem)),
+)
+mux.Handle(
+	"/api/v1/accounts",
+	auth.AuthMiddleware(http.HandlerFunc(server.HandleAccounts)),
+)
+mux.Handle(
+	"/api/v1/transactions",
+	auth.AuthMiddleware(http.HandlerFunc(server.HandleTransactions)),
+)
 
 	log.Printf("سرور BRICS Pay روی پورت %s در حال اجرا است", port)
 	if err := http.ListenAndServe(":"+port, mux); err != nil {
