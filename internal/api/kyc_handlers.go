@@ -6,15 +6,13 @@ import (
 	"log"
 	"net/http"
 	"time"
-
-	"bricspay/internal/auth"
 )
 
 type KYCSubmitRequest struct {
-	FullName      string `json:"full_name"`
-	DocumentType  string `json:"document_type"`
+	FullName       string `json:"full_name"`
+	DocumentType   string `json:"document_type"`
 	DocumentNumber string `json:"document_number"`
-	Country       string `json:"country"`
+	Country        string `json:"country"`
 }
 
 type KYCReviewRequest struct {
@@ -23,13 +21,15 @@ type KYCReviewRequest struct {
 	Notes  string `json:"notes"`
 }
 
+// HandleKYCSubmit submits a new KYC verification or resubmits
+// an existing verification for the authenticated user.
 func (s *Server) HandleKYCSubmit(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeErr(w, http.StatusMethodNotAllowed, "method_not_allowed")
 		return
 	}
 
-	principal, ok := auth.FromContext(r.Context())
+	userID, ok := principalUserID64(r)
 	if !ok {
 		writeErr(w, http.StatusUnauthorized, "unauthorized")
 		return
@@ -41,20 +41,47 @@ func (s *Server) HandleKYCSubmit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.FullName == "" || req.DocumentType == "" || req.DocumentNumber == "" || req.Country == "" {
+	if req.FullName == "" ||
+		req.DocumentType == "" ||
+		req.DocumentNumber == "" ||
+		req.Country == "" {
 		writeErr(w, http.StatusBadRequest, "missing_required_fields")
 		return
 	}
 
-	query := `
-		INSERT INTO kyc_documents (user_id, full_name, document_type, document_number, country, status, submitted_at, updated_at)
+	const query = `
+		INSERT INTO kyc_verifications (
+			user_id,
+			full_name,
+			document_type,
+			document_number,
+			country,
+			status,
+			submitted_at,
+			updated_at
+		)
 		VALUES ($1, $2, $3, $4, $5, 'pending', NOW(), NOW())
 		ON CONFLICT (user_id)
-		DO UPDATE SET full_name = $2, document_type = $3, document_number = $4, country = $5, status = 'pending', updated_at = NOW();
+		DO UPDATE SET
+			full_name = EXCLUDED.full_name,
+			document_type = EXCLUDED.document_type,
+			document_number = EXCLUDED.document_number,
+			country = EXCLUDED.country,
+			status = 'pending',
+			notes = NULL,
+			submitted_at = NOW(),
+			updated_at = NOW()
 	`
-	_, err := s.DB.Exec(query, principal.UserID, req.FullName, req.DocumentType, req.DocumentNumber, req.Country)
-	if err != nil {
-		log.Printf("Error submitting KYC: %v", err)
+
+	if _, err := s.DB.Exec(
+		query,
+		userID,
+		req.FullName,
+		req.DocumentType,
+		req.DocumentNumber,
+		req.Country,
+	); err != nil {
+		log.Printf("error submitting KYC verification: %v", err)
 		writeErr(w, http.StatusInternalServerError, "database_error")
 		return
 	}
@@ -65,77 +92,178 @@ func (s *Server) HandleKYCSubmit(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// HandleKYCStatus returns the KYC status of the authenticated user.
 func (s *Server) HandleKYCStatus(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		writeErr(w, http.StatusMethodNotAllowed, "method_not_allowed")
 		return
 	}
 
-	principal, ok := auth.FromContext(r.Context())
+	userID, ok := principalUserID64(r)
 	if !ok {
 		writeErr(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 
-	var status, fullName, country string
-	var submittedAt time.Time
-	query := `SELECT status, full_name, country, submitted_at FROM kyc_documents WHERE user_id = $1`
-	err := s.DB.QueryRow(query, principal.UserID).Scan(&status, &fullName, &country, &submittedAt)
+	var (
+		id             int64
+		fullName       string
+		documentType   string
+		documentNumber string
+		country        string
+		status         string
+		notes          sql.NullString
+		submittedAt    time.Time
+		updatedAt      time.Time
+	)
+
+	const query = `
+		SELECT
+			id,
+			full_name,
+			document_type,
+			document_number,
+			country,
+			status,
+			notes,
+			submitted_at,
+			updated_at
+		FROM kyc_verifications
+		WHERE user_id = $1
+	`
+
+	err := s.DB.QueryRow(query, userID).Scan(
+		&id,
+		&fullName,
+		&documentType,
+		&documentNumber,
+		&country,
+		&status,
+		&notes,
+		&submittedAt,
+		&updatedAt,
+	)
+
 	if err == sql.ErrNoRows {
 		writeJSON(w, http.StatusOK, map[string]interface{}{
 			"status": "not_submitted",
 		})
 		return
-	} else if err != nil {
-		log.Printf("Error querying KYC: %v", err)
+	}
+
+	if err != nil {
+		log.Printf("error querying KYC verification status: %v", err)
 		writeErr(w, http.StatusInternalServerError, "database_error")
 		return
 	}
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"status":       status,
-		"full_name":    fullName,
-		"country":      country,
-		"submitted_at": submittedAt,
+		"id":              id,
+		"status":          status,
+		"full_name":       fullName,
+		"document_type":   documentType,
+		"document_number": documentNumber,
+		"country":         country,
+		"notes":           notes.String,
+		"submitted_at":    submittedAt,
+		"updated_at":      updatedAt,
 	})
 }
 
+// HandleAdminPendingKYC returns all pending KYC verifications.
+//
+// Authorization for this endpoint should be enforced by the admin
+// middleware or by the route registration.
 func (s *Server) HandleAdminPendingKYC(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		writeErr(w, http.StatusMethodNotAllowed, "method_not_allowed")
 		return
 	}
 
-	rows, err := s.DB.Query(`SELECT id, user_id, full_name, document_type, document_number, country, status, submitted_at FROM kyc_documents WHERE status = 'pending' ORDER BY submitted_at DESC`)
+	const query = `
+		SELECT
+			id,
+			user_id,
+			full_name,
+			document_type,
+			document_number,
+			country,
+			status,
+			notes,
+			submitted_at,
+			updated_at
+		FROM kyc_verifications
+		WHERE status = 'pending'
+		ORDER BY submitted_at DESC
+	`
+
+	rows, err := s.DB.Query(query)
 	if err != nil {
-		log.Printf("Error querying pending KYC: %v", err)
+		log.Printf("error querying pending KYC verifications: %v", err)
 		writeErr(w, http.StatusInternalServerError, "database_error")
 		return
 	}
 	defer rows.Close()
 
-	var list []map[string]interface{}
+	list := make([]map[string]interface{}, 0)
+
 	for rows.Next() {
-		var id, userID int64
-		var fullName, docType, docNum, country, status string
-		var submittedAt time.Time
-		if err := rows.Scan(&id, &userID, &fullName, &docType, &docNum, &country, &status, &submittedAt); err == nil {
-			list = append(list, map[string]interface{}{
-				"id":              id,
-				"user_id":         userID,
-				"full_name":       fullName,
-				"document_type":   docType,
-				"document_number": docNum,
-				"country":         country,
-				"status":          status,
-				"submitted_at":    submittedAt,
-			})
+		var (
+			id             int64
+			userID         int64
+			fullName       string
+			documentType   string
+			documentNumber string
+			country        string
+			status         string
+			notes          sql.NullString
+			submittedAt    time.Time
+			updatedAt      time.Time
+		)
+
+		if err := rows.Scan(
+			&id,
+			&userID,
+			&fullName,
+			&documentType,
+			&documentNumber,
+			&country,
+			&status,
+			&notes,
+			&submittedAt,
+			&updatedAt,
+		); err != nil {
+			log.Printf("error scanning pending KYC verification: %v", err)
+			writeErr(w, http.StatusInternalServerError, "database_error")
+			return
 		}
+
+		list = append(list, map[string]interface{}{
+			"id":              id,
+			"user_id":         userID,
+			"full_name":       fullName,
+			"document_type":   documentType,
+			"document_number": documentNumber,
+			"country":         country,
+			"status":          status,
+			"notes":           notes.String,
+			"submitted_at":    submittedAt,
+			"updated_at":      updatedAt,
+		})
 	}
 
-	writeJSON(w, http.StatusOK, map[string]interface{}{"data": list})
+	if err := rows.Err(); err != nil {
+		log.Printf("error iterating pending KYC verifications: %v", err)
+		writeErr(w, http.StatusInternalServerError, "database_error")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"data": list,
+	})
 }
 
+// HandleAdminReviewKYC approves or rejects a KYC verification.
 func (s *Server) HandleAdminReviewKYC(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeErr(w, http.StatusMethodNotAllowed, "method_not_allowed")
@@ -148,17 +276,31 @@ func (s *Server) HandleAdminReviewKYC(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if req.ID <= 0 {
+		writeErr(w, http.StatusBadRequest, "invalid_id")
+		return
+	}
+
 	if req.Status != "approved" && req.Status != "rejected" {
 		writeErr(w, http.StatusBadRequest, "invalid_status")
 		return
 	}
 
-	_, err := s.DB.Exec(`UPDATE kyc_documents SET status = $1, notes = $2, updated_at = NOW() WHERE id = $3`, req.Status, req.Notes, req.ID)
+	const query = `
+		UPDATE kyc_verifications
+		SET
+			status = $1,
+			notes = $2,
+			updated_at = NOW()
+		WHERE id = $3
+	`
+
+	result, err := s.DB.Exec(query, req.Status, req.Notes, req.ID)
 	if err != nil {
-		log.Printf("Error updating KYC review: %v", err)
+		log.Printf("error updating KYC verification review: %v", err)
 		writeErr(w, http.StatusInternalServerError, "database_error")
 		return
 	}
 
-	writeJSON(w, http.StatusOK, map[string]string{"message": "kyc_status_updated"})
-}
+	affectedRows, err := result.RowsAffected()
+	if err != 
