@@ -64,6 +64,10 @@ func StaticHandler() http.Handler {
 			serveEmbeddedHTML(w, r, "static/register.html")
 			return
 
+		case "/settings/id_verification":
+			serveEmbeddedHTML(w, r, "static/id_verification.html")
+			return
+
 		case "/app/login", "/login":
 			serveEmbeddedHTML(w, r, "static/index.html")
 			return
