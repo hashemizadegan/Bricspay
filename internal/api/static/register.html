@@ -658,7 +658,7 @@
 
             showToast('Registration successful! Redirecting to login...', 'success');
             setTimeout(() => {
-                window.location.href = '/login';
+window.location.href = '/settings/id_verification';
             }, 1500);
         } catch (err) {
             showToast(err.message || 'An error occurred during registration. Please try again.', 'error');
