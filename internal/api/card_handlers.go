@@ -35,52 +35,70 @@ SELECT u.email, u.phone, COALESCE(p.status::text,'PENDING')
 	return email, phone, ok, nil
 }
 
-func (s *Server) HandleCards(w http.ResponseWriter, r *http.Request) {
+// principalUserID64 شناسهٔ کاربر را از context می‌خواند و به int64 تبدیل می‌کند.
+// چون Principal.UserID از نوع string است، تبدیل در مرز handler انجام می‌شود.
+func principalUserID64(w http.ResponseWriter, r *http.Request) (int64, bool) {
 	p, ok := auth.FromContext(r.Context())
 	if !ok {
 		http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
+		return 0, false
+	}
+	uid, err := strconv.ParseInt(strings.TrimSpace(p.UserID), 10, 64)
+	if err != nil || uid <= 0 {
+		http.Error(w, `{"error":"invalid_user_id"}`, http.StatusUnauthorized)
+		return 0, false
+	}
+	return uid, true
+}
+
+func (s *Server) HandleCards(w http.ResponseWriter, r *http.Request) {
+	userID, ok := principalUserID64(w, r)
+	if !ok {
 		return
 	}
 	switch r.Method {
 	case http.MethodGet:
-		s.listCards(w, p.UserID)
+		s.listCards(w, userID)
 	case http.MethodPost:
-		s.addCard(w, r, p.UserID)
+		s.addCard(w, r, userID)
 	default:
 		http.Error(w, `{"error":"method_not_allowed"}`, http.StatusMethodNotAllowed)
 	}
 }
 
 func (s *Server) HandleCardItem(w http.ResponseWriter, r *http.Request) {
-	p, ok := auth.FromContext(r.Context())
+	userID, ok := principalUserID64(w, r)
 	if !ok {
-		http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
 		return
 	}
-	id, err := strconv.ParseInt(strings.TrimPrefix(r.URL.Path, "/api/v1/cards/"), 10, 64)
-	if err != nil || id <= 0 {
-		// also accept /api/v1/cards/{id}/preferred
-		path := strings.TrimPrefix(r.URL.Path, "/api/v1/cards/")
-		parts := strings.Split(strings.Trim(path, "/"), "/")
-		if len(parts) == 0 {
-			http.Error(w, `{"error":"bad_id"}`, http.StatusBadRequest)
-			return
-		}
-		id, err = strconv.ParseInt(parts[0], 10, 64)
-		if err != nil {
-			http.Error(w, `{"error":"bad_id"}`, http.StatusBadRequest)
-			return
-		}
-		if len(parts) == 2 && parts[1] == "preferred" && r.Method == http.MethodPost {
-			s.setPreferred(w, p.UserID, id)
-			return
-		}
+
+	path := strings.Trim(strings.TrimPrefix(r.URL.Path, "/api/v1/cards/"), "/")
+	parts := strings.Split(path, "/")
+	if len(parts) == 0 || parts[0] == "" {
+		http.Error(w, `{"error":"bad_id"}`, http.StatusBadRequest)
+		return
 	}
+
+	id, err := strconv.ParseInt(parts[0], 10, 64)
+	if err != nil || id <= 0 {
+		http.Error(w, `{"error":"bad_id"}`, http.StatusBadRequest)
+		return
+	}
+
+	if len(parts) == 2 && parts[1] == "preferred" {
+		if r.Method != http.MethodPost {
+			http.Error(w, `{"error":"method_not_allowed"}`, http.StatusMethodNotAllowed)
+			return
+		}
+		s.setPreferred(w, userID, id)
+		return
+	}
+
 	switch r.Method {
 	case http.MethodPatch:
-		s.renameCard(w, r, p.UserID, id)
+		s.renameCard(w, r, userID, id)
 	case http.MethodDelete:
-		s.removeCard(w, p.UserID, id)
+		s.removeCard(w, userID, id)
 	default:
 		http.Error(w, `{"error":"method_not_allowed"}`, http.StatusMethodNotAllowed)
 	}
