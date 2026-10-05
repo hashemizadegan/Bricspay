@@ -66,6 +66,9 @@ func main() {
 		api.NewRegistrationHandler(database),
 	)
 
+	// Login API
+	mux.HandleFunc("/api/v1/auth/login", api.HandleLogin(database))
+
 	log.Printf("BRICS Pay server listening on :%s", port)
 
 	if err := http.ListenAndServe(":"+port, mux); err != nil {
