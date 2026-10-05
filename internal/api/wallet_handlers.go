@@ -64,8 +64,6 @@ func (s *Server) HandleWalletChallenge(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Use whole seconds so the timestamps stored by Postgres can be used
-	// to reconstruct the exact message during verification.
 	issuedAt := time.Now().UTC().Truncate(time.Second)
 	expiresAt := issuedAt.Add(5 * time.Minute)
 
@@ -80,8 +78,6 @@ func (s *Server) HandleWalletChallenge(w http.ResponseWriter, r *http.Request) {
 		expiresAtString,
 	)
 
-	// v11's wallet_challenges table uses "address"; it does not have
-	// wallet_address, message, or domain columns.
 	_, err = s.DB.ExecContext(
 		r.Context(),
 		`
@@ -137,7 +133,6 @@ func (s *Server) HandleWalletVerify(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// v11 stores created_at and expires_at, not the message itself.
 	var issuedAt time.Time
 	var expiresAt time.Time
 	var consumed bool
@@ -176,8 +171,6 @@ func (s *Server) HandleWalletVerify(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Rebuild the exact message using the stored timestamps. The challenge
-	// and verification requests must use the same host/domain.
 	expectedMessage := auth.BuildEIP191Message(
 		walletRequestDomain(r),
 		walletAddress,
@@ -197,8 +190,6 @@ func (s *Server) HandleWalletVerify(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Atomically mark the challenge as used. This prevents the same
-	// signature from being accepted more than once.
 	result, err := s.DB.ExecContext(
 		r.Context(),
 		`
@@ -238,7 +229,10 @@ func (s *Server) HandleWalletVerify(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, err := auth.IssueToken(userID, userRole)
+	// userID از نوع int64 است و IssueToken در نسخهٔ فعلی string می‌گیرد.
+	userIDStr := strconv.FormatInt(userID, 10)
+
+	token, err := auth.IssueToken(userIDStr, userRole)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, "token_issue_failed")
 		return
@@ -247,7 +241,7 @@ func (s *Server) HandleWalletVerify(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, VerifyResponse{
 		Token:         token,
 		WalletAddress: walletAddress,
-		UserID:        strconv.FormatInt(userID, 10),
+		UserID:        userIDStr,
 		Role:          userRole,
 		Status:        "ok",
 	})
@@ -266,7 +260,6 @@ func walletFindOrCreateUser(
 	db *sql.DB,
 	walletAddress string,
 ) (int64, string, error) {
-	// First check whether this wallet is already linked to a user.
 	userID, userRole, err := walletLookupUser(ctx, db, walletAddress)
 	if err == nil {
 		return userID, userRole, nil
@@ -281,8 +274,6 @@ func walletFindOrCreateUser(
 	}
 	defer tx.Rollback()
 
-	// Check again inside the transaction in case another request linked
-	// the wallet after the first lookup.
 	err = tx.QueryRowContext(
 		ctx,
 		`
@@ -308,8 +299,6 @@ func walletFindOrCreateUser(
 		return 0, "", err
 	}
 
-	// The v11 users table has a role column; wallet addresses are stored
-	// separately in wallet_accounts.
 	err = tx.QueryRowContext(
 		ctx,
 		`
@@ -334,8 +323,6 @@ func walletFindOrCreateUser(
 	if err != nil {
 		_ = tx.Rollback()
 
-		// If another request won a race to register this unique address,
-		// return that account instead of failing.
 		existingID, existingRole, lookupErr := walletLookupUser(
 			ctx,
 			db,
