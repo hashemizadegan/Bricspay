@@ -8,7 +8,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"unicode/utf8"
 
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
@@ -19,18 +18,14 @@ type contextKey string
 const userContextKey contextKey = "bricspay_user"
 
 var (
-	ErrEmptySecret    = errors.New("JWT_SECRET is empty")
-	ErrInvalidToken   = errors.New("invalid token")
-	ErrPasswordLength = errors.New("password must be 8-64 characters")
+	ErrEmptySecret  = errors.New("JWT_SECRET is not set")
+	ErrInvalidToken = errors.New("invalid token")
+	ErrExpiredToken = errors.New("token expired")
 )
 
-type Principal struct {
-	UserID int64
-	Role   string
-}
-
+// Claims uses a string UserID so UUID primary keys are supported.
 type Claims struct {
-	UserID int64  `json:"user_id"`
+	UserID string `json:"user_id"`
 	Role   string `json:"role"`
 	jwt.RegisteredClaims
 }
@@ -66,10 +61,6 @@ func currentSecret() ([]byte, error) {
 }
 
 func HashPassword(password string) (string, error) {
-	n := utf8.RuneCountInString(password)
-	if n < 8 || n > 64 {
-		return "", ErrPasswordLength
-	}
 	b, err := bcrypt.GenerateFromPassword([]byte(password), 12)
 	return string(b), err
 }
@@ -78,7 +69,7 @@ func CheckPassword(hash, password string) error {
 	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
 }
 
-func IssueToken(userID int64, role string) (string, error) {
+func IssueToken(userID string, role string) (string, error) {
 	sec, err := currentSecret()
 	if err != nil {
 		return "", err
@@ -99,18 +90,24 @@ func IssueToken(userID int64, role string) (string, error) {
 	return t.SignedString(sec)
 }
 
-func ValidateToken(token string) (*Claims, error) {
+func ValidateToken(tokenStr string) (*Claims, error) {
 	sec, err := currentSecret()
 	if err != nil {
 		return nil, err
 	}
-	parsed, err := jwt.ParseWithClaims(token, &Claims{}, func(t *jwt.Token) (interface{}, error) {
+	parsed, err := jwt.ParseWithClaims(tokenStr, &Claims{}, func(t *jwt.Token) (interface{}, error) {
 		if t.Method != jwt.SigningMethodHS256 {
 			return nil, ErrInvalidToken
 		}
 		return sec, nil
 	})
-	if err != nil || !parsed.Valid {
+	if err != nil {
+		if errors.Is(err, jwt.ErrTokenExpired) {
+			return nil, ErrExpiredToken
+		}
+		return nil, ErrInvalidToken
+	}
+	if !parsed.Valid {
 		return nil, ErrInvalidToken
 	}
 	c, ok := parsed.Claims.(*Claims)
@@ -118,6 +115,11 @@ func ValidateToken(token string) (*Claims, error) {
 		return nil, ErrInvalidToken
 	}
 	return c, nil
+}
+
+type Principal struct {
+	UserID string
+	Role   string
 }
 
 func Middleware(next http.Handler) http.Handler {
@@ -139,7 +141,7 @@ func Middleware(next http.Handler) http.Handler {
 
 func AdminOnly(next http.Handler) http.Handler {
 	return Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		p, ok := FromContext(r.Context())
+		p, ok := UserFromContext(r.Context())
 		if !ok || p.Role != "admin" {
 			http.Error(w, `{"error":"forbidden"}`, http.StatusForbidden)
 			return
@@ -148,7 +150,7 @@ func AdminOnly(next http.Handler) http.Handler {
 	}))
 }
 
-func FromContext(ctx context.Context) (Principal, bool) {
+func UserFromContext(ctx context.Context) (Principal, bool) {
 	p, ok := ctx.Value(userContextKey).(Principal)
 	return p, ok
 }
