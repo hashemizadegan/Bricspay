@@ -656,17 +656,24 @@
                 throw new Error(data.error || data.message || `Registration failed with status ${res.status}`);
             }
 
-            showSuccess('Registration successful! Redirecting to login...');
+            showToast('Registration successful! Redirecting to login...', 'success');
             setTimeout(() => {
                 window.location.href = '/login';
             }, 1500);
         } catch (err) {
-            showError(err.message || 'An error occurred during registration. Please try again.');
+            showToast(err.message || 'An error occurred during registration. Please try again.', 'error');
         } finally {
             submitBtn.disabled = false;
             submitBtn.textContent = 'Sign Up';
         }
+    }
 
+    // expose handlers globally
+    window.setLanguage = setLanguage;
+    window.togglePass = togglePass;
+    window.toggleReferral = toggleReferral;
+    window.handleRegister = handleRegister;
+    window.showToast = showToast;
     </script>
 </body>
 </html>
