@@ -3,8 +3,10 @@ package auth
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -19,102 +21,38 @@ const userContextKey contextKey = "bricspay_user"
 
 var (
 	ErrEmptySecret  = errors.New("JWT_SECRET is not set")
-	ErrInvalidToken = errors.New("invalid token")
-	ErrExpiredToken = errors.New("token expired")
-)
+	ErrInvalidToken = errors.New("invalid or expired token")
+	ErrExpiredToken = errors.New("token has expired")
 
-// Claims uses a string UserID so UUID primary keys are supported.
-type Claims struct {
-	UserID string `json:"user_id"`
-	Role   string `json:"role"`
-	jwt.RegisteredClaims
-}
-
-var (
-	jwtMu     sync.RWMutex
-	jwtSecret []byte
+	jwtSecretMu sync.RWMutex
+	jwtSecret   []byte
 )
 
 func init() {
-	if s := strings.TrimSpace(os.Getenv("JWT_SECRET")); s != "" {
+	if s := os.Getenv("JWT_SECRET"); s != "" {
 		jwtSecret = []byte(s)
 	}
 }
 
 func SetJWTSecret(secret string) {
-	s := strings.TrimSpace(secret)
-	if s == "" {
-		panic("auth.SetJWTSecret: empty secret")
-	}
-	jwtMu.Lock()
-	defer jwtMu.Unlock()
-	jwtSecret = []byte(s)
+	jwtSecretMu.Lock()
+	defer jwtSecretMu.Unlock()
+	jwtSecret = []byte(secret)
 }
 
 func currentSecret() ([]byte, error) {
-	jwtMu.RLock()
-	defer jwtMu.RUnlock()
+	jwtSecretMu.RLock()
+	defer jwtSecretMu.RUnlock()
 	if len(jwtSecret) == 0 {
 		return nil, ErrEmptySecret
 	}
 	return jwtSecret, nil
 }
 
-func HashPassword(password string) (string, error) {
-	b, err := bcrypt.GenerateFromPassword([]byte(password), 12)
-	return string(b), err
-}
-
-func CheckPassword(hash, password string) error {
-	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
-}
-
-func IssueToken(userID string, role string) (string, error) {
-	sec, err := currentSecret()
-	if err != nil {
-		return "", err
-	}
-	if role == "" {
-		role = "user"
-	}
-	now := time.Now()
-	t := jwt.NewWithClaims(jwt.SigningMethodHS256, Claims{
-		UserID: userID,
-		Role:   role,
-		RegisteredClaims: jwt.RegisteredClaims{
-			IssuedAt:  jwt.NewNumericDate(now),
-			ExpiresAt: jwt.NewNumericDate(now.Add(24 * time.Hour)),
-			Issuer:    "bricspay",
-		},
-	})
-	return t.SignedString(sec)
-}
-
-func ValidateToken(tokenStr string) (*Claims, error) {
-	sec, err := currentSecret()
-	if err != nil {
-		return nil, err
-	}
-	parsed, err := jwt.ParseWithClaims(tokenStr, &Claims{}, func(t *jwt.Token) (interface{}, error) {
-		if t.Method != jwt.SigningMethodHS256 {
-			return nil, ErrInvalidToken
-		}
-		return sec, nil
-	})
-	if err != nil {
-		if errors.Is(err, jwt.ErrTokenExpired) {
-			return nil, ErrExpiredToken
-		}
-		return nil, ErrInvalidToken
-	}
-	if !parsed.Valid {
-		return nil, ErrInvalidToken
-	}
-	c, ok := parsed.Claims.(*Claims)
-	if !ok {
-		return nil, ErrInvalidToken
-	}
-	return c, nil
+type Claims struct {
+	UserID string `json:"user_id"`
+	Role   string `json:"role"`
+	jwt.RegisteredClaims
 }
 
 type Principal struct {
@@ -122,27 +60,108 @@ type Principal struct {
 	Role   string
 }
 
+func HashPassword(password string) (string, error) {
+	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 12)
+	return string(bytes), err
+}
+
+func CheckPassword(hash, password string) error {
+	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+}
+
+// IssueToken supports both string (UUID) and int64 IDs
+func IssueToken(userID any, role string) (string, error) {
+	sec, err := currentSecret()
+	if err != nil {
+		return "", err
+	}
+
+	var uidStr string
+	switch v := userID.(type) {
+	case string:
+		uidStr = v
+	case int64:
+		uidStr = strconv.FormatInt(v, 10)
+	case int:
+		uidStr = strconv.Itoa(v)
+	default:
+		uidStr = fmt.Sprintf("%v", v)
+	}
+
+	if role == "" {
+		role = "user"
+	}
+
+	now := time.Now()
+	claims := Claims{
+		UserID: uidStr,
+		Role:   role,
+		RegisteredClaims: jwt.RegisteredClaims{
+			IssuedAt:  jwt.NewNumericDate(now),
+			ExpiresAt: jwt.NewNumericDate(now.Add(24 * time.Hour)),
+			Issuer:    "bricspay",
+		},
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString(sec)
+}
+
+func ValidateToken(tokenStr string) (*Claims, error) {
+	sec, err := currentSecret()
+	if err != nil {
+		return nil, err
+	}
+
+	token, err := jwt.ParseWithClaims(tokenStr, &Claims{}, func(t *jwt.Token) (interface{}, error) {
+		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, ErrInvalidToken
+		}
+		return sec, nil
+	})
+
+	if err != nil {
+		if errors.Is(err, jwt.ErrTokenExpired) {
+			return nil, ErrExpiredToken
+		}
+		return nil, ErrInvalidToken
+	}
+
+	claims, ok := token.Claims.(*Claims)
+	if !ok || !token.Valid {
+		return nil, ErrInvalidToken
+	}
+
+	return claims, nil
+}
+
 func Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		h := r.Header.Get("Authorization")
-		if !strings.HasPrefix(strings.ToLower(h), "bearer ") {
+		authHeader := r.Header.Get("Authorization")
+		if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
 			http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
 			return
 		}
-		c, err := ValidateToken(strings.TrimSpace(h[7:]))
+
+		tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
+		claims, err := ValidateToken(tokenStr)
 		if err != nil {
 			http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
 			return
 		}
-		ctx := context.WithValue(r.Context(), userContextKey, Principal{UserID: c.UserID, Role: c.Role})
+
+		ctx := context.WithValue(r.Context(), userContextKey, Principal{
+			UserID: claims.UserID,
+			Role:   claims.Role,
+		})
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
 
 func AdminOnly(next http.Handler) http.Handler {
 	return Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		p, ok := UserFromContext(r.Context())
-		if !ok || p.Role != "admin" {
+		principal, ok := UserFromContext(r.Context())
+		if !ok || principal.Role != "admin" {
 			http.Error(w, `{"error":"forbidden"}`, http.StatusForbidden)
 			return
 		}
@@ -153,4 +172,9 @@ func AdminOnly(next http.Handler) http.Handler {
 func UserFromContext(ctx context.Context) (Principal, bool) {
 	p, ok := ctx.Value(userContextKey).(Principal)
 	return p, ok
+}
+
+// FromContext aliases UserFromContext for backward compatibility
+func FromContext(ctx context.Context) (Principal, bool) {
+	return UserFromContext(ctx)
 }
