@@ -50,14 +50,16 @@ func currentSecret() ([]byte, error) {
 }
 
 type Claims struct {
-	UserID string `json:"user_id"`
-	Role   string `json:"role"`
+	UserID   int64  `json:"user_id"`
+	UserUUID string `json:"user_uuid,omitempty"`
+	Role     string `json:"role"`
 	jwt.RegisteredClaims
 }
 
 type Principal struct {
-	UserID string
-	Role   string
+	UserID   int64
+	UserUUID string
+	Role     string
 }
 
 func HashPassword(password string) (string, error) {
@@ -69,23 +71,33 @@ func CheckPassword(hash, password string) error {
 	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
 }
 
-// IssueToken supports both string (UUID) and int64 IDs
+// IssueToken پشتیبانی همزمان از int64 و رشته (UUID)
 func IssueToken(userID any, role string) (string, error) {
 	sec, err := currentSecret()
 	if err != nil {
 		return "", err
 	}
 
-	var uidStr string
+	var idInt int64
+	var uuidStr string
+
 	switch v := userID.(type) {
-	case string:
-		uidStr = v
 	case int64:
-		uidStr = strconv.FormatInt(v, 10)
+		idInt = v
 	case int:
-		uidStr = strconv.Itoa(v)
+		idInt = int64(v)
+	case string:
+		uuidStr = v
+		// در صورتی که رشته عددی بود تبدیل شود، در غیر این صورت 0 قرار می‌گیرد
+		if parsed, err := strconv.ParseInt(v, 10, 64); err == nil {
+			idInt = parsed
+		}
 	default:
-		uidStr = fmt.Sprintf("%v", v)
+		str := fmt.Sprintf("%v", v)
+		if parsed, err := strconv.ParseInt(str, 10, 64); err == nil {
+			idInt = parsed
+		}
+		uuidStr = str
 	}
 
 	if role == "" {
@@ -94,8 +106,9 @@ func IssueToken(userID any, role string) (string, error) {
 
 	now := time.Now()
 	claims := Claims{
-		UserID: uidStr,
-		Role:   role,
+		UserID:   idInt,
+		UserUUID: uuidStr,
+		Role:     role,
 		RegisteredClaims: jwt.RegisteredClaims{
 			IssuedAt:  jwt.NewNumericDate(now),
 			ExpiresAt: jwt.NewNumericDate(now.Add(24 * time.Hour)),
@@ -151,8 +164,9 @@ func Middleware(next http.Handler) http.Handler {
 		}
 
 		ctx := context.WithValue(r.Context(), userContextKey, Principal{
-			UserID: claims.UserID,
-			Role:   claims.Role,
+			UserID:   claims.UserID,
+			UserUUID: claims.UserUUID,
+			Role:     claims.Role,
 		})
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
@@ -160,7 +174,7 @@ func Middleware(next http.Handler) http.Handler {
 
 func AdminOnly(next http.Handler) http.Handler {
 	return Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		principal, ok := UserFromContext(r.Context())
+		principal, ok := FromContext(r.Context())
 		if !ok || principal.Role != "admin" {
 			http.Error(w, `{"error":"forbidden"}`, http.StatusForbidden)
 			return
@@ -169,12 +183,11 @@ func AdminOnly(next http.Handler) http.Handler {
 	}))
 }
 
-func UserFromContext(ctx context.Context) (Principal, bool) {
+func FromContext(ctx context.Context) (Principal, bool) {
 	p, ok := ctx.Value(userContextKey).(Principal)
 	return p, ok
 }
 
-// FromContext aliases UserFromContext for backward compatibility
-func FromContext(ctx context.Context) (Principal, bool) {
-	return UserFromContext(ctx)
+func UserFromContext(ctx context.Context) (Principal, bool) {
+	return FromContext(ctx)
 }
