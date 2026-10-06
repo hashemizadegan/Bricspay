@@ -64,6 +64,14 @@ func main() {
 	mux.Handle(
 		"/api/v1/auth/register",
 		api.NewRegistrationHandler(database),
+	// KYC routes
+	mux.HandleFunc("/api/v1/kyc/submit", server.HandleKYCSubmit)
+	mux.HandleFunc("/api/v1/kyc/status", server.HandleKYCStatus)
+	
+	// Frontend compatibility route.
+	// kyc.js currently calls /api/v1/kyc/upload.
+	mux.HandleFunc("/api/v1/kyc/upload", server.HandleKYCSubmit)
+
 	)
 
 	// Login API
