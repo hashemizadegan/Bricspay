@@ -1,355 +1,157 @@
 <!DOCTYPE html>
 <html lang="en" dir="ltr">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Identity Verification | BRICS PAY</title>
 <style>
-  :root {
-    --bg: #000000;
-    --panel: #121620;
-    --panel-2: #1a1f2b;
-    --border: #232836;
-    --text: #ffffff;
-    --muted: #9ca3af;
-    --accent: #3b82f6;
-    --accent-hover: #2563eb;
-    --radius: 10px;
-    --ico-size: 19px;
-    --ico-stroke: 1.7;
-  }
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  html { scroll-behavior: smooth; }
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-  }
-  a { color: inherit; text-decoration: none; }
-  button { font-family: inherit; }
-
-  /* ---------- Header ---------- */
-  header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    padding: 14px 28px;
-    background: rgba(10, 12, 16, .92);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border-bottom: 1px solid var(--border);
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    flex-wrap: wrap;
-  }
-  .logo { display: flex; align-items: center; gap: 10px; font-weight: 800; letter-spacing: .5px; }
-  .logo-mark { display: flex; }
-  .logo-mark span { width: 12px; height: 12px; border-radius: 50%; display: inline-block; margin-left: -4px; }
-  .logo-mark span:nth-child(1){ background:#ef4444; }
-  .logo-mark span:nth-child(2){ background:#facc15; }
-  .logo-mark span:nth-child(3){ background:#3b82f6; }
-  .logo-mark span:nth-child(4){ background:#22d3ee; }
-  .logo-text { font-size: 18px; }
-  .logo-text b { color:#fff; } .logo-text i { color:#9ca3af; font-style: normal; font-weight:600; }
-
-  nav.main-nav { display: flex; gap: 22px; }
-  .nav-item { position: relative; }
-  .nav-link {
-    background: none; border: none; color: var(--muted); font-size: 14px;
-    cursor: pointer; padding: 6px 2px; display: flex; align-items: center; gap: 5px;
-    transition: color .2s;
-  }
-  .nav-link:hover, .nav-link:focus { color: #fff; }
-  .caret { display: inline-flex; opacity: .7; transition: transform .2s; }
-  .nav-item:hover .caret { transform: rotate(180deg); }
-  .dropdown {
-    display: none; position: absolute; top: 110%; left: 0; min-width: 180px;
-    background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
-    padding: 6px; box-shadow: 0 10px 25px rgba(0,0,0,.5);
-  }
-  .dropdown a { display: block; padding: 8px 10px; font-size: 13px; color: var(--muted); border-radius: 6px; }
-  .dropdown a:hover { background: var(--panel-2); color: #fff; }
-  .nav-item:hover .dropdown, .nav-item:focus-within .dropdown { display: block; }
-
-  .header-right { display: flex; align-items: center; gap: 14px; }
-  .icon-btn {
-    background: none; border: 1px solid transparent; color: var(--muted); cursor: pointer;
-    padding: 7px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center;
-    transition: color .2s, background .2s, border-color .2s;
-  }
-  .icon-btn:hover { color: #fff; background: var(--panel-2); border-color: var(--border); }
-  .icon-btn svg { width: 19px; height: 19px; }
-  .balance {
-    background: var(--panel); border: 1px solid var(--border); color:#d1d5db;
-    padding: 7px 13px; border-radius: 999px; font-size: 12.5px; white-space: nowrap;
-    display: inline-flex; align-items: center; gap: 7px;
-  }
-  .balance svg { width: 14px; height: 14px; color: var(--accent); }
-  .lang-select {
-    background: var(--panel); border: 1px solid var(--border); color:#d1d5db;
-    padding: 7px 10px; border-radius: 8px; font-size: 12.5px; cursor:pointer;
-  }
-  .avatar {
-    width: 34px; height: 34px; border-radius: 50%;
-    background: linear-gradient(135deg, var(--accent), #1e3a8a);
-    display:flex; align-items:center; justify-content:center; cursor:pointer;
-    border: 1px solid var(--border); color: #fff;
-    transition: box-shadow .2s;
-  }
-  .avatar:hover { box-shadow: 0 0 0 3px rgba(59,130,246,.25); }
-  .avatar svg { width: 18px; height: 18px; }
-
-  /* ---------- Layout ---------- */
-  .layout { display: flex; flex: 1; }
-
-  /* ---------- Sidebar ---------- */
-  aside {
-    width: 250px; min-width: 250px;
-    background: #0a0c10; border-right: 1px solid var(--border);
-    padding: 24px 14px;
-  }
-  .sidebar a {
-    display: flex; align-items: center; gap: 12px;
-    padding: 11px 14px; border-radius: var(--radius);
-    color: var(--muted); font-size: 14px; margin-bottom: 4px;
-    transition: background .2s, color .2s;
-  }
-  .sidebar a:hover { background: var(--panel-2); color: #fff; }
-  .sidebar a.active {
-    background: linear-gradient(90deg, rgba(59,130,246,.18), rgba(59,130,246,.06));
-    color: #fff; font-weight: 600;
-    border-left: 3px solid var(--accent);
-  }
-  .sidebar .ico {
-    width: var(--ico-size); height: var(--ico-size); flex: 0 0 var(--ico-size);
-    display: inline-flex; align-items: center; justify-content: center;
-  }
-  .sidebar .ico svg { width: 100%; height: 100%; stroke: currentColor; }
-  .sidebar a.active .ico svg { stroke: #60a5fa; }
-
-  /* ---------- Main ---------- */
-  main { flex: 1; padding: 40px 48px; max-width: 980px; }
-  .title-row { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; }
-  .title-bar { width: 4px; height: 34px; background: var(--accent); border-radius: 2px; }
-  h1 { font-size: 26px; font-weight: 700; }
-  .desc { color: var(--muted); font-size: 14.5px; line-height: 1.8; max-width: 720px; margin-bottom: 26px; }
-
-  .btn {
-    display: inline-flex; align-items: center; gap: 10px; border: none; cursor: pointer;
-    font-size: 14px; font-weight: 600;
-    padding: 12px 26px; border-radius: var(--radius);
-    transition: background .2s, transform .1s, box-shadow .2s;
-  }
-  .btn:active { transform: scale(.98); }
-  .btn-primary { background: var(--accent); color: #fff; box-shadow: 0 4px 18px rgba(59,130,246,.35); }
-  .btn-primary:hover { background: var(--accent-hover); }
-  .btn-primary svg { width: 17px; height: 17px; }
-
-  .divider { border: none; border-top: 1px solid var(--border); margin: 36px 0; }
-
-  .biz-text { color: var(--muted); font-size: 14.5px; line-height: 1.8; max-width: 720px; margin-bottom: 22px; }
-  .btn-outline { background: var(--panel); color: #fff; border: 1px solid #3a4152; }
-  .btn-outline:hover { background: var(--panel-2); border-color: #4b5566; }
-  .btn-outline svg { width: 17px; height: 17px; }
-
-  /* ---------- Footer ---------- */
-  footer {
-    background: #0a0c10; border-top: 1px solid var(--border);
-    padding: 26px 48px; display: flex; align-items: center; justify-content: space-between;
-    flex-wrap: wrap; gap: 16px;
-  }
-  .footer-links { display: flex; gap: 28px; }
-  .footer-links a { color: var(--muted); font-size: 13.5px; transition: color .2s; }
-  .footer-links a:hover { color: #fff; }
-  .copyright { color: #4b5566; font-size: 12px; width: 100%; margin-top: 6px; }
-
-  /* ---------- Responsive ---------- */
-  @media (max-width: 900px) {
-    aside { width: 200px; min-width: 200px; }
-    main { padding: 28px 22px; }
-  }
-  @media (max-width: 680px) {
-    nav.main-nav { order: 3; width: 100%; justify-content: center; flex-wrap: wrap; gap: 14px; }
-    header { padding: 12px 16px; }
-    .layout { flex-direction: column; }
-    aside { width: 100%; min-width: 0; border-right: none; border-bottom: 1px solid var(--border); }
-    .sidebar { display: flex; flex-wrap: wrap; gap: 6px; }
-    .sidebar a { margin-bottom: 0; }
-    .sidebar a.active { border-left: none; border-bottom: 3px solid var(--accent); }
-    main { padding: 24px 16px; }
-    footer { padding: 20px 16px; }
-  }
+:root{--bg:#000;--panel:#121620;--panel-2:#1a1f2b;--border:#232836;--text:#fff;--muted:#9ca3af;--accent:#3b82f6;--accent-hover:#2563eb;--radius:10px;--ico-size:19px}
+*{margin:0;padding:0;box-sizing:border-box}html{scroll-behavior:smooth}body{background:var(--bg);color:var(--text);font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;min-height:100vh;display:flex;flex-direction:column}a{color:inherit;text-decoration:none}button,input,select{font:inherit}button{color:inherit}
+body.light-mode{--bg:#f3f5f9;--panel:#fff;--panel-2:#e9edf5;--border:#d6dbe6;--text:#172033;--muted:#596579;--accent:#2563eb;--accent-hover:#1d4ed8}
+body.light-mode header,body.light-mode aside,body.light-mode footer{background:#edf0f6}body.light-mode .logo-text b{color:#172033}body.light-mode .icon-btn:hover{color:#172033}body.light-mode .btn-outline{color:#172033}body.light-mode .balance,body.light-mode .lang-select{color:#374151}
+:focus-visible{outline:3px solid #93c5fd;outline-offset:3px}
+header{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 28px;background:rgba(10,12,16,.92);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;flex-wrap:wrap}.logo{display:flex;align-items:center;gap:10px;font-weight:800;letter-spacing:.5px}.logo-mark{display:flex}.logo-mark span{width:12px;height:12px;border-radius:50%;display:inline-block;margin-left:-4px}.logo-mark span:nth-child(1){background:#ef4444}.logo-mark span:nth-child(2){background:#facc15}.logo-mark span:nth-child(3){background:#3b82f6}.logo-mark span:nth-child(4){background:#22d3ee}.logo-text{font-size:18px}.logo-text b{color:#fff}.logo-text i{color:#9ca3af;font-style:normal;font-weight:600}
+nav.main-nav{display:flex;gap:22px}.nav-item{position:relative}.nav-link{background:none;border:none;color:var(--muted);font-size:14px;cursor:pointer;padding:6px 2px;display:flex;align-items:center;gap:5px;transition:color .2s}.nav-link:hover,.nav-link:focus{color:var(--text)}.caret{display:inline-flex;opacity:.7;transition:transform .2s}.nav-item:hover .caret{transform:rotate(180deg)}.dropdown{display:none;position:absolute;top:110%;left:0;min-width:180px;background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:6px;box-shadow:0 10px 25px rgba(0,0,0,.5)}.dropdown a{display:block;padding:8px 10px;font-size:13px;color:var(--muted);border-radius:6px}.dropdown a:hover{background:var(--panel-2);color:var(--text)}.nav-item:hover .dropdown,.nav-item:focus-within .dropdown{display:block}
+.header-right{display:flex;align-items:center;gap:14px}.icon-btn{background:none;border:1px solid transparent;color:var(--muted);cursor:pointer;padding:7px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;transition:color .2s,background .2s,border-color .2s}.icon-btn:hover{color:var(--text);background:var(--panel-2);border-color:var(--border)}.icon-btn svg{width:19px;height:19px}.balance{background:var(--panel);border:1px solid var(--border);color:#d1d5db;padding:7px 13px;border-radius:999px;font-size:12.5px;white-space:nowrap;display:inline-flex;align-items:center;gap:7px}.balance svg{width:14px;height:14px;color:var(--accent)}.lang-select{background:var(--panel);border:1px solid var(--border);color:#d1d5db;padding:7px 10px;border-radius:8px;font-size:12.5px;cursor:pointer}.avatar{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#1e3a8a);display:flex;align-items:center;justify-content:center;border:1px solid var(--border);color:#fff}.avatar svg{width:18px;height:18px}
+.layout{display:flex;flex:1}aside{width:250px;min-width:250px;background:#0a0c10;border-right:1px solid var(--border);padding:24px 14px}.sidebar{display:flex;flex-direction:column}.nav-btn{width:100%;display:flex;align-items:center;gap:12px;padding:11px 14px;border:0;border-radius:var(--radius);background:transparent;color:var(--muted);font-size:14px;text-align:left;margin-bottom:4px;cursor:pointer;transition:background .2s,color .2s}.nav-btn:hover,.nav-btn.active{background:linear-gradient(90deg,rgba(59,130,246,.18),rgba(59,130,246,.06));color:var(--text)}.nav-btn.active{font-weight:600;border-left:3px solid var(--accent)}.sidebar .ico{width:var(--ico-size);height:var(--ico-size);flex:0 0 var(--ico-size);display:inline-flex;align-items:center;justify-content:center}.sidebar .ico svg{width:100%;height:100%;stroke:currentColor}.nav-btn.active .ico svg{stroke:#60a5fa}
+main{flex:1;padding:40px 48px;max-width:980px}.tab-pane{display:block}.tab-pane[hidden]{display:none!important}.title-row{display:flex;align-items:center;gap:14px;margin-bottom:18px}.title-bar{width:4px;height:34px;background:var(--accent);border-radius:2px;flex:0 0 4px}h1{font-size:26px;font-weight:700}.desc,.biz-text{color:var(--muted);font-size:14.5px;line-height:1.8;max-width:720px;margin-bottom:26px}.btn{display:inline-flex;align-items:center;gap:10px;border:0;cursor:pointer;font-size:14px;font-weight:600;padding:12px 26px;border-radius:var(--radius);transition:background .2s,transform .1s,box-shadow .2s}.btn:active{transform:scale(.98)}.btn-primary{background:var(--accent);color:#fff;box-shadow:0 4px 18px rgba(59,130,246,.35)}.btn-primary:hover{background:var(--accent-hover)}.btn-primary svg,.btn-outline svg{width:17px;height:17px}.divider{border:0;border-top:1px solid var(--border);margin:36px 0}.biz-text{margin-bottom:22px}.btn-outline{background:var(--panel);color:var(--text);border:1px solid #3a4152}.btn-outline:hover{background:var(--panel-2);border-color:#4b5566}.form-row{margin:0 0 18px;max-width:560px}.form-row label{display:block;font-size:14px;font-weight:600;margin-bottom:8px}.form-control{width:100%;max-width:560px;padding:11px 12px;border-radius:8px;border:1px solid var(--border);background:var(--panel);color:var(--text)}.help-text{font-size:13px;color:var(--muted);line-height:1.7;margin:8px 0 20px}.status{margin-top:16px;max-width:640px;font-size:14px;line-height:1.6}.status:empty{display:none}.status[data-state="success"]{color:#4ade80}.status[data-state="error"]{color:#f87171}
+footer{background:#0a0c10;border-top:1px solid var(--border);padding:26px 48px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px}.footer-links{display:flex;gap:28px}.footer-links a{color:var(--muted);font-size:13.5px;transition:color .2s}.footer-links a:hover{color:var(--text)}.copyright{color:#4b5566;font-size:12px;width:100%;margin-top:6px}
+@media(max-width:900px){aside{width:200px;min-width:200px}main{padding:28px 22px}}@media(max-width:680px){nav.main-nav{order:3;width:100%;justify-content:center;flex-wrap:wrap;gap:14px}header{padding:12px 16px}.layout{flex-direction:column}aside{width:100%;min-width:0;border-right:none;border-bottom:1px solid var(--border)}.sidebar{display:flex;flex-direction:row;flex-wrap:wrap;gap:6px}.nav-btn{width:auto;margin-bottom:0}.nav-btn.active{border-left:none;border-bottom:3px solid var(--accent)}main{padding:24px 16px}footer{padding:20px 16px}.header-right{gap:8px}.balance{display:none}}
 </style>
 </head>
 <body>
-
-<!-- SVG icon defs (shared symbols, crisp vector, stroke-based like Lucide) -->
-<svg width="0" height="0" style="position:absolute" aria-hidden="true">
-  <defs>
-    <g id="i-user">
-      <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
-    </g>
-    <g id="i-briefcase">
-      <rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
-    </g>
-    <g id="i-id-card">
-      <rect x="2" y="5" width="20" height="14" rx="2"/>
-      <circle cx="8" cy="11" r="2"/><path d="M5 17c.6-1.6 1.8-2.5 3-2.5s2.4.9 3 2.5"/>
-      <path d="M13.5 10h5.5M13.5 14h5.5"/>
-    </g>
-    <g id="i-home-doc">
-      <path d="M3 10.5 12 3l9 7.5"/><path d="M5 9v11h14V9"/>
-      <path d="M9 15h6M9 18h4"/>
-    </g>
-    <g id="i-file-text">
-      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-      <path d="M14 2v6h6"/><path d="M8.5 13h7M8.5 17h5"/>
-    </g>
-    <g id="i-upload">
-      <rect x="3" y="3" width="18" height="18" rx="3"/>
-      <path d="M12 16V8"/><path d="m8.5 11.5 3.5-3.5 3.5 3.5"/>
-    </g>
-    <g id="i-key">
-      <circle cx="7.5" cy="15.5" r="4.5"/><path d="m11 12 9-9"/><path d="m16.5 6.5 3 3"/>
-    </g>
-    <g id="i-gift">
-      <rect x="3" y="8" width="18" height="4"/><path d="M12 8v13"/><path d="M19 12v9H5v-9"/>
-      <path d="M7.5 8a2.5 2.5 0 0 1 0-5C11 3 12 8 12 8s1-5 4.5-5a2.5 2.5 0 0 1 0 5"/>
-    </g>
-    <g id="i-shield">
-      <path d="M12 22s8-3.5 8-10V5l-8-3-8 3v7c0 6.5 8 10 8 10z"/><path d="m9 11.5 2 2 4-4"/>
-    </g>
-    <g id="i-sun">
-      <circle cx="12" cy="12" r="4"/>
-      <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>
-    </g>
-    <g id="i-coin">
-      <circle cx="12" cy="12" r="9"/><path d="M12 6.5v11M15 8.5h-4.5a1.8 1.8 0 0 0 0 3.6h3a1.8 1.8 0 0 1 0 3.6H9"/>
-    </g>
-    <g id="i-check-badge">
-      <circle cx="12" cy="12" r="10"/><path d="m8 12.5 2.5 2.5L16 9.5"/>
-    </g>
-    <g id="i-caret-down"><path d="m6 9 6 6 6-6"/></g>
-    <g id="i-arrow-right"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></g>
-  </defs>
-</svg>
-
-<!-- ===== Header ===== -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs>
+<g id="i-user"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></g>
+<g id="i-briefcase"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></g>
+<g id="i-id-card"><rect x="2" y="5" width="20" height="14" rx="2"/><circle cx="8" cy="11" r="2"/><path d="M5 17c.6-1.6 1.8-2.5 3-2.5s2.4.9 3 2.5M13.5 10h5.5M13.5 14h5.5"/></g>
+<g id="i-home-doc"><path d="M3 10.5 12 3l9 7.5M5 9v11h14V9M9 15h6M9 18h4"/></g>
+<g id="i-file-text"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M8.5 13h7M8.5 17h5"/></g>
+<g id="i-upload"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M12 16V8m-3.5 3.5L12 8l3.5 3.5"/></g>
+<g id="i-key"><circle cx="7.5" cy="15.5" r="4.5"/><path d="m11 12 9-9m-3.5 3.5 3 3"/></g>
+<g id="i-gift"><rect x="3" y="8" width="18" height="4"/><path d="M12 8v13m7-9v9H5v-9M7.5 8a2.5 2.5 0 0 1 0-5C11 3 12 8 12 8s1-5 4.5-5a2.5 2.5 0 0 1 0 5"/></g>
+<g id="i-shield"><path d="M12 22s8-3.5 8-10V5l-8-3-8 3v7c0 6.5 8 10 8 10zM9 11.5l2 2 4-4"/></g>
+<g id="i-sun"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4m11.4-11.4 1.4-1.4"/></g>
+<g id="i-coin"><circle cx="12" cy="12" r="9"/><path d="M12 6.5v11M15 8.5h-4.5a1.8 1.8 0 0 0 0 3.6h3a1.8 1.8 0 0 1 0 3.6H9"/></g>
+<g id="i-check-badge"><circle cx="12" cy="12" r="10"/><path d="m8 12.5 2.5 2.5L16 9.5"/></g><g id="i-caret-down"><path d="m6 9 6 6 6-6"/></g><g id="i-arrow-right"><path d="M5 12h14m-6-6 6 6-6 6"/></g>
+</defs></svg>
 <header>
-  <a class="logo" href="#">
-    <span class="logo-mark"><span></span><span></span><span></span><span></span></span>
-    <span class="logo-text"><b>BRICS</b> <i>PAY</i></span>
-  </a>
-
-  <nav class="main-nav">
-    <div class="nav-item"><a class="nav-link" href="#">Cards</a></div>
-    <div class="nav-item"><a class="nav-link" href="#">Swap</a></div>
-    <div class="nav-item">
-      <button class="nav-link">Payments
-        <span class="caret"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-caret-down"/></svg></span>
-      </button>
-      <div class="dropdown">
-        <a href="#">Send Payment</a>
-        <a href="#">Request Payment</a>
-        <a href="#">Payment History</a>
-      </div>
-    </div>
-    <div class="nav-item">
-      <button class="nav-link">Investments
-        <span class="caret"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-caret-down"/></svg></span>
-      </button>
-      <div class="dropdown">
-        <a href="#">Overview</a>
-        <a href="#">Portfolios</a>
-        <a href="#">Reports</a>
-      </div>
-    </div>
-  </nav>
-
-  <div class="header-right">
-    <button class="icon-btn" title="Toggle theme" aria-label="Toggle theme">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-sun"/></svg>
-    </button>
-    <span class="balance">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-coin"/></svg>
-      0.000000 USDG
-    </span>
-    <select class="lang-select" aria-label="Language">
-      <option selected>EN</option>
-      <option>FA</option>
-      <option>RU</option>
-      <option>ZH</option>
-    </select>
-    <div class="avatar" title="Profile" role="button" tabindex="0" aria-label="Profile">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-user"/></svg>
-    </div>
-  </div>
+<a class="logo" href="/" aria-label="BRICS PAY home"><span class="logo-mark" aria-hidden="true"><span></span><span></span><span></span><span></span></span><span class="logo-text"><b>BRICS</b> <i>PAY</i></span></a>
+<nav class="main-nav" aria-label="Main navigation"><div class="nav-item"><a class="nav-link" href="/cards">Cards</a></div><div class="nav-item"><a class="nav-link" href="/swap">Swap</a></div><div class="nav-item"><button type="button" class="nav-link">Payments <span class="caret"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-caret-down"/></svg></span></button><div class="dropdown"><a href="/payments/send">Send Payment</a><a href="/payments/request">Request Payment</a><a href="/payments/history">Payment History</a></div></div><div class="nav-item"><button type="button" class="nav-link">Investments <span class="caret"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-caret-down"/></svg></span></button><div class="dropdown"><a href="/investments">Overview</a><a href="/investments/portfolios">Portfolios</a><a href="/investments/reports">Reports</a></div></div></nav>
+<div class="header-right"><button type="button" class="icon-btn" id="themeToggle" title="Toggle theme" aria-label="Toggle light and dark theme" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-sun"/></svg></button><span class="balance"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-coin"/></svg>0.000000 USDG</span><select class="lang-select" id="languageSelect" aria-label="Language"><option selected>EN</option><option>FA</option><option>RU</option><option>ZH</option></select><div class="avatar" title="Profile" aria-label="Profile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-user"/></svg></div></div>
 </header>
-
-<div class="layout">
-  <!-- ===== Sidebar ===== -->
-  <aside>
-    <nav class="sidebar">
-      <a href="#"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="#i-user"/></svg></span> Profile/KYC</a>
-      <a href="#"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="#i-briefcase"/></svg></span> Business/KYB</a>
-      <a href="#" class="active"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="#i-id-card"/></svg></span> Identity Verification</a>
-      <a href="#"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="#i-home-doc"/></svg></span> Proof Of Residence</a>
-      <a href="#"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="#i-file-text"/></svg></span> Document Upload</a>
-      <a href="#"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="#i-key"/></svg></span> API Access</a>
-      <a href="#"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="#i-gift"/></svg></span> Referral System</a>
-      <a href="#"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="#i-upload"/></svg></span> Business Services</a>
-      <a href="#"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="#i-shield"/></svg></span> Security</a>
-    </nav>
-  </aside>
-
-  <!-- ===== Main ===== -->
-  <main>
-    <div class="title-row">
-      <span class="title-bar"></span>
-      <h1>Identity Verification</h1>
-    </div>
-
-    <p class="desc">
-      In order to be able to trade or deposit/withdraw money to/from your account,
-      you need to verify your identity and address with official documents.
-    </p>
-
-    <button class="btn btn-primary">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><use href="#i-check-badge"/></svg>
-      Verify My Identity
-    </button>
-
-    <hr class="divider" />
-
-    <p class="biz-text">
-      Or if you are a business, you can verify your business information by clicking on the button below
-    </p>
-
-    <button class="btn btn-outline">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><use href="#i-briefcase"/></svg>
-      Verify My Business Identity
-    </button>
-  </main>
-</div>
-
-<!-- ===== Footer ===== -->
-<footer>
-  <a class="logo" href="#">
-    <span class="logo-mark"><span></span><span></span><span></span><span></span></span>
-    <span class="logo-text"><b>BRICS</b> <i>PAY</i></span>
-  </a>
-  <nav class="footer-links">
-    <a href="#">About</a>
-    <a href="#">Support</a>
-    <a href="#">Resources</a>
-  </nav>
-  <div class="copyright">© 2026 BRICS PAY. All rights reserved.</div>
-</footer>
-
+<div class="layout"><aside><nav class="sidebar" aria-label="Account settings" role="tablist" aria-orientation="vertical">
+<button type="button" class="nav-btn" data-tab="profile" id="tab-profile-button" role="tab" aria-controls="tab-profile" aria-selected="false"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-user"/></svg></span>Profile/KYC</button>
+<button type="button" class="nav-btn" data-tab="business" id="tab-business-button" role="tab" aria-controls="tab-business" aria-selected="false"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-briefcase"/></svg></span>Business/KYB</button>
+<button type="button" class="nav-btn" data-tab="identity" id="tab-identity-button" role="tab" aria-controls="tab-identity" aria-selected="true"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-id-card"/></svg></span>Identity Verification</button>
+<button type="button" class="nav-btn" data-tab="residence" id="tab-residence-button" role="tab" aria-controls="tab-residence" aria-selected="false"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-home-doc"/></svg></span>Proof Of Residence</button>
+<button type="button" class="nav-btn" data-tab="upload" id="tab-upload-button" role="tab" aria-controls="tab-upload" aria-selected="false"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-file-text"/></svg></span>Document Upload</button>
+<button type="button" class="nav-btn" data-tab="api" id="tab-api-button" role="tab" aria-controls="tab-api" aria-selected="false"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-key"/></svg></span>API Access</button>
+<button type="button" class="nav-btn" data-tab="referral" id="tab-referral-button" role="tab" aria-controls="tab-referral" aria-selected="false"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-gift"/></svg></span>Referral System</button>
+<button type="button" class="nav-btn" data-tab="services" id="tab-services-button" role="tab" aria-controls="tab-services" aria-selected="false"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-upload"/></svg></span>Business Services</button>
+<button type="button" class="nav-btn" data-tab="security" id="tab-security-button" role="tab" aria-controls="tab-security" aria-selected="false"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-shield"/></svg></span>Security</button>
+</nav></aside>
+<main id="mainContent" aria-live="polite">
+<section class="tab-pane" id="tab-identity" role="tabpanel" aria-labelledby="tab-identity-button">
+<div class="title-row"><span class="title-bar" aria-hidden="true"></span><h1>Identity Verification</h1></div><p class="desc">In order to be able to trade or deposit/withdraw money to/from your account, you need to verify your identity and address with official documents.</p><button type="button" class="btn btn-primary" id="verifyIdentityBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-check-badge"/></svg>Verify My Identity</button><hr class="divider"><p class="biz-text">Or if you are a business, you can verify your business information by clicking on the button below</p><button type="button" class="btn btn-outline" id="verifyBusinessBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-briefcase"/></svg>Verify My Business Identity</button>
+</section>
+<section class="tab-pane" id="tab-profile" role="tabpanel" aria-labelledby="tab-profile-button" hidden><div class="title-row"><span class="title-bar" aria-hidden="true"></span><h1>Profile / KYC</h1></div><p class="desc">Review your personal account details and complete Know Your Customer verification to access all BRICS PAY features.</p><p class="biz-text">Keep your legal name and contact information up to date. Identity documents can be submitted securely through the Document Upload section.</p><button type="button" class="btn btn-primary" id="profileVerifyBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-check-badge"/></svg>Verify My Identity</button></section>
+<section class="tab-pane" id="tab-business" role="tabpanel" aria-labelledby="tab-business-button" hidden><div class="title-row"><span class="title-bar" aria-hidden="true"></span><h1>Business / KYB</h1></div><p class="desc">Verify your organization with Know Your Business checks to enable business payments and related services.</p><p class="biz-text">Prepare your registration details and authorized representative information before starting business verification.</p><button type="button" class="btn btn-outline" id="businessVerifyBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-briefcase"/></svg>Verify My Business Identity</button></section>
+<section class="tab-pane" id="tab-residence" role="tabpanel" aria-labelledby="tab-residence-button" hidden><div class="title-row"><span class="title-bar" aria-hidden="true"></span><h1>Proof Of Residence</h1></div><p class="desc">Provide a recent document that confirms your residential address. Accepted documents may include a utility bill, bank statement, or official government correspondence dated within the last three months.</p><p class="biz-text">Make sure your full name, address, and issue date are clearly visible. Use Document Upload to submit your proof securely.</p><button type="button" class="btn btn-outline" data-open-tab="upload">Go to Document Upload</button></section>
+<section class="tab-pane" id="tab-upload" role="tabpanel" aria-labelledby="tab-upload-button" hidden><div class="title-row"><span class="title-bar" aria-hidden="true"></span><h1>Document Upload</h1></div><p class="desc">Upload a clear image or PDF of your verification document. Files must be 10 MiB or smaller.</p><form id="kycUploadForm" enctype="multipart/form-data" novalidate><div class="form-row"><label for="docTypeSelect">Document type</label><select class="form-control" id="docTypeSelect" name="document_type" required><option value="" selected disabled>Select a document type</option><option value="passport">Passport</option><option value="national_id">National ID</option><option value="drivers_license">Driver's license</option><option value="proof_of_residence">Proof of residence</option><option value="business_registration">Business registration</option></select></div><div class="form-row"><label for="docFileInput">Document file</label><input class="form-control" id="docFileInput" name="file" type="file" accept="image/jpeg,image/png,application/pdf" required aria-describedby="uploadHelp"></div><p class="help-text" id="uploadHelp">Accepted formats: JPEG, PNG, or PDF. Maximum file size: 10 MiB.</p><button class="btn btn-primary" type="submit">Submit Document</button><p class="status" id="kycUploadStatus" role="status" aria-live="polite"></p></form></section>
+<section class="tab-pane" id="tab-api" role="tabpanel" aria-labelledby="tab-api-button" hidden><div class="title-row"><span class="title-bar" aria-hidden="true"></span><h1>API Access</h1></div><p class="desc">Manage integrations with BRICS PAY APIs. Keep any API credentials private and use a secure server-side environment for production requests.</p><p class="biz-text">API access and credentials are available to eligible verified accounts. Contact support to request access or review integration guidance.</p><a class="btn btn-outline" href="/support">Contact Support</a></section>
+<section class="tab-pane" id="tab-referral" role="tabpanel" aria-labelledby="tab-referral-button" hidden><div class="title-row"><span class="title-bar" aria-hidden="true"></span><h1>Referral System</h1></div><p class="desc">Invite people to discover BRICS PAY and check the status of your referrals here.</p><p class="biz-text">Referral rewards, when available, are subject to program terms and account eligibility. Your personal referral details will appear in this section.</p></section>
+<section class="tab-pane" id="tab-services" role="tabpanel" aria-labelledby="tab-services-button" hidden><div class="title-row"><span class="title-bar" aria-hidden="true"></span><h1>Business Services</h1></div><p class="desc">Explore account services designed for businesses, including payment operations and organization-level verification.</p><p class="biz-text">Complete business verification to learn which services are available for your organization.</p><button type="button" class="btn btn-outline" data-open-tab="business">Start Business Verification</button></section>
+<section class="tab-pane" id="tab-security" role="tabpanel" aria-labelledby="tab-security-button" hidden><div class="title-row"><span class="title-bar" aria-hidden="true"></span><h1>Security</h1></div><p class="desc">Protect your account by using a unique password, keeping your recovery details current, and never sharing verification codes.</p><p class="biz-text">If you notice activity you do not recognize, contact BRICS PAY support promptly. Additional security settings will be available here.</p><a class="btn btn-outline" href="/support">Contact Support</a></section>
+</main></div>
+<footer><a class="logo" href="/" aria-label="BRICS PAY home"><span class="logo-mark" aria-hidden="true"><span></span><span></span><span></span><span></span></span><span class="logo-text"><b>BRICS</b> <i>PAY</i></span></a><nav class="footer-links" aria-label="Footer"><a href="/about">About</a><a href="/support">Support</a><a href="/resources">Resources</a></nav><div class="copyright">© 2026 BRICS PAY. All rights reserved.</div></footer>
+<script>
+(() => {
+  'use strict';
+  const buttons = Array.from(document.querySelectorAll('.nav-btn[data-tab]'));
+  const panes = Array.from(document.querySelectorAll('.tab-pane'));
+  const names = new Set(buttons.map(button => button.dataset.tab));
+  function activateTab(name, updateHash = true) {
+    const tabName = names.has(name) && document.getElementById(`tab-${name}`) ? name : 'identity';
+    const target = document.getElementById(`tab-${tabName}`);
+    buttons.forEach(button => {
+      const active = button.dataset.tab === tabName;
+      button.classList.toggle('active', active);
+      button.setAttribute('aria-selected', String(active));
+      button.setAttribute('aria-current', active ? 'page' : 'false');
+      button.tabIndex = active ? 0 : -1;
+    });
+    panes.forEach(pane => {
+      const active = pane === target;
+      pane.hidden = !active;
+      pane.classList.toggle('active', active);
+    });
+    if (updateHash) history.replaceState(null, '', `${location.pathname}${location.search}#${tabName}`);
+  }
+  buttons.forEach(button => button.addEventListener('click', () => activateTab(button.dataset.tab)));
+  const initial = location.hash.replace(/^#/, '');
+  activateTab(initial || 'identity', true);
+  document.querySelectorAll('[data-open-tab]').forEach(button => button.addEventListener('click', () => activateTab(button.dataset.openTab)));
+  document.getElementById('verifyIdentityBtn').addEventListener('click', () => activateTab('profile'));
+  document.getElementById('verifyBusinessBtn').addEventListener('click', () => activateTab('business'));
+  document.getElementById('profileVerifyBtn').addEventListener('click', () => activateTab('upload'));
+  document.getElementById('businessVerifyBtn').addEventListener('click', () => activateTab('upload'));
+  const themeToggle = document.getElementById('themeToggle');
+  themeToggle.addEventListener('click', () => {
+    const light = document.body.classList.toggle('light-mode');
+    themeToggle.setAttribute('aria-pressed', String(light));
+  });
+  const form = document.getElementById('kycUploadForm');
+  const fileInput = document.getElementById('docFileInput');
+  const status = document.getElementById('kycUploadStatus');
+  const maxSize = 10 * 1024 * 1024;
+  function showStatus(message, state) {
+    status.textContent = message;
+    status.dataset.state = state;
+  }
+  form.addEventListener('submit', async event => {
+    event.preventDefault();
+    status.textContent = '';
+    delete status.dataset.state;
+    const selected = fileInput.files && fileInput.files[0];
+    if (!form.elements.document_type.value) {
+      showStatus('Please select a document type.', 'error');
+      form.elements.document_type.focus();
+      return;
+    }
+    if (!selected) {
+      showStatus('Please choose a document file to upload.', 'error');
+      fileInput.focus();
+      return;
+    }
+    if (selected.size > maxSize) {
+      showStatus('The selected file exceeds the 10 MiB size limit. Please choose a smaller file.', 'error');
+      fileInput.focus();
+      return;
+    }
+    const data = new FormData(form);
+    try {
+      const response = await fetch('/api/v1/kyc/upload', { method: 'POST', body: data });
+      const contentType = response.headers.get('content-type') || '';
+      let detail = '';
+      if (contentType.includes('application/json')) {
+        try {
+          const payload = await response.json();
+          detail = typeof payload === 'string' ? payload : (payload.message || payload.error || '');
+        } catch (_) { detail = ''; }
+      } else {
+        try { detail = (await response.text()).trim(); } catch (_) { detail = ''; }
+      }
+      if (!response.ok) {
+        showStatus(detail || `Upload failed (HTTP ${response.status}). Please check the document and try again.`, 'error');
+        return;
+      }
+      showStatus(detail || 'Document uploaded successfully. Your submission is being reviewed.', 'success');
+      form.reset();
+    } catch (_) {
+      showStatus('Unable to upload your document due to a network error. Please try again.', 'error');
+    }
+  });
+})();
+</script>
 </body>
 </html>
