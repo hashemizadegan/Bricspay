@@ -171,9 +171,6 @@ func (s *Server) HandleKYCStatus(w http.ResponseWriter, r *http.Request) {
 }
 
 // HandleAdminPendingKYC returns all pending KYC verifications.
-//
-// Authorization for this endpoint should be enforced by the admin
-// middleware or by the route registration.
 func (s *Server) HandleAdminPendingKYC(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		writeErr(w, http.StatusMethodNotAllowed, "method_not_allowed")
@@ -303,4 +300,18 @@ func (s *Server) HandleAdminReviewKYC(w http.ResponseWriter, r *http.Request) {
 	}
 
 	affectedRows, err := result.RowsAffected()
-	if err != 
+	if err != nil {
+		log.Printf("error checking affected KYC verification rows: %v", err)
+		writeErr(w, http.StatusInternalServerError, "database_error")
+		return
+	}
+
+	if affectedRows == 0 {
+		writeErr(w, http.StatusNotFound, "kyc_verification_not_found")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]string{
+		"message": "kyc_status_updated",
+	})
+}
