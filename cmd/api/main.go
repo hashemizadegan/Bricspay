@@ -52,46 +52,51 @@ func main() {
 	}
 
 	server := api.NewServer(database)
-mux := http.NewServeMux()
+	mux := http.NewServeMux()
 
-// Static website
-mux.Handle("/", api.StaticHandler())
+	// Static website
+	mux.Handle("/", api.StaticHandler())
 
-// Health
-mux.HandleFunc("/api/v1/health", server.HealthCheck)
+	// Health
+	mux.HandleFunc("/api/v1/health", server.HealthCheck)
 
-// Authentication
-mux.Handle(
-	"/api/v1/auth/register",
-	api.NewRegistrationHandler(database),
-)
+	// Authentication
+	mux.Handle(
+		"/api/v1/auth/register",
+		api.NewRegistrationHandler(database),
+	)
 
-mux.HandleFunc(
-	"/api/v1/auth/login",
-	api.HandleLogin(database),
-)
+	mux.HandleFunc(
+		"/api/v1/auth/login",
+		api.HandleLogin(database),
+	)
 
-// KYC
-mux.HandleFunc(
-	"/api/v1/kyc/submit",
-	server.HandleKYCSubmit,
-)
+	// KYC
+	mux.HandleFunc(
+		"/api/v1/kyc/submit",
+		server.HandleKYCSubmit,
+	)
 
-mux.HandleFunc(
-	"/api/v1/kyc/status",
-	server.HandleKYCStatus,
-)
+	mux.HandleFunc(
+		"/api/v1/kyc/status",
+		server.HandleKYCStatus,
+	)
 
-// Admin KYC
-mux.HandleFunc(
-	"/api/v1/admin/kyc/pending",
-	server.HandleAdminPendingKYC,
-)
+	mux.HandleFunc(
+		"/api/v1/kyc/upload",
+		server.HandleKYCUpload,
+	)
 
-mux.HandleFunc(
-	"/api/v1/admin/kyc/review",
-	server.HandleAdminReviewKYC,
-)
+	// Admin KYC
+	mux.HandleFunc(
+		"/api/v1/admin/kyc/pending",
+		server.HandleAdminPendingKYC,
+	)
+
+	mux.HandleFunc(
+		"/api/v1/admin/kyc/review",
+		server.HandleAdminReviewKYC,
+	)
 
 	log.Printf("BRICS Pay server listening on :%s", port)
 
