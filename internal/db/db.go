@@ -32,8 +32,13 @@ func InitSchema(db *sql.DB) error {
 	}
 
 	if err := MigrateKYCVerifications(db); err != nil {
-		return err
+	return err
 	}
+
+if err := MigrateKYCDocumentBlobs(db); err != nil {
+	return err
+	}
+
 
 	if err := MigrateWalletAuth(db); err != nil {
 		return err
