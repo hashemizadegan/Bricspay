@@ -64,6 +64,15 @@ func main() {
 	mux.Handle(
 		"/api/v1/auth/register",
 		api.NewRegistrationHandler(database),
+
+	// Auth routes
+	mux.Handle("/api/v1/auth/register", api.NewRegistrationHandler(database))
+	
+	// Login handlers (پشتیبانی از هر دو مسیر فرانت‌اند و API v1)
+	loginHandler := api.HandleLogin(database)
+	mux.HandleFunc("/auth/login", loginHandler)
+	mux.HandleFunc("/api/v1/auth/login", loginHandler)	
+		
 	// KYC routes
 	mux.HandleFunc("/api/v1/kyc/submit", server.HandleKYCSubmit)
 	mux.HandleFunc("/api/v1/kyc/status", server.HandleKYCStatus)
