@@ -52,39 +52,46 @@ func main() {
 	}
 
 	server := api.NewServer(database)
-	mux := http.NewServeMux()
+mux := http.NewServeMux()
 
-	// Static website
-	mux.Handle("/", api.StaticHandler())
+// Static website
+mux.Handle("/", api.StaticHandler())
 
-	// API routes
-	mux.HandleFunc("/api/v1/health", server.HealthCheck)
+// Health
+mux.HandleFunc("/api/v1/health", server.HealthCheck)
 
-	// Registration API
-	mux.Handle(
-		"/api/v1/auth/register",
-		api.NewRegistrationHandler(database),
+// Authentication
+mux.Handle(
+	"/api/v1/auth/register",
+	api.NewRegistrationHandler(database),
+)
 
-	// Auth routes
-	mux.Handle("/api/v1/auth/register", api.NewRegistrationHandler(database))
-	
-	// Login handlers (پشتیبانی از هر دو مسیر فرانت‌اند و API v1)
-	loginHandler := api.HandleLogin(database)
-	mux.HandleFunc("/auth/login", loginHandler)
-	mux.HandleFunc("/api/v1/auth/login", loginHandler)	
-		
-	// KYC routes
-	mux.HandleFunc("/api/v1/kyc/submit", server.HandleKYCSubmit)
-	mux.HandleFunc("/api/v1/kyc/status", server.HandleKYCStatus)
-	
-	// Frontend compatibility route.
-	// kyc.js currently calls /api/v1/kyc/upload.
-	mux.HandleFunc("/api/v1/kyc/upload", server.HandleKYCSubmit)
+mux.HandleFunc(
+	"/api/v1/auth/login",
+	api.HandleLogin(database),
+)
 
-	)
+// KYC
+mux.HandleFunc(
+	"/api/v1/kyc/submit",
+	server.HandleKYCSubmit,
+)
 
-	// Login API
-	mux.HandleFunc("/api/v1/auth/login", api.HandleLogin(database))
+mux.HandleFunc(
+	"/api/v1/kyc/status",
+	server.HandleKYCStatus,
+)
+
+// Admin KYC
+mux.HandleFunc(
+	"/api/v1/admin/kyc/pending",
+	server.HandleAdminPendingKYC,
+)
+
+mux.HandleFunc(
+	"/api/v1/admin/kyc/review",
+	server.HandleAdminReviewKYC,
+)
 
 	log.Printf("BRICS Pay server listening on :%s", port)
 
