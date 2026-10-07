@@ -29,7 +29,7 @@ func (s *Server) HandleKYCSubmit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userID, ok := principalUserID64(r)
+	userID, ok := principalUserID64(w, r)
 	if !ok {
 		writeErr(w, http.StatusUnauthorized, "unauthorized")
 		return
