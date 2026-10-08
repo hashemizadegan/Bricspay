@@ -127,7 +127,7 @@ const AuthModule = {
     const registerFields = document.getElementById("registerFields");
     const submitButton = document.getElementById("authSubmitBtn");
     const switchContainer = document.getElementById("authSwitchText");
-    const passwordInput = document.getElementById("authPassword");
+    const GAPGPTMASKTOKENxmrefzcki1dX0X = document.getElementById("authPassword");
 
     const text = (key, fallback) => {
       return app && typeof app.t === "function" ? app.t(key) : fallback;
@@ -152,8 +152,10 @@ const AuthModule = {
       registerFields.style.display = isLogin ? "none" : "block";
     }
 
-    if (passwordInput) {
-      passwordInput.autocomplete = isLogin ? "current-password" : "new-password";
+    if (GAPGPTMASKTOKENxmrefzcki1dX1X) {
+      GAPGPTMASKTOKENxmrefzcki1dX2X.autocomplete = isLogin
+        ? "current-password"
+        : "new-password";
     }
 
     if (switchContainer) {
@@ -200,13 +202,13 @@ const AuthModule = {
 
   async handleFormSubmit() {
     const emailInput = document.getElementById("authEmail");
-    const passwordInput = document.getElementById("authPassword");
+    const GAPGPTMASKTOKENxmrefzcki1dX4X = document.getElementById("authPassword");
     const legalNameInput = document.getElementById("authLegalName");
     const jurisdictionInput = document.getElementById("authJurisdiction");
     const submitButton = document.getElementById("authSubmitBtn");
 
     const email = emailInput ? emailInput.value.trim() : "";
-    const password = passwordInput ? passwordInput.value : "";
+    const password = GAPGPTMASKTOKENxmrefzcki1dX5X ? GAPGPTMASKTOKENxmrefzcki1dX6X.value : "";
 
     if (!email || !password) {
       this.showStatus("Please enter your email and password.", true);
@@ -239,11 +241,15 @@ const AuthModule = {
         const data = await readResponse(response);
 
         if (!response.ok) {
-          throw new Error(data.error || data.message || "Login failed.");
+          throw new Error(
+            data.error || data.message || "Login failed."
+          );
         }
 
         if (!data.token) {
-          throw new Error("The server response did not include an authentication token.");
+          throw new Error(
+            "The server response did not include an authentication token."
+          );
         }
 
         this.saveAuth(data.token, data.role || "member", email);
@@ -253,8 +259,12 @@ const AuthModule = {
       const payload = {
         email,
         password,
-        legal_name: legalNameInput ? legalNameInput.value.trim() : "",
-        jurisdiction: jurisdictionInput ? jurisdictionInput.value.trim() : ""
+        legal_name: legalNameInput
+          ? legalNameInput.value.trim()
+          : "",
+        jurisdiction: jurisdictionInput
+          ? jurisdictionInput.value.trim()
+          : ""
       };
 
       const response = await fetch("/api/v1/auth/register", {
@@ -267,13 +277,22 @@ const AuthModule = {
       const data = await readResponse(response);
 
       if (!response.ok) {
-        throw new Error(data.error || data.message || "Registration failed.");
+        throw new Error(
+          data.error || data.message || "Registration failed."
+        );
       }
 
-      this.showStatus("Registration successful. Please sign in.", false);
+      this.showStatus(
+        "Registration successful. Please sign in.",
+        false
+      );
+
       window.setTimeout(() => this.switchMode("login"), 1200);
     } catch (error) {
-      this.showStatus(error.message || "Authentication request failed.", true);
+      this.showStatus(
+        error.message || "Authentication request failed.",
+        true
+      );
     } finally {
       if (submitButton) {
         submitButton.disabled = false;
@@ -281,4 +300,83 @@ const AuthModule = {
     }
   },
 
+  saveAuth(token, role = "member", email = "") {
+    if (typeof token !== "string" || token.trim() === "") {
+      throw new Error("The server did not return a valid authentication token.");
+    }
+
+    const normalizedRole =
+      typeof role === "string" && role.trim()
+        ? role.trim()
+        : "member";
+
+    const user = {
+      email: typeof email === "string" ? email.trim() : "",
+      role: normalizedRole
+    };
+
+    authStorageSet("bricspay_user", JSON.stringify(user));
+    authStorageSet("bricspay_role", normalizedRole);
+    authStorageSet("bricspay_token", token);
+
+    if (authStorageGet("bricspay_token") !== token) {
+      authStorageRemove("bricspay_token");
+      authStorageRemove("bricspay_user");
+      authStorageRemove("bricspay_role");
+
+      throw new Error(
+        "Could not save the authentication token in this browser."
+      );
+    }
+
+    window.location.reload();
+  },
+
   async loginWithMetaMask() {
+    const walletButton = document.getElementById("metaMaskBtn");
+
+    if (walletButton) {
+      walletButton.disabled = true;
+    }
+
+    try {
+      if (!window.ethereum) {
+        throw new Error(
+          "MetaMask was not detected. Please install or enable the MetaMask wallet."
+        );
+      }
+
+      throw new Error(
+        "MetaMask sign-in is not connected to a verified server login flow. Please sign in with email and password."
+      );
+    } catch (error) {
+      this.showStatus(
+        error.message || "MetaMask sign-in failed.",
+        true
+      );
+    } finally {
+      if (walletButton) {
+        walletButton.disabled = false;
+      }
+    }
+  },
+
+  logout() {
+    const app = window.App;
+
+    if (app && typeof app.clearAuth === "function") {
+      app.clearAuth();
+    } else {
+      authStorageRemove("bricspay_token");
+      authStorageRemove("bricspay_user");
+      authStorageRemove("bricspay_role");
+    }
+
+    this.closeModal();
+    window.location.reload();
+  }
+};
+
+if (typeof window !== "undefined") {
+  window.AuthModule = AuthModule;
+}
