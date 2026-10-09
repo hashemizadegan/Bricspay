@@ -231,7 +231,7 @@ const AuthModule = {
       this.showStatus("Processing request...", false);
 
       if (this.mode === "login") {
-        const response = await fetch("/auth/login", {
+        const response = await fetch("/api/v1/auth/login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
