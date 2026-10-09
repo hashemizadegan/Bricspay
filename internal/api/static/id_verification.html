@@ -130,7 +130,21 @@ footer{background:#0a0c10;border-top:1px solid var(--border);padding:26px 48px;d
     }
     const data = new FormData(form);
     try {
-      const response = await fetch('/api/v1/kyc/upload', { method: 'POST', body: data });
+      const token = localStorage.getItem('bricspay_token');
+
+if (!token) {
+  showStatus('Your session was not found. Please sign in again.', 'error');
+  return;
+}
+
+const response = await fetch('/api/v1/kyc/upload', {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${token}`
+  },
+  body: data
+});
+
       const contentType = response.headers.get('content-type') || '';
       let detail = '';
       if (contentType.includes('application/json')) {
