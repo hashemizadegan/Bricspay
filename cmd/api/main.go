@@ -82,9 +82,10 @@ func main() {
 		server.HandleKYCStatus,
 	)
 
-	mux.HandleFunc(
+	// KYC Upload protected by auth.Middleware
+	mux.Handle(
 		"/api/v1/kyc/upload",
-		server.HandleKYCUpload,
+		auth.Middleware(http.HandlerFunc(server.HandleKYCUpload)),
 	)
 
 	// Admin KYC
